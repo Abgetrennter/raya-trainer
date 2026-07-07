@@ -1,0 +1,478 @@
+<Window x:Class="RayaTrainer.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:pages="clr-namespace:RayaTrainer.App.Pages"
+        xmlns:ctrl="clr-namespace:RayaTrainer.App.Controls"
+        xmlns:converters="clr-namespace:RayaTrainer.App.Converters"
+        Title="RAЯ Trainer" Height="800" Width="1230"
+        MinHeight="680" MinWidth="960"
+        Background="{DynamicResource BrushWindowBackground}">
+  <Window.Resources>
+    <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+  </Window.Resources>
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="220" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- Sidebar -->
+    <Border Grid.Column="0" Background="{DynamicResource BrushSidebarBackground}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="20,20">
+          <TextBlock Text="RAЯ Trainer" FontSize="18" FontWeight="Bold" Foreground="White" />
+          <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+              <Ellipse.Style>
+                <Style TargetType="Ellipse">
+                  <Setter Property="Fill" Value="{DynamicResource BrushError}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding ArePatchesInstalled}" Value="True">
+                      <Setter Property="Fill" Value="{DynamicResource BrushSuccess}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Ellipse.Style>
+            </Ellipse>
+            <TextBlock Text="修改器功能" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+              <Ellipse.Style>
+                <Style TargetType="Ellipse">
+                  <Setter Property="Fill" Value="{DynamicResource BrushTextDim}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding GameSession.GameStateText}" Value="战役中">
+                      <Setter Property="Fill" Value="{DynamicResource BrushWarning}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding GameSession.GameStateText}" Value="遭遇战">
+                      <Setter Property="Fill" Value="{DynamicResource BrushPrimary}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding GameSession.GameStateText}" Value="对局中">
+                      <Setter Property="Fill" Value="{DynamicResource BrushPrimary}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Ellipse.Style>
+            </Ellipse>
+            <TextBlock Text="{Binding GameSession.GameStateText}" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" />
+          </StackPanel>
+        </StackPanel>
+
+        <ListBox DockPanel.Dock="Top"
+                 SelectedIndex="{Binding SelectedPageIndex, Mode=TwoWay}"
+                 Style="{StaticResource SidebarNavList}" Margin="0,12,0,0">
+          <ListBoxItem><TextBlock Text="功能开关" /></ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="增援与替换" />
+              <Border Margin="8,0,0,0" CornerRadius="8" Padding="6,2"
+                      Background="{DynamicResource BrushFactionImperial}"
+                      Visibility="{Binding ReinforcementQueueCount, Converter={StaticResource BoolVis}}">
+                <TextBlock Text="{Binding ReinforcementQueueCount}" FontSize="11" Foreground="Black" />
+              </Border>
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="秘密协议" />
+              <Border Margin="8,0,0,0" CornerRadius="8" Padding="6,2"
+                      Background="{DynamicResource BrushFactionImperial}"
+                      Visibility="{Binding SecretProtocolQueueCount, Converter={StaticResource BoolVis}}">
+                <TextBlock Text="{Binding SecretProtocolQueueCount}" FontSize="11" Foreground="Black" />
+              </Border>
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem><TextBlock Text="工具" /></ListBoxItem>
+          <ListBoxItem><TextBlock Text="状态编辑器" /></ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="诊断" />
+              <Border Margin="8,0,0,0" CornerRadius="8" Padding="6,2"
+                      Background="{DynamicResource BrushFactionSoviet}"
+                      Visibility="{Binding Diagnostics.HasAttention, Converter={StaticResource BoolVis}}">
+                <TextBlock Text="{Binding Diagnostics.AttentionCount}" FontSize="11" Foreground="White" />
+              </Border>
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem><TextBlock Text="设置" /></ListBoxItem>
+        </ListBox>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="12,0,12,14">
+          <Button Content="{Binding Theme.ThemeToggleText}" Command="{Binding Theme.ToggleThemeCommand}"
+                  Style="{DynamicResource CompactButton}" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="12,0,12,14">
+          <!-- Structured current-target info (version / PID / profile / backend / path) -->
+          <Border Background="{DynamicResource BrushCardBackground}" CornerRadius="6" Padding="10,6"
+                  Visibility="{Binding CurrentTargetInfo, Converter={StaticResource StringToVisibilityConverter}}"
+                  Margin="0,0,0,6">
+            <TextBlock Text="{Binding CurrentTargetInfo}" FontSize="11"
+                       Foreground="{DynamicResource BrushTextSecondary}" TextTrimming="CharacterEllipsis" />
+          </Border>
+
+          <!-- Candidate picker: shown only when multiple installable RA3 targets are running -->
+          <Border Background="{DynamicResource BrushCardBackground}" CornerRadius="6" Padding="10,8"
+                  Visibility="{Binding HasSelectableCandidates, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  Margin="0,0,0,6">
+            <StackPanel>
+              <TextBlock Text="检测到多个可安装 RA3 目标，请选择：" FontSize="11"
+                         Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6" />
+              <ItemsControl ItemsSource="{Binding SelectableCandidates}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Command="{Binding DataContext.SelectCandidateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}"
+                            Style="{DynamicResource CompactButton}"
+                            HorizontalContentAlignment="Left"
+                            Margin="0,2" Padding="8,4">
+                      <StackPanel>
+                        <TextBlock FontSize="12" FontWeight="SemiBold">
+                          <Run Text="{Binding Profile.DisplayName, Mode=OneWay, TargetNullValue=未知版本}" />
+                          <Run Text="  PID=" /><Run Text="{Binding ProcessId, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding ModulePath}" FontSize="10"
+                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <Border Background="{DynamicResource BrushCardBackground}" CornerRadius="6" Padding="10,8">
+              <TextBox Text="{Binding StatusMessage, Mode=OneWay}"
+                       FontSize="11" Foreground="{DynamicResource BrushTextSecondary}"
+                       Background="Transparent" BorderThickness="0"
+                       IsReadOnly="True" TextWrapping="Wrap"
+                       MaxHeight="120" VerticalScrollBarVisibility="Auto"
+                       CaretBrush="Transparent" SelectionBrush="{DynamicResource BrushPrimary}" />
+          </Border>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Content Area -->
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <!-- Row 0: Tactical Readout (签名元素) -->
+      <Border Grid.Row="0" Background="{DynamicResource BrushToolbarBackground}"
+              BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="0,0,0,1"
+              Padding="0,12" ClipToBounds="True">
+        <Grid>
+          <!-- 扫描线动画 (签名) -->
+          <Rectangle Height="1" VerticalAlignment="Bottom" Width="120" HorizontalAlignment="Left"
+                     x:Name="ScanLine">
+            <Rectangle.Fill>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Offset="0.0" Color="Transparent" />
+                <GradientStop Offset="0.5" Color="{DynamicResource ColorPrimary}" />
+                <GradientStop Offset="1.0" Color="Transparent" />
+              </LinearGradientBrush>
+            </Rectangle.Fill>
+            <Rectangle.RenderTransform>
+              <TranslateTransform x:Name="ScanLineTransform" X="0" />
+            </Rectangle.RenderTransform>
+            <Rectangle.Triggers>
+              <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="ScanLineTransform"
+                                     Storyboard.TargetProperty="X"
+                                     From="-120" To="1060" Duration="0:0:4.5"
+                                     RepeatBehavior="Forever" />
+                  </Storyboard>
+                </BeginStoryboard>
+              </EventTrigger>
+            </Rectangle.Triggers>
+          </Rectangle>
+
+          <!-- 读数字段 -->
+          <StackPanel Orientation="Horizontal" Margin="16,0">
+            <!-- CONN -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,20,0" VerticalAlignment="Center">
+              <Ellipse Width="8" Height="8" Margin="0,0,7,0">
+                <Ellipse.Style>
+                  <Style TargetType="Ellipse">
+                    <Setter Property="Fill" Value="{DynamicResource BrushError}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding ArePatchesInstalled}" Value="True">
+                        <Setter Property="Fill" Value="{DynamicResource BrushSuccess}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Ellipse.Style>
+              </Ellipse>
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="13" Foreground="{DynamicResource BrushTextDim}"
+                         Text="CONN " VerticalAlignment="Center" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Text" Value="OFFLINE" />
+                    <Setter Property="Foreground" Value="{DynamicResource BrushError}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding ArePatchesInstalled}" Value="True">
+                        <Setter Property="Text" Value="ONLINE" />
+                        <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+
+            <Rectangle Width="1" Fill="{DynamicResource BrushCardBorder}" Margin="0,8" />
+
+            <!-- MODE -->
+            <StackPanel Orientation="Horizontal" Margin="20,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="13" Foreground="{DynamicResource BrushTextDim}"
+                         Text="MODE " VerticalAlignment="Center" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="SemiBold"
+                         Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"
+                         Text="{Binding GameSession.GameStateText}" />
+            </StackPanel>
+
+            <Rectangle Width="1" Fill="{DynamicResource BrushCardBorder}" Margin="0,8" />
+
+            <!-- TARGET -->
+            <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center"
+                        Visibility="{Binding CurrentTargetInfo, Converter={StaticResource StringToVisibilityConverter}}">
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="13" Foreground="{DynamicResource BrushTextDim}"
+                         Text="TARGET " VerticalAlignment="Center" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="14" Foreground="{DynamicResource BrushTextSecondary}"
+                         Text="{Binding CurrentTargetInfo}" TextTrimming="CharacterEllipsis"
+                         MaxWidth="380" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 右侧: 队列计数 (旭日金) -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="13" Foreground="{DynamicResource BrushTextDim}"
+                         Text="增援 " VerticalAlignment="Center" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"
+                         Foreground="{DynamicResource BrushFactionImperial}" VerticalAlignment="Center"
+                         Text="{Binding ReinforcementQueueCount}" Margin="0,0,16,0" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="13" Foreground="{DynamicResource BrushTextDim}"
+                         Text="协议 " VerticalAlignment="Center" />
+              <TextBlock FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"
+                         Foreground="{DynamicResource BrushFactionImperial}" VerticalAlignment="Center"
+                         Text="{Binding SecretProtocolQueueCount}" />
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Row 1: one obvious next step for first-time users. -->
+      <Border Grid.Row="1" Margin="16,14,16,12" CornerRadius="9"
+              Background="{DynamicResource BrushCardBackground}"
+              BorderBrush="{DynamicResource BrushPrimary}" BorderThickness="1"
+              Visibility="{Binding IsPrimaryActionCardVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Border Background="{DynamicResource BrushPrimary}" CornerRadius="8,0,0,8" />
+          <StackPanel Grid.Column="1" Margin="18,14,18,14">
+            <TextBlock Text="{Binding PrimaryActionStepText}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{DynamicResource BrushPrimary}" />
+            <TextBlock Text="{Binding PrimaryActionTitle}" Margin="0,4,0,0"
+                       FontSize="19" FontWeight="SemiBold"
+                       Foreground="{DynamicResource BrushTextPrimary}" />
+            <TextBlock Text="{Binding PrimaryActionDescription}" Margin="0,5,0,0"
+                       FontSize="12" TextWrapping="Wrap" MaxWidth="570"
+                       Foreground="{DynamicResource BrushTextSecondary}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Margin="8,12,16,12" VerticalAlignment="Center">
+            <Button Content="{Binding PrimaryActionTitle}" Command="{Binding PrimaryActionCommand}"
+                    Style="{DynamicResource PrimaryButton}" Padding="18,9" MinWidth="176"
+                    FontSize="13" FontWeight="SemiBold" />
+            <Button Content="遇到问题？查看诊断" Command="{Binding OpenDiagnosticsCommand}"
+                    Style="{DynamicResource CompactButton}" Margin="0,7,0,0" Padding="12,5" />
+            <Button Content="不再显示" Command="{Binding HidePrimaryActionCardCommand}"
+                    Style="{DynamicResource CompactButton}" Margin="0,7,0,0" Padding="12,5"
+                    FontSize="11" Foreground="{DynamicResource BrushTextDim}"
+                    ToolTip="隐藏这个引导卡片。之后仍可在侧边栏「诊断」查看状态。" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Row 2: first-use game path setup. -->
+      <Expander Grid.Row="2" IsExpanded="{Binding IsGameSetupExpanded, Mode=TwoWay}"
+                Background="{DynamicResource BrushToolbarBackground}"
+                BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="0,0,0,1">
+        <Expander.Header>
+          <DockPanel Margin="0,0,12,0">
+            <Button DockPanel.Dock="Right" Content="装载并启动" Command="{Binding LaunchAndLoadCommand}"
+                    ToolTip="{Binding LaunchAndLoadHelpText}"
+                    Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" />
+            <Button DockPanel.Dock="Right" Content="立刻检测" Command="{Binding RefreshCommand}"
+                    ToolTip="{Binding RefreshProcessHelpText}"
+                    Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" Margin="0,0,8,0" />
+            <StackPanel>
+              <TextBlock Text="游戏位置（第一次使用时设置）" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="{Binding GameLaunch.GamePathSummaryText}" FontSize="11"
+                         Foreground="{DynamicResource BrushTextSecondary}"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DockPanel>
+        </Expander.Header>
+        <StackPanel Margin="16,0,16,12">
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="60" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="游戏程序" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding GameLaunch.LauncherPath, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.BrowseLauncherHelpText}" FontSize="12" />
+            <Button Grid.Column="2" Content="浏览" Command="{Binding GameLaunch.BrowseLauncherCommand}"
+                    ToolTip="{Binding GameLaunch.BrowseLauncherHelpText}"
+                    Style="{DynamicResource CompactButton}" Margin="8,0,0,0" />
+            <Button Grid.Column="3" Content="保存设置" Command="{Binding SaveLauncherSettingsCommand}"
+                    ToolTip="{Binding SaveLauncherSettingsHelpText}"
+                    Style="{DynamicResource CompactButton}" Margin="8,0,0,0" />
+          </Grid>
+          <WrapPanel Margin="0,0,0,8">
+            <TextBlock Text="参数" VerticalAlignment="Center" Width="70"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,8,0" />
+            <ToggleButton Content="启动器界面"
+                          IsChecked="{Binding GameLaunch.LaunchUseRa3LauncherUi, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchUseRa3LauncherUiHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <ToggleButton Content="窗口"
+                          IsChecked="{Binding GameLaunch.LaunchWindowed, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchWindowedHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <ToggleButton Content="全屏"
+                          IsChecked="{Binding GameLaunch.LaunchFullscreen, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchFullscreenHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <ToggleButton Content="无边框"
+                          IsChecked="{Binding GameLaunch.LaunchBorderlessFullscreen, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchBorderlessFullscreenHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <ToggleButton Content="静音"
+                          IsChecked="{Binding GameLaunch.LaunchNoAudio, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchNoAudioHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <ToggleButton Content="禁音乐"
+                          IsChecked="{Binding GameLaunch.LaunchNoAudioMusic, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="{Binding GameLaunch.LaunchNoAudioMusicHelpText}"
+                          Style="{DynamicResource CompactToggleButton}" Margin="0,0,8,0" />
+            <TextBlock Text="宽" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,6,0" />
+            <TextBox Width="80"
+                     Text="{Binding GameLaunch.LaunchResolutionXText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.LaunchResolutionHelpText}" FontSize="12" Margin="0,0,8,0" />
+            <TextBlock Text="高" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,6,0" />
+            <TextBox Width="80"
+                     Text="{Binding GameLaunch.LaunchResolutionYText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.LaunchResolutionHelpText}" FontSize="12" Margin="0,0,8,0" />
+            <TextBlock Text="X" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,6,0" />
+            <TextBox Width="80"
+                     Text="{Binding GameLaunch.LaunchWindowPositionXText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.LaunchWindowPositionHelpText}" FontSize="12" Margin="0,0,8,0" />
+            <TextBlock Text="Y" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,6,0" />
+            <TextBox Width="80"
+                     Text="{Binding GameLaunch.LaunchWindowPositionYText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.LaunchWindowPositionHelpText}" FontSize="12" />
+          </WrapPanel>
+          <Grid Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="70" />
+              <ColumnDefinition Width="1.3*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Mods" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding GameLaunch.ModsRootPath, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding GameLaunch.BrowseModsRootHelpText}" FontSize="12" />
+            <Button Grid.Column="2" Content="目录" Command="{Binding GameLaunch.BrowseModsRootCommand}"
+                    ToolTip="{Binding GameLaunch.BrowseModsRootHelpText}"
+                    Style="{DynamicResource CompactButton}" Margin="8,0,0,0" />
+            <Button Grid.Column="3" Content="刷新" Command="{Binding GameLaunch.RefreshModsCommand}"
+                    ToolTip="{Binding GameLaunch.RefreshModsHelpText}"
+                    Style="{DynamicResource CompactButton}" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="4" Text="MOD" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="10,0,8,0" />
+            <ComboBox Grid.Column="5" ItemsSource="{Binding GameLaunch.ModLaunchEntries}"
+                      SelectedItem="{Binding GameLaunch.SelectedModLaunchEntry, UpdateSourceTrigger=PropertyChanged}"
+                      DisplayMemberPath="DisplayName"
+                      ToolTip="{Binding GameLaunch.RefreshModsHelpText}"
+                      Padding="8,4" FontSize="12" />
+          </Grid>
+          <Grid Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="70" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="最终参数" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding GameLaunch.LauncherArguments, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding LaunchAndLoadHelpText}" FontSize="12" />
+            <Button Grid.Column="2" Content="生成参数" Command="{Binding GameLaunch.GenerateLauncherArgumentsCommand}"
+                    ToolTip="{Binding GameLaunch.GenerateLauncherArgumentsHelpText}"
+                    Style="{DynamicResource CompactButton}" Margin="8,0,0,0"
+                    Padding="12,6" FontSize="12" />
+          </Grid>
+        </StackPanel>
+      </Expander>
+
+      <!-- Row 3: expert controls stay available without competing with the primary action. -->
+      <Expander Grid.Row="3" Header="高级控制（通常不需要）" IsExpanded="False"
+                Background="{DynamicResource BrushToolbarBackground}"
+                Foreground="{DynamicResource BrushTextPrimary}"
+                BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="0,0,0,1">
+        <Border Padding="16,10">
+          <StackPanel Orientation="Horizontal">
+          <Button Content="刷新状态" Command="{Binding RefreshFeatureStatesCommand}"
+                  Style="{DynamicResource CompactButton}" Margin="0,0,8,0" />
+          <Button Content="安装" Command="{Binding InstallPatchesCommand}"
+                  ToolTip="{Binding InstallPatchesHelpText}"
+                  Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" Margin="0,0,8,0" />
+          <Button Content="恢复" Command="{Binding RestorePatchesCommand}"
+                  ToolTip="{Binding RestorePatchesHelpText}"
+                  Style="{DynamicResource DangerButton}" />
+          </StackPanel>
+        </Border>
+      </Expander>
+
+      <!-- Row 4: Page Content -->
+      <Grid Grid.Row="4">
+        <pages:FeaturesPage DataContext="{Binding FeatureToggle}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=0}" />
+        <pages:ReinforcementPage DataContext="{Binding Reinforcement}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=1}" />
+        <pages:SecretProtocolPage DataContext="{Binding SecretProtocol}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=2}" />
+        <pages:ToolsPage DataContext="{Binding Tools}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=3}" />
+        <pages:StatusEditorPage Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=4}" />
+        <pages:DiagnosticsPage DataContext="{Binding Diagnostics}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=5}" />
+        <pages:HotkeySettingsPage DataContext="{Binding HotkeySettings}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=6}" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

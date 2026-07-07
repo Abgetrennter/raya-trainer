@@ -1,0 +1,450 @@
+/* ============================================================
+   Token 体系 —— 与桌面端 XAML 主题对齐
+   阵营色按语义角色分配，不是到处一个蓝
+   ============================================================ */
+:root {
+  color-scheme: dark;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  background: var(--deck);
+  color: var(--text1);
+
+  --allied: #4FA8E0;
+  --allied-h: #3B95CF;
+  --soviet: #E2533A;
+  --imperial: #E8B84B;
+  --online: #36C46B;
+
+  --deck: #12151b;
+  --bulkhead: #161A22;
+  --panel: #1a1f27;
+  --panel-deep: #10141a;
+  --hairline: #2f3743;
+  --hairline2: #3b4655;
+
+  --text1: #edf2f7;
+  --text2: #a8b3c2;
+  --text3: #6b7280;
+
+  --mono: "Cascadia Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--deck);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: var(--allied);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.ghost {
+  background: #2a3039;
+}
+
+.danger {
+  background: transparent;
+  color: var(--soviet);
+  border: 1px solid var(--soviet);
+}
+
+.danger:disabled {
+  opacity: .4;
+}
+
+/* ============================================================
+   布局 shell
+   ============================================================ */
+.shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+  padding-bottom: 88px;
+}
+
+/* ---- sticky 战术读数顶栏 ---- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -18px -18px 16px;
+  padding: 12px 18px;
+  background: rgba(18, 21, 27, .92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.conn-bar {
+  height: 3px;
+  background: var(--online);
+  margin: -12px -18px 12px;
+  margin-bottom: 0;
+  transition: background .3s;
+}
+.conn-bar.offline {
+  background: var(--soviet);
+}
+
+.conn-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.conn-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--online);
+  flex-shrink: 0;
+}
+.conn-pip.offline {
+  background: var(--soviet);
+}
+
+.topbar h1 {
+  font-size: 18px;
+  margin: 0;
+}
+.topbar p {
+  margin: 2px 0 0;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 24px;
+}
+
+h2 {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+p,
+.status {
+  color: var(--text2);
+}
+
+/* ---- 面板 ---- */
+.panel {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--panel);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.refresh-btn {
+  font-size: 12px;
+  min-height: 28px;
+  padding: 4px 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: #cbd5e1;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--hairline2);
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: var(--panel-deep);
+  color: var(--text1);
+}
+
+.compact-fields {
+  margin-bottom: 8px;
+}
+
+.status {
+  min-height: 32px;
+  padding: 6px 2px 24px;
+}
+
+/* ============================================================
+   功能开关 —— switch 组件
+   ============================================================ */
+.feature-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--panel-deep);
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+}
+
+.feature-name {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.feature-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* switch 组件 */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  min-height: 26px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0;
+  background: var(--hairline2);
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.switch:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0b0e14;
+  transition: left .2s, background .2s;
+}
+
+.switch--on {
+  background: var(--allied);
+}
+
+.switch--on .switch-thumb {
+  left: 23px;
+  background: #fff;
+}
+
+/* 兼容旧 .active 样式标记（用于动作按钮） */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.action-btn {
+  font-size: 13px;
+  min-height: 44px;
+}
+
+.loading {
+  color: var(--text3);
+  font-style: italic;
+  padding: 12px;
+}
+
+.game-state {
+  font-size: 12px;
+  margin-top: 4px;
+  font-family: var(--mono);
+}
+
+.mode-9 { color: var(--text3); }
+.mode-2 { color: var(--allied); }
+.mode-8 { color: var(--imperial); }
+
+.unit-info {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #cbd5e1;
+  font-family: var(--mono);
+}
+
+/* ============================================================
+   预设 / 队列
+   ============================================================ */
+.presets {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.presets h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text3);
+}
+
+.preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-btn {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.queue-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.queue-list h3 {
+  font-size: 14px;
+  margin: 0;
+  color: var(--text3);
+}
+
+.queue-item {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--panel-deep);
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.queue-item span:last-child {
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   阵营 chip
+   ============================================================ */
+.faction-chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+.faction-soviet { background: rgba(226, 83, 58, .16); color: var(--soviet); }
+.faction-allied { background: rgba(79, 168, 224, .16); color: var(--allied); }
+.faction-imperial { background: rgba(232, 184, 75, .16); color: var(--imperial); }
+
+/* ============================================================
+   sticky 底部主操作栏
+   ============================================================ */
+.bottom-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 14px;
+  background: rgba(18, 21, 27, .94);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--hairline);
+}
+.bottom-dock:empty {
+  display: none;
+}
+
+.dock-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.4;
+}
+.dock-meta b {
+  color: var(--imperial);
+  font-weight: 700;
+}
+
+.bottom-dock button {
+  min-height: 38px;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+.bottom-dock .dock-spacer {
+  margin-left: auto;
+}
+
+@media (max-width: 420px) {
+  .dock-meta { display: none; }
+}

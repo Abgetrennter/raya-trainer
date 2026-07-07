@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate managed and native modules
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Validate repository
+        run: ./scripts/validate.ps1
+
+      - name: Preflight (source + namespace + dependency)
+        shell: pwsh
+        run: |
+          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel source
+          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel namespace
+          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel dependency
+
+      - name: Validate analysis atlas (non-blocking)
+        continue-on-error: true
+        run: powershell -ExecutionPolicy Bypass -File ./scripts/validate-analysis-index.ps1 -Rebuild

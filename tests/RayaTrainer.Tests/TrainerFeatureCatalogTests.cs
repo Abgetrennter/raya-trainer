@@ -1,0 +1,485 @@
+using RayaTrainer.Core.Features;
+using RayaTrainer.Core.Manifest;
+using RayaTrainer.Core.Runtime;
+using Xunit;
+
+namespace RayaTrainer.Tests;
+
+public sealed class TrainerFeatureCatalogTests
+{
+    [Fact]
+    public void CreateUiFeaturesUsesSourceTrainerNamesAndHotkeys()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "增加玩家战场资金" &&
+            feature.Hotkey == "Ctrl+F1");
+        var power = Assert.Single(features, feature =>
+            feature.DisplayName == "无限电力" &&
+            feature.Hotkey == "Ctrl+F2");
+        Assert.Null(power.ValueHint);
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "选择的单位快速升级" &&
+            feature.Hotkey == "P");
+        var playerGodMode = Assert.Single(features, feature => feature.RawName == "Player God Mode");
+        Assert.Equal("玩家全建筑/单位无敌", playerGodMode.DisplayName);
+        Assert.Equal("Ctrl+F11", playerGodMode.Hotkey);
+        Assert.Equal(new[] { "iEnable+16" }, playerGodMode.EnableFlags);
+        Assert.Null(playerGodMode.ValueHint);
+        var playerOneKillMode = Assert.Single(features, feature => feature.RawName == "Player One Kill Mode");
+        Assert.Equal("一击必杀敌方建筑物/单位", playerOneKillMode.DisplayName);
+        Assert.Equal("Ctrl+F12", playerOneKillMode.Hotkey);
+        Assert.Equal(new[] { "iEnable+17" }, playerOneKillMode.EnableFlags);
+        Assert.Null(playerOneKillMode.ValueHint);
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "选择的单位高速移动" &&
+            feature.Hotkey == "-");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "选择的单位缓慢移动" &&
+            feature.Hotkey == "=");
+        var captureUnit = Assert.Single(features, feature => feature.RawName == "Select Unit Change ID");
+        Assert.Equal("俘虏选择的建筑物/单位", captureUnit.DisplayName);
+        Assert.Equal("O", captureUnit.Hotkey);
+        Assert.Equal("MustCode2+800", captureUnit.DispatchTarget);
+        Assert.Equal("0x09", captureUnit.ValueHint);
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "摧毁选择的建筑物/单位" &&
+            feature.Hotkey == "Delete");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "选择的矿脉恢复采集矿量" &&
+            feature.Hotkey == "'");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "威胁等级归零" &&
+            feature.Hotkey == ".");
+        Assert.DoesNotContain(features, feature => feature.DisplayName == "威胁等级最高");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "建筑物可随地建造" &&
+            feature.Hotkey == "L");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "给玩家基地车" &&
+            feature.Hotkey == "K");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "呼叫战场增援" &&
+            feature.Hotkey == "J");
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "选择的建筑物/单位设置伪装状态" &&
+            feature.Hotkey is null);
+        Assert.Contains(features, feature =>
+            feature.DisplayName == "复制选择的建筑物/单位给玩家" &&
+            feature.Hotkey == "I");
+        var dependencyBypass = Assert.Single(features, feature => feature.RawName == "Secret Protocol Dependency Bypass");
+        Assert.Equal("秘密协议忽略基地需求", dependencyBypass.DisplayName);
+        Assert.Null(dependencyBypass.Hotkey);
+        Assert.Equal(new[] { "iEnable+64" }, dependencyBypass.EnableFlags);
+        Assert.Null(dependencyBypass.DispatchTarget);
+        Assert.Null(dependencyBypass.ValueHint);
+    }
+
+    [Fact]
+    public void UiFeaturesExcludeHiddenAmmoToggleAndIncludeFillResetActions()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        // Old ammo toggle pair is hidden (Hide=true) — neither should appear.
+        Assert.DoesNotContain(features, f => f.RawName == "Select Unit Ammo MAX");
+        Assert.DoesNotContain(features, f => f.RawName == "Select Unit Ammo MAX 2");
+
+        // New fill and reset actions should be present.
+        var fill = Assert.Single(features, f => f.RawName == "Fill Selected Unit Ammo");
+        Assert.Equal("选择的单位弹药填满", fill.DisplayName);
+        Assert.Null(fill.Hotkey);
+        Assert.Equal("0x17", fill.ValueHint);
+        Assert.Equal("MustCode+3C00", fill.DispatchTarget);
+
+        var reset = Assert.Single(features, f => f.RawName == "Reset Selected Unit Ammo");
+        Assert.Equal("选择的单位弹药归1", reset.DisplayName);
+        Assert.Null(reset.Hotkey);
+        Assert.Equal("0x18", reset.ValueHint);
+        Assert.Equal("MustCode+3D00", reset.DispatchTarget);
+    }
+
+    [Fact]
+    public void CreateUiFeaturesMapsFreeBuildToContextHookToggle()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        var freeBuild = Assert.Single(features, feature => feature.RawName == "Free Build");
+        Assert.Equal(new[] { "iEnable+68" }, freeBuild.EnableFlags);
+        Assert.Null(freeBuild.ToggleBytePatches);
+        Assert.Null(freeBuild.ValueHint);
+    }
+
+    [Fact]
+    public void CreateUiFeaturesDoesNotUseUnfilteredBytePatchForIgnorePrerequisites()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        var ignorePrerequisites = Assert.Single(features, feature => feature.RawName == "Ignore Prerequisites");
+        Assert.Equal("忽略建造前置条件", ignorePrerequisites.DisplayName);
+        Assert.Equal(new[] { "iEnable+19" }, ignorePrerequisites.EnableFlags);
+        Assert.Null(ignorePrerequisites.ToggleBytePatches);
+    }
+
+    [Fact]
+    public void CreateUiFeaturesKeepsExpectedCountAfterAmmoToggleHiddenAndActionsAdded()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        // Original baseline was 36. Two ammo entries (MAX + hidden MAX2) now both hidden
+        // removes 1 from the UI, and two new fill/reset actions add 2 → 37 total.
+        // The merged attack-speed toggle replaces the old add/restore pair, reducing
+        // the current grid by one item.
+        Assert.Equal(TestAssets.CurrentUiFeatureCount, features.Count);
+    }
+
+    [Fact]
+    public void CreateUiFeaturesAddsSetUnitStateAction()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        var setUnitState = Assert.Single(features, feature => feature.RawName == "Set Unit Support State");
+        Assert.Equal("选择的建筑物/单位设置伪装状态", setUnitState.DisplayName);
+        Assert.Null(setUnitState.Hotkey);
+        Assert.Equal("MustCode2+D00", setUnitState.DispatchTarget);
+        Assert.Equal("0x0E", setUnitState.ValueHint);
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExcludesHiddenDiagnosticActions()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateGridFeatures(manifest.Features);
+
+        Assert.DoesNotContain(features, feature => feature.RawName == "Secret Protocol Binding Probe");
+        Assert.DoesNotContain(features, feature => feature.RawName == "Soviet Orbital Refuse Rank 1 Probe");
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExposesRunInBackgroundAsEnableFlagToggle()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateGridFeatures(manifest.Features);
+
+        var runInBackground = Assert.Single(features, feature => feature.RawName == "Run In Background");
+        Assert.Equal("允许后台响应（失焦时修改器仍可响应，仅限单机/遭遇战）", runInBackground.DisplayName);
+        Assert.Null(runInBackground.Hotkey);
+        Assert.Equal(new[] { "iEnable+1B" }, runInBackground.EnableFlags);
+        Assert.Null(runInBackground.DispatchTarget);
+        Assert.Null(runInBackground.ValueHint);
+        Assert.Null(runInBackground.ToggleBytePatches);
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExposesRa3112FrameRateUnlockBytePatches()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+        byte[] bezierAccelerationScaleCode =
+        [
+            0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00,
+            0xF3, 0x0F, 0x59, 0x0D, 0x20, 0x64, 0xBC, 0x00,
+            0xE9, 0x0A, 0xAC, 0xB1, 0xFF,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3E
+        ];
+
+        var frameRateUnlock = Assert.Single(features, feature => feature.RawName == "Frame Rate Unlock 60fps");
+        Assert.Equal("60fps 帧率解锁", frameRateUnlock.DisplayName);
+        Assert.Equal(new[] { "Frame Rate Unlock 60fps" }, frameRateUnlock.EnableFlags);
+        Assert.Equal(new[] { "ra3_1.12" }, frameRateUnlock.SupportedProfileIds);
+        Assert.Equal("渲染与性能", TrainerFeatureGroupCatalog.GetGroupName(frameRateUnlock));
+
+        Assert.Collection(
+            frameRateUnlock.ToggleBytePatches!,
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8AD5F4", BitConverter.GetBytes(60), BitConverter.GetBytes(15)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8AF9D0", BitConverter.GetBytes(30), BitConverter.GetBytes(15)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC4C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(15.0f * 0.001f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC1C", BitConverter.GetBytes(1000.0f / 30.0f), BitConverter.GetBytes(1000.0f / 15.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC58", BitConverter.GetBytes(30.0f), BitConverter.GetBytes(15.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC50", BitConverter.GetBytes(60.0f), BitConverter.GetBytes(30.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC54", BitConverter.GetBytes(1000.0f / 60.0f), BitConverter.GetBytes(1000.0f / 30.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC94", BitConverter.GetBytes(1.0f / 30.0f), BitConverter.GetBytes(1.0f / 15.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBD34", BitConverter.GetBytes(1.0f / 60.0f), BitConverter.GetBytes(1.0f / 30.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8E5A5C", BitConverter.GetBytes(0), BitConverter.GetBytes(0)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8E176C", BitConverter.GetBytes(16), BitConverter.GetBytes(33)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.03f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC5C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+1FEC91", [0x10], [0x1D]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+1FECA3", [0x10], [0x1D]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+229853", [0xEB], [0x73]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+13E90A", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+1FFAD1", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+216257", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+2297C9", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7B30D8", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3108", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3138", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3C59", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+2C17CC", [0xD4, 0x63, 0xBC], [0x5C, 0xBC, 0xCD]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC5C", BitConverter.GetBytes(60.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.0f)),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+1EB6F6", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(patch, "ra3_1.12.game+1EB6FC", [0xF4, 0xD5], [0xD4, 0xF9]),
+            patch => AssertBytePatch(
+                patch,
+                "ra3_1.12.game+7C6400",
+                bezierAccelerationScaleCode,
+                bezierAccelerationScaleCode),
+            patch => AssertBytePatch(
+                patch,
+                "ra3_1.12.game+2E1017",
+                [0xE9, 0xE4, 0x53, 0x4E, 0x00, 0x90, 0x90, 0x90],
+                [0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00]));
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExposesProductionQueueAgentActions()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+
+        var expand = Assert.Single(features, feature => feature.RawName == "Expand Production Queue");
+        var restore = Assert.Single(features, feature => feature.RawName == "Restore Production Queue");
+        Assert.Equal("扩展选中建筑建造队列", expand.DisplayName);
+        Assert.Equal("恢复选中建筑建造队列", restore.DisplayName);
+        Assert.True(expand.RequiresDirectGameApi);
+        Assert.True(restore.RequiresDirectGameApi);
+        Assert.Equal("0x19", expand.ValueHint);
+        Assert.Equal("0x19", restore.ValueHint);
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExposesSelectedUnitTeleportAgentAction()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+
+        var teleport = Assert.Single(
+            features,
+            feature => feature.RawName == "Teleport Selected Units To Mouse");
+        Assert.Equal("移动选中单位到鼠标位置", teleport.DisplayName);
+        Assert.True(teleport.RequiresDirectGameApi);
+        Assert.Equal("0x1A", teleport.ValueHint);
+        Assert.Equal("选中单位 · 其他", TrainerFeatureGroupCatalog.GetGroupName(teleport));
+    }
+
+    [Fact]
+    public void CreateGridFeaturesExcludesDedicatedPanelActions()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateGridFeatures(manifest.Features);
+        var uiFeatures = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        Assert.DoesNotContain(features, feature => feature.RawName == "Grant Secret Protocol");
+        Assert.DoesNotContain(features, feature => feature.RawName == "Grant Selected Object Upgrade");
+        Assert.DoesNotContain(features, feature => feature.RawName == "Replace Template Model");
+        Assert.DoesNotContain(features, feature => feature.RawName == "Replace Template Weapon");
+        Assert.Equal(features.Select(feature => feature.RawName), uiFeatures.Select(feature => feature.RawName));
+    }
+
+    [Fact]
+    public void CreateUiFeaturesHidesPlayerAutoRepairToggle()
+    {
+        var manifest = TestAssets.LoadManifest();
+
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        Assert.DoesNotContain(features, feature => feature.RawName == "Player Auto Repair");
+        Assert.DoesNotContain(features, feature => feature.DisplayName == "己方单位/建筑自动修复");
+    }
+
+    [Fact]
+    public void CreateDefaultHotkeysUsesRawNames()
+    {
+        var manifest = TestAssets.LoadManifest();
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+
+        var hotkeys = TrainerFeatureCatalog.CreateDefaultHotkeys(features);
+
+        // 配置字典的 key 必须是稳定的 RawName，而非可变的中文 DisplayName。
+        Assert.Equal("Ctrl+F1", hotkeys["Moeny"]);
+        Assert.Equal("O", hotkeys["Select Unit Change ID"]);
+        Assert.Equal("'", hotkeys["Restore Select Ore Mine"]);
+        Assert.DoesNotContain("Set Unit Support State", hotkeys.Keys);
+        Assert.DoesNotContain("Secret Protocol Binding Probe", hotkeys.Keys);
+        Assert.DoesNotContain("Soviet Orbital Refuse Rank 1 Probe", hotkeys.Keys);
+        Assert.DoesNotContain("Secret Protocol Dependency Bypass", hotkeys.Keys);
+        Assert.Equal("L", hotkeys["Free Build"]);
+        Assert.Equal("K", hotkeys["Get Me Base"]);
+        Assert.Equal("J", hotkeys["We Need Back"]);
+        Assert.Equal("I", hotkeys["Select Unit Copy For Me"]);
+        Assert.Equal(";", hotkeys["Toggle Selected Unit Attack Speed"]);
+        Assert.DoesNotContain("Fill Selected Unit Ammo", hotkeys.Keys);
+        // 旧版以 DisplayName 作 key 的契约已废弃，确保不再混入。
+        Assert.DoesNotContain("增加玩家战场资金", hotkeys.Keys);
+    }
+
+    [Fact]
+    public void ApplyHotkeyOverridesUsesRawNamesAndDisablesInvalidHotkeys()
+    {
+        var manifest = TestAssets.LoadManifest();
+        var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
+        var hotkeys = new Dictionary<string, string>
+        {
+            ["Moeny"] = "Alt+F1",
+            ["Power"] = "不是快捷键"
+        };
+
+        var configured = TrainerFeatureCatalog.ApplyHotkeyOverrides(features, hotkeys);
+
+        var money = Assert.Single(configured, feature => feature.DisplayName == "增加玩家战场资金");
+        var power = Assert.Single(configured, feature => feature.DisplayName == "无限电力");
+        var scPoint = Assert.Single(configured, feature => feature.DisplayName == "无限秘密协议点数");
+        Assert.Equal("Alt+F1", money.Hotkey);
+        Assert.Null(power.Hotkey);
+        Assert.Equal("Ctrl+F3", scPoint.Hotkey);
+    }
+
+    [Fact]
+    public void SecretProtocolGrantFeatureUsesActionDispatchSlot()
+    {
+        var feature = TrainerFeatureCatalog.SecretProtocolGrantFeature;
+
+        Assert.Equal("Grant Secret Protocol", feature.RawName);
+        Assert.Equal("授予秘密协议", feature.DisplayName);
+        Assert.Equal("MustCode+1400", feature.DispatchTarget);
+        Assert.Equal("0x11", feature.ValueHint);
+    }
+
+    [Fact]
+    public void CreatePanelActionsReturnsDedicatedPanelActions()
+    {
+        var actions = TrainerFeatureCatalog.CreatePanelActions();
+
+        Assert.Contains(actions, feature => feature.RawName == "Grant Secret Protocol");
+        Assert.Contains(actions, feature => feature.RawName == "Grant Selected Object Upgrade");
+        Assert.Contains(actions, feature => feature.RawName == "Replace Template Model");
+        Assert.Contains(actions, feature => feature.RawName == "Replace Template Weapon");
+        Assert.DoesNotContain(actions, feature => feature.RawName == "Clear Player Tech Locks");
+    }
+
+    [Fact]
+    public void SelectedObjectUpgradeGrantFeatureUsesActionDispatchSlot()
+    {
+        var feature = TrainerFeatureCatalog.SelectedObjectUpgradeGrantFeature;
+
+        Assert.Equal("Grant Selected Object Upgrade", feature.RawName);
+        Assert.Equal("授予选中建筑 Upgrade", feature.DisplayName);
+        Assert.Equal("MustCode+1600", feature.DispatchTarget);
+        Assert.Equal("0x12", feature.ValueHint);
+    }
+
+    [Fact]
+    public void ClearPlayerTechLocksFeatureUsesActionDispatchSlot()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+
+        var feature = Assert.Single(features, feature => feature.RawName == "Clear Player Tech Locks");
+
+        Assert.Equal("清除玩家科技锁", feature.DisplayName);
+        Assert.Null(feature.Hotkey);
+        Assert.Equal("MustCode+2000", feature.DispatchTarget);
+        Assert.Equal("0x13", feature.ValueHint);
+    }
+
+    [Fact]
+    public void TemplateModelReplacementFeatureUsesActionDispatchSlot()
+    {
+        var feature = TrainerFeatureCatalog.TemplateModelReplacementFeature;
+
+        Assert.Equal("Replace Template Model", feature.RawName);
+        Assert.Equal("替换单位模板模型", feature.DisplayName);
+        Assert.Equal("MustCode+2200", feature.DispatchTarget);
+        Assert.Equal("0x14", feature.ValueHint);
+    }
+
+    [Fact]
+    public void TemplateWeaponReplacementFeatureUsesActionDispatchSlot()
+    {
+        var feature = TrainerFeatureCatalog.TemplateWeaponReplacementFeature;
+
+        Assert.Equal("Replace Template Weapon", feature.RawName);
+        Assert.Equal("替换单位模板武器", feature.DisplayName);
+        Assert.Equal("MustCode+2400", feature.DispatchTarget);
+        Assert.Equal("0x15", feature.ValueHint);
+    }
+
+    [Fact]
+    public void SelectedUnitAttackSpeedToggleIsInstanceScopedAndVersionGated()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var toggle = Assert.Single(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
+
+        Assert.Contains("切换", toggle.DisplayName, StringComparison.Ordinal);
+        Assert.Equal(";", toggle.Hotkey);
+        Assert.Equal("0x19", toggle.ValueHint);
+        Assert.DoesNotContain(features, feature => feature.RawName == "Restore Selected Unit Attack Speed");
+        Assert.True(toggle.SupportsProfile("ra3_1.12"));
+        Assert.True(toggle.SupportsProfile("ra3_1.13"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.0"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.1"));
+    }
+
+    [Fact]
+    public void SecretProtocolCatalogContainsAllVanillaPurchasableTechsAndUpgradeBindings()
+    {
+        var protocols = SecretProtocolCatalog.LoadBuiltIn();
+
+        Assert.True(protocols.Count >= 45);
+        Assert.Contains(protocols, protocol =>
+            protocol.PlayerTech == "PlayerTech_Allied_AirPower" &&
+            protocol.PlayerTechId == 0xDD6C4C5B &&
+            protocol.Upgrade == "Upgrade_AlliedAirPower" &&
+            protocol.UpgradeId == 0x33D87C97);
+        Assert.Contains(protocols, protocol =>
+            protocol.PlayerTech == "PlayerTech_Japan_EnhancedKamikaze" &&
+            protocol.PlayerTechId == 0xFBE46678 &&
+            protocol.Upgrade == "Upgrade_JapanEnhancedKamikaze" &&
+            protocol.UpgradeId == 0x5F7C162F);
+        Assert.Contains(protocols, protocol =>
+            protocol.PlayerTech == "PlayerTech_Soviet_OrbitalRefuse_Rank1" &&
+            protocol.PlayerTechId == 0x3A7E2F69 &&
+            protocol.Upgrade is null);
+        Assert.Contains(protocols, protocol =>
+            protocol.Mod == "日冕" &&
+            protocol.Faction == "神州" &&
+            protocol.Name == "超导电枢" &&
+            protocol.PlayerTech is null &&
+            protocol.Upgrade == "Upgrade_CelestialSupplyElectricitySystem" &&
+            protocol.CanGrant);
+        Assert.Contains(protocols, protocol =>
+            protocol.Mod == "日冕" &&
+            protocol.Faction == "神州" &&
+            protocol.Name == "彻甲惊雷（电磁炮）" &&
+            protocol.PlayerTech == "PlayerTech_Celestial_ElectromagneticGun" &&
+            protocol.PlayerTechId == 0x1A858C6C &&
+            protocol.Upgrade == "Upgrade_CelestialElectromagneticGun" &&
+            protocol.UpgradeId == 0xE11E7985 &&
+            protocol.SpecialPower == "SpecialPower_Celestial_ElectromagneticGun" &&
+            protocol.CanGrant);
+    }
+
+    private static void AssertBytePatch(
+        TrainerFeatureBytePatch patch,
+        string address,
+        byte[] enabledBytes,
+        byte[] disabledBytes)
+    {
+        Assert.Equal(address, patch.Address);
+        Assert.Equal(enabledBytes, patch.EnabledBytes);
+        Assert.Equal(disabledBytes, patch.DisabledBytes);
+    }
+}

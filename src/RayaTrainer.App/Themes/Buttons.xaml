@@ -1,0 +1,136 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Standard Button -->
+  <Style x:Key="ThemedButton" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource BrushButtonBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushButtonBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bd"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="6"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonHoverBackground}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonPressedBackground}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonDisabledBackground}" />
+              <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Primary Action Button -->
+  <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ThemedButton}">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bd"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="6"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushPrimaryHover}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushPrimary}" />
+              <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonDisabledBackground}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BrushButtonBorder}" />
+              <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Compact Button (toolbar) -->
+  <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource ThemedButton}">
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <!-- Compact Toggle Button (toolbar options) -->
+  <Style x:Key="CompactToggleButton" TargetType="ToggleButton">
+    <Setter Property="Background" Value="{DynamicResource BrushButtonBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushButtonBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="Bd"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="6"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonHoverBackground}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushPrimary}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BrushPrimary}" />
+              <Setter Property="Foreground" Value="White" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushButtonDisabledBackground}" />
+              <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Small Button (inline actions) -->
+  <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource ThemedButton}">
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <!-- Danger Button (破坏性操作: 恢复/清空) — 苏红描边 -->
+  <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource CompactButton}">
+    <Setter Property="Foreground" Value="{DynamicResource BrushFactionSoviet}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushFactionSoviet}" />
+  </Style>
+</ResourceDictionary>

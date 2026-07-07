@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RA3 Trainer Remote</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4FA8E0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <main id="app" class="shell">
+    <div class="conn-bar" :class="{ offline: !connected }"></div>
+    <header class="topbar">
+      <div>
+        <span class="conn-indicator">
+          <span class="conn-pip" :class="{ offline: !connected }"></span>
+          <span :style="{ color: connected ? '' : '#E2533A' }">{{ connected ? (statusText) : '连接断开，重连中…' }}</span>
+        </span>
+        <h1>RA3 Trainer</h1>
+        <p v-if="gameState" class="game-state">
+          游戏状态: <span :class="'mode-' + gameState.gameMode">{{ gameState.gameModeName }}</span>
+        </p>
+      </div>
+      <button type="button" class="ghost" @click="refreshAll" :disabled="busy">刷新</button>
+    </header>
+
+    <section v-if="selectedUnit && selectedUnit.unitCode !== 0" class="panel">
+      <h2>选中单位</h2>
+      <div class="unit-info">
+        <span>单位代码: {{ selectedUnit.unitCodeHex }}</span>
+        <span>游戏模式: {{ selectedUnit.gameModeName }}</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>功能开关</h2>
+        <button type="button" class="ghost refresh-btn" @click="loadFeatures" :disabled="featuresLoading">
+          {{ featuresLoading ? '加载中...' : '刷新状态' }}
+        </button>
+      </div>
+      <div v-if="featuresLoading" class="loading">加载中...</div>
+      <div v-else class="feature-grid">
+        <div v-for="f in features.filter(f => f.type === 'Toggle')" :key="f.id" class="feature-item">
+          <span class="feature-name">{{ f.displayName }}</span>
+          <div class="feature-controls">
+            <button type="button" class="switch" :class="{ 'switch--on': f.isEnabled }"
+                    @click="toggleFeature(f.id, !f.isEnabled)"
+                    :disabled="busy || f.capabilityState !== 'Ready'" :title="f.capabilityReason">
+              <span class="switch-thumb"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>动作功能</h2>
+      <div class="action-grid">
+        <button v-for="f in features.filter(f => f.type === 'Action')" :key="f.id"
+                type="button" @click="executeAction(f.id)"
+                :disabled="busy || f.requiresParameters || f.capabilityState !== 'Ready'"
+                class="action-btn" :title="f.requiresParameters ? '请使用下方专用控制' : f.capabilityReason">
+          {{ f.displayName }}
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>资源值</h2>
+      <div class="fields">
+        <label>资金 <input v-model.number="resources.moneyAmount" inputmode="numeric"></label>
+        <label>电力 <input v-model.number="resources.powerValue" inputmode="numeric"></label>
+        <label>协议点 <input v-model.number="resources.scPointValue" inputmode="numeric"></label>
+      </div>
+      <button type="button" @click="writeResources" :disabled="busy">写入资源</button>
+    </section>
+
+    <section class="panel">
+      <h2>增援</h2>
+      <div class="fields">
+        <label>单位 ID <input v-model="reinforcement.unitId"></label>
+        <label>数量 <input v-model.number="reinforcement.count" inputmode="numeric"></label>
+        <label>等级 <input v-model.number="reinforcement.rank" inputmode="numeric"></label>
+      </div>
+      <div class="row-actions">
+        <button type="button" @click="executeReinforcement" :disabled="busy">执行增援</button>
+        <button type="button" class="ghost" @click="addCurrentReinforcementToQueue" :disabled="busy">当前入队</button>
+      </div>
+      <div class="presets" v-if="reinforcementPresets.length">
+        <h3>桌面保存预设</h3>
+        <div class="fields compact-fields">
+          <label>预设
+            <select v-model="selectedReinforcementPresetName">
+              <option v-for="preset in reinforcementPresets" :key="preset.name" :value="preset.name">
+                {{ preset.name }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="ghost" @click="applySelectedReinforcementPreset"
+                  :disabled="busy || !selectedReinforcementPreset">
+            应用预设
+          </button>
+          <button type="button" class="ghost" @click="appendSelectedReinforcementPreset"
+                  :disabled="busy || !selectedReinforcementPreset">
+            追加预设
+          </button>
+        </div>
+      </div>
+      <div class="queue-list" v-if="reinforcementQueue.length">
+        <h3>队列</h3>
+        <div v-for="(item, index) in reinforcementQueue" :key="item.name + item.unitId + index" class="queue-item">
+          <span>{{ item.name }}</span>
+          <span>{{ item.unitId }} ×{{ item.count }} / {{ item.rank }}星</span>
+        </div>
+        <div class="row-actions">
+          <button type="button" @click="executeReinforcementQueue" :disabled="busy">执行队列</button>
+          <button type="button" class="danger" @click="clearReinforcementQueue" :disabled="busy">清空队列</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>秘密协议</h2>
+      <div class="fields">
+        <label>PlayerTech <input v-model="secretProtocol.playerTechId"></label>
+        <label>Upgrade <input v-model="secretProtocol.upgradeId"></label>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="ghost" @click="addCurrentSecretProtocolToQueue" :disabled="busy">当前入队</button>
+        <button type="button" @click="grantSecretProtocol" :disabled="busy">授予当前</button>
+      </div>
+      <div class="presets" v-if="secretProtocolPresets.length">
+        <h3>桌面保存队列预设</h3>
+        <div class="fields compact-fields">
+          <label>预设
+            <select v-model="selectedSecretProtocolPresetName">
+              <option v-for="preset in secretProtocolPresets" :key="preset.name" :value="preset.name">
+                {{ preset.name }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="ghost" @click="applySelectedSecretProtocolPreset"
+                  :disabled="busy || !selectedSecretProtocolPreset">
+            应用预设
+          </button>
+          <button type="button" class="ghost" @click="appendSelectedSecretProtocolPreset"
+                  :disabled="busy || !selectedSecretProtocolPreset">
+            追加预设
+          </button>
+        </div>
+      </div>
+      <div class="queue-list" v-if="secretProtocolQueue.length">
+        <h3>授予队列</h3>
+        <div v-for="(item, index) in secretProtocolQueue" :key="item.name + item.playerTechId + item.upgradeId + index" class="queue-item">
+          <span>
+            <span v-if="item.faction" class="faction-chip" :class="'faction-' + factionClass(item.faction)">{{ item.faction }}</span>
+            {{ item.name }}
+          </span>
+          <span>{{ item.playerTechId }} / {{ item.upgradeId }}</span>
+        </div>
+        <div class="row-actions">
+          <button type="button" @click="grantSecretProtocolQueue()" :disabled="busy">授予列表</button>
+          <button type="button" class="danger" @click="clearSecretProtocolQueue" :disabled="busy">清空列表</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="status">{{ message }}</footer>
+
+    <!-- sticky 底部主操作栏 -->
+    <div class="bottom-dock" v-if="reinforcementQueue.length || secretProtocolQueue.length">
+      <span class="dock-meta">
+        增援 <b>{{ reinforcementQueue.length }}</b><br>
+        协议 <b>{{ secretProtocolQueue.length }}</b>
+      </span>
+      <button type="button" class="ghost dock-spacer" @click="clearReinforcementQueue" :disabled="busy">清空增援</button>
+      <button type="button" @click="executeReinforcementQueue" :disabled="busy">执行增援</button>
+    </div>
+  </main>
+
+  <script src="vendor/vue.global.prod.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(console.error);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<UserControl x:Class="RayaTrainer.App.Pages.ReinforcementPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="0,0,0,16">
+
+      <!-- 增援配置 -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="增援配置" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="160" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="80" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="80" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="单位ID" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding ReinforcementUnitIdText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding ReinforcementUnitIdHelpText}" />
+            <TextBlock Grid.Column="2" Text="数量" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="14,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="3"
+                     Text="{Binding ReinforcementCountText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding ReinforcementCountHelpText}" />
+            <TextBlock Grid.Column="4" Text="星级" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="14,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="5"
+                     Text="{Binding ReinforcementRankText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding ReinforcementRankHelpText}" />
+            <Button Grid.Column="6" Content="单位列表"
+                    Command="{Binding OpenReinforcementUnitPickerCommand}"
+                    ToolTip="{Binding OpenReinforcementUnitPickerHelpText}"
+                    Margin="14,0,0,0" />
+            <Button Grid.Column="7"
+                    Content="{Binding ReadSelectedUnitCodeButtonText}"
+                    Command="{Binding ReadSelectedUnitCodeCommand}"
+                    ToolTip="{Binding ReadSelectedUnitCodeHelpText}"
+                    Margin="10,0,0,0" />
+          </Grid>
+          <StackPanel Orientation="Horizontal">
+            <Button Content="{Binding GetMeBaseButtonText}"
+                    Command="{Binding GetMeBaseCommand}"
+                    ToolTip="{Binding GetMeBaseHelpText}" />
+            <Button Content="{Binding ExecuteReinforcementButtonText}"
+                    Command="{Binding ExecuteReinforcementCommand}"
+                    ToolTip="{Binding ExecuteReinforcementHelpText}"
+                    Style="{DynamicResource PrimaryButton}"
+                    Margin="10,0,0,0" />
+            <Button Content="{Binding CopySelectedUnitButtonText}"
+                    Command="{Binding CopySelectedUnitCommand}"
+                    ToolTip="{Binding CopySelectedUnitHelpText}"
+                    Margin="10,0,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- 预设管理 -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="预设管理" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="180" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="预设名" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding PresetNameText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding PresetNameHelpText}" />
+            <TextBlock Grid.Column="2" Text="预设" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="14,0,10,0" FontSize="13" />
+            <ComboBox Grid.Column="3"
+                      ItemsSource="{Binding ReinforcementPresets}"
+                      SelectedItem="{Binding SelectedReinforcementPreset}"
+                      DisplayMemberPath="Name"
+                      ToolTip="{Binding ReinforcementPresetHelpText}" />
+            <Button Grid.Column="4" Content="保存预设"
+                    Command="{Binding SaveReinforcementPresetCommand}"
+                    ToolTip="{Binding SaveReinforcementPresetHelpText}" Margin="10,0,0,0" />
+            <Button Grid.Column="5" Content="应用预设"
+                    Command="{Binding ApplyReinforcementPresetCommand}"
+                    ToolTip="{Binding ApplyReinforcementPresetHelpText}" Margin="10,0,0,0" />
+            <Button Grid.Column="6" Content="追加预设"
+                    Command="{Binding AppendReinforcementPresetCommand}"
+                    ToolTip="{Binding AppendReinforcementPresetHelpText}" Margin="10,0,0,0" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <Button Content="当前入队"
+                    Command="{Binding AddCurrentReinforcementToQueueCommand}"
+                    ToolTip="{Binding AddCurrentReinforcementToQueueHelpText}" />
+            <Button Content="{Binding ExecuteReinforcementQueueButtonText}"
+                    Command="{Binding ExecuteReinforcementQueueCommand}"
+                    ToolTip="{Binding ExecuteReinforcementQueueHelpText}"
+                    Style="{DynamicResource PrimaryButton}" Margin="10,0,0,0" />
+            <Button Content="清空队列"
+                    Command="{Binding ClearReinforcementQueueCommand}"
+                    ToolTip="{Binding ClearReinforcementQueueHelpText}" Margin="10,0,0,0"
+                    Style="{DynamicResource DangerButton}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- 队列列表 -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="队列" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <ItemsControl ItemsSource="{Binding ReinforcementQueue}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+                  <TextBlock Grid.Column="1" Text="{Binding UnitIdText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="2" Text="{Binding CountText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="3" Text="{Binding RankText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="4" Text="{Binding Status}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+                  <TextBlock Grid.Column="5" Text="{Binding Message}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+                  <Button Grid.Column="6" Content="移除" Command="{Binding RemoveCommand}"
+                          ToolTip="{Binding RemoveQueueItemHelpText}"
+                          Style="{DynamicResource SmallButton}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- 模板替换 -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="模板替换" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="160" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="160" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="目标单位ID" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="1"
+                     Text="{Binding TemplateReplacement.TargetUnitIdText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding TemplateReplacement.TargetUnitIdHelpText}" />
+            <TextBlock Grid.Column="2" Text="来源单位ID" VerticalAlignment="Center"
+                       Foreground="{DynamicResource BrushTextSecondary}" Margin="14,0,10,0" FontSize="13" />
+            <TextBox Grid.Column="3"
+                     Text="{Binding TemplateReplacement.DonorUnitIdText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding TemplateReplacement.DonorUnitIdHelpText}" />
+            <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="14,0,0,0">
+              <Button Content="替换模型"
+                      Command="{Binding TemplateReplacement.ReplaceModelCommand}"
+                      ToolTip="{Binding TemplateReplacement.ReplaceTemplateModelHelpText}"
+                      Style="{DynamicResource PrimaryButton}" />
+              <Button Content="替换武器"
+                      Command="{Binding TemplateReplacement.ReplaceWeaponCommand}"
+                      ToolTip="{Binding TemplateReplacement.ReplaceTemplateWeaponHelpText}"
+                      Margin="10,0,0,0" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

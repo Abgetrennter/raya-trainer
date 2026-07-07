@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{0D7B5FE1-1D54-4F3A-BF38-4DCE9E230D35}</ProjectGuid>
+    <RootNamespace>RayaTrainerAgent</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(ProjectDir)..\..\artifacts\native\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\artifacts\obj\RayaTrainer.Agent\$(Configuration)\$(Platform)\</IntDir>
+    <TargetName>RayaTrainer.Agent</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(ProjectDir)..\..\artifacts\native\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\artifacts\obj\RayaTrainer.Agent\$(Configuration)\$(Platform)\</IntDir>
+    <TargetName>RayaTrainer.Agent</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;RayaTrainer_AGENT;ZYCORE_WINDOWS;ZYCORE_STATIC_BUILD;ZYDIS_STATIC_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)vendor\zydis\include;$(ProjectDir)vendor\zydis\src;$(ProjectDir)vendor\zycore\include;$(ProjectDir)vendor\zasm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <MASM>
+      <AdditionalOptions>/safeseh %(AdditionalOptions)</AdditionalOptions>
+    </MASM>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;RayaTrainer_AGENT;ZYCORE_WINDOWS;ZYCORE_STATIC_BUILD;ZYDIS_STATIC_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)vendor\zydis\include;$(ProjectDir)vendor\zydis\src;$(ProjectDir)vendor\zycore\include;$(ProjectDir)vendor\zasm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <MASM>
+      <AdditionalOptions>/safeseh %(AdditionalOptions)</AdditionalOptions>
+    </MASM>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="AgentFeatureState.cpp" />
+    <ClCompile Include="AgentGameThreadDispatcher.cpp" />
+    <ClCompile Include="AgentGameApi.cpp" />
+    <ClCompile Include="AgentMain.cpp" />
+    <ClCompile Include="AgentMemoryAccess.cpp" />
+    <ClCompile Include="AgentNativeHooks.cpp" />
+    <ClCompile Include="AgentPatchManager.cpp" />
+    <ClCompile Include="AgentPipeServer.cpp" />
+    <ClCompile Include="AgentRuntime.cpp" />
+    <ClCompile Include="AgentScanner.cpp" />
+    <ClCompile Include="AgentSignatureScanner.cpp" />
+    <ClCompile Include="vendor/zasm/src/core/error.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/core/filestream.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/core/memorystream.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/decoder/decoder.cpp">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zasm_decoder.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/encoder/encoder.cpp">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zasm_encoder.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/formatter/formatter.cpp">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zasm_formatter.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/data.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/instruction.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/program.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/register.cpp">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zasm_register.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/saverestore.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/saverestore.load.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/program/saverestore.save.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/serialization/serializer.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/x86/x86.assembler.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/x86/x86.register.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zasm/src/zasm.cpp">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/Allocator.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/API/Memory.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/API/Process.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/API/Synchronization.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/API/Terminal.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/API/Thread.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/ArgParse.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/Bitset.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/Format.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/List.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/String.c">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zycore_String.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/Vector.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zycore/src/Zycore.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Decoder.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/DecoderData.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Disassembler.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Encoder.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/EncoderData.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Formatter.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/FormatterATT.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/FormatterBase.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/FormatterBuffer.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/FormatterIntel.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/MetaInfo.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Mnemonic.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Register.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Segment.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/SharedData.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/String.c">
+      <WarningLevel>Level1</WarningLevel>
+      <ObjectFileName>$(IntDir)zydis_String.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Utils.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="vendor/zydis/src/Zydis.c">
+      <WarningLevel>Level1</WarningLevel>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AgentFeatureState.h" />
+    <ClInclude Include="AgentGameThreadDispatcher.h" />
+    <ClInclude Include="AgentGameApi.h" />
+    <ClInclude Include="AgentMemoryAccess.h" />
+    <ClInclude Include="AgentNativeHooks.h" />
+    <ClInclude Include="AgentPatchManager.h" />
+    <ClInclude Include="AgentPipeServer.h" />
+    <ClInclude Include="AgentProtocol.h" />
+    <ClInclude Include="AgentRuntime.h" />
+    <ClInclude Include="AgentScanner.h" />
+    <ClInclude Include="AgentSignatureScanner.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="AgentHooks.asm" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
+</Project>

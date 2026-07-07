@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Iced" Version="1.21.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\code.txt" />
+    <EmbeddedResource Include="Assets\secret-protocols.txt" LogicalName="RayaTrainer.Core.Assets.secret-protocols.txt" />
+    <None Include="Assets\Catalogs\Corona\pack.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\pack.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\Corona\secret-protocols.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\secret-protocols.txt</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\Corona\reinforcements.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\reinforcements.txt</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\pack.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\pack.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\model-state-notes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\model-state-notes.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\object-status-notes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\object-status-notes.json</TargetPath>
+    </None>
+    <EmbeddedResource Include="Assets\trainer_report.json" LogicalName="RayaTrainer.Core.Assets.trainer_report.json" />
+  </ItemGroup>
+</Project>

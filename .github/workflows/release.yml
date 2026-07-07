@@ -1,0 +1,128 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or update"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build release packages
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Validate repository
+        run: ./scripts/validate.ps1
+
+      - name: Resolve release tag
+        id: release_tag
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              $tag = "${{ inputs.tag }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+              throw "Release tag is empty."
+          }
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Publish framework-dependent build
+        run: ./scripts/publish-framework-dependent.ps1 -BuildTag "${{ steps.release_tag.outputs.tag }}"
+
+      - name: Publish self-contained build
+        run: ./scripts/publish-self-contained.ps1 -BuildTag "${{ steps.release_tag.outputs.tag }}"
+
+      - name: Package release assets
+        id: package
+        run: |
+          $tag = "${{ steps.release_tag.outputs.tag }}"
+
+          $releaseDir = "artifacts/release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          $packages = @(
+              @{ Name = "framework-dependent"; Path = "artifacts/publish/RayaTrainer.App-win-x86-framework-dependent" },
+              @{ Name = "self-contained"; Path = "artifacts/publish/RayaTrainer.App-win-x86-self-contained" }
+          )
+
+          foreach ($package in $packages) {
+              if (-not (Test-Path -LiteralPath $package.Path)) {
+                  throw "Missing publish output: $($package.Path)"
+              }
+
+              $assetName = "RayaTrainer-$tag-win-x86-$($package.Name).zip"
+              $zipPath = Join-Path $releaseDir $assetName
+              Compress-Archive -Path (Join-Path $package.Path "*") -DestinationPath $zipPath -Force
+          }
+
+          "release_tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Validate release assets
+        run: |
+          $assetPaths = @(Get-ChildItem -LiteralPath "artifacts/release" -Filter "*.zip" | ForEach-Object { $_.FullName })
+          if ($assetPaths.Count -ne 2) {
+              throw "Expected 2 release packages, found $($assetPaths.Count)."
+          }
+
+          ./scripts/validate-release-package.ps1 -ZipPath $assetPaths
+
+      - name: Preflight binary mode
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.release_tag.outputs.tag }}"
+          $fd = "artifacts/release/RayaTrainer-$tag-win-x86-framework-dependent.zip"
+          $sc = "artifacts/release/RayaTrainer-$tag-win-x86-self-contained.zip"
+          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel binary `
+            -FrameworkDependentZip $fd `
+            -SelfContainedZip $sc
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.package.outputs.release_tag }}"
+          $assetPaths = @(Get-ChildItem -LiteralPath "artifacts/release" -Filter "*.zip" | ForEach-Object { $_.FullName })
+          if ($assetPaths.Count -ne 2) {
+              throw "Expected 2 release packages, found $($assetPaths.Count)."
+          }
+
+          $releaseExists = $false
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+              $releaseExists = $true
+          }
+
+          if ($releaseExists) {
+              gh release upload $tag @assetPaths --repo $env:GITHUB_REPOSITORY --clobber
+          }
+          else {
+              gh release create $tag @assetPaths `
+                  --repo $env:GITHUB_REPOSITORY `
+                  --target $env:GITHUB_SHA `
+                  --title "RA3 Trainer $tag" `
+                  --generate-notes
+          }

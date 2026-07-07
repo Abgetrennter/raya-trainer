@@ -1,0 +1,33 @@
+RayaTrainer uses third-party libraries or other resources that may be
+distributed under different licenses. The third-party libraries used by
+RayaTrainer are listed below with their licenses.
+
+================================================================================
+Iced — https://github.com/0xd4d/iced
+License: MIT
+Copyright (c) 2018-present 0xd4d
+
+================================================================================
+QRCoder — https://github.com/codebude/QRCoder/
+License: MIT
+Copyright (c) 2013-2018 Raffael Herrmann
+
+================================================================================
+Zydis — https://github.com/zyantific/zydis
+License: MIT — see src/RayaTrainer.Agent/vendor/zydis/LICENSE
+Copyright (c) 2014-2024 Florian Bernd and Joel Höner
+
+================================================================================
+Zycore — https://github.com/zyantific/zycore
+License: MIT — see src/RayaTrainer.Agent/vendor/zycore/LICENSE
+Copyright (c) 2014-2024 Florian Bernd and Joel Höner
+
+================================================================================
+zasm — https://github.com/Zeex/zasm
+License: BSD-3-Clause
+Copyright (c) 2010-2024 Zeex
+
+================================================================================
+.NET Runtime — https://github.com/dotnet/runtime
+License: MIT — https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+Copyright (c) .NET Foundation and Contributors

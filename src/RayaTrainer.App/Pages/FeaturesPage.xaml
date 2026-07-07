@@ -1,0 +1,202 @@
+<UserControl x:Class="RayaTrainer.App.Pages.FeaturesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:RayaTrainer.App.Controls">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel>
+      <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+               Margin="0,0,0,12" FontSize="13" />
+      <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,16">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <ctrl:ActionCard Header="{Binding Name}" IsExpanded="{Binding IsExpanded}" Margin="0,0,0,16">
+            <ItemsControl ItemsSource="{Binding Features}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.Style>
+                      <Style TargetType="Grid">
+                        <Setter Property="Opacity" Value="1" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                            <Setter Property="Opacity" Value="0.72" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Grid.Style>
+
+                    <TextBlock Text="{Binding DisplayName}"
+                               ToolTip="{Binding HelpText}"
+                               ToolTipService.InitialShowDelay="250"
+                               ToolTipService.ShowDuration="12000"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+
+                    <!-- Money input (shown only on "增加玩家战场资金") -->
+                    <TextBox Grid.Column="1" Width="90" FontSize="12" Margin="8,0,0,0"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding DataContext.MoneyAmountText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{Binding DataContext.MoneyAmountHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                      <TextBox.Style>
+                        <Style TargetType="TextBox">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding DisplayName}" Value="增加玩家战场资金">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBox.Style>
+                    </TextBox>
+                    <!-- Power input (shown only on "无限电力") -->
+                    <TextBox Grid.Column="1" Width="90" FontSize="12" Margin="8,0,0,0"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding DataContext.PowerValueText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{Binding DataContext.PowerValueHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                      <TextBox.Style>
+                        <Style TargetType="TextBox">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding DisplayName}" Value="无限电力">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBox.Style>
+                    </TextBox>
+                    <!-- SC Point input (shown only on "无限秘密协议点数") -->
+                    <TextBox Grid.Column="1" Width="90" FontSize="12" Margin="8,0,0,0"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding DataContext.ScPointValueText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{Binding DataContext.ScPointValueHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                      <TextBox.Style>
+                        <Style TargetType="TextBox">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding DisplayName}" Value="无限秘密协议点数">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBox.Style>
+                    </TextBox>
+                    <!-- Target Health input (shown only on "设置选中建筑物/单位生命值为指定值") -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                      <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding DisplayName}" Value="设置选中建筑物/单位生命值为指定值">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </StackPanel.Style>
+                      <TextBox Width="90" FontSize="12"
+                               VerticalContentAlignment="Center"
+                               Text="{Binding DataContext.SelectedUnitTargetHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                               ToolTip="{Binding DataContext.SelectedUnitTargetHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <TextBlock Text="上限" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,4,0" />
+                      <TextBox Width="90" FontSize="12"
+                               VerticalContentAlignment="Center"
+                               Text="{Binding DataContext.SelectedUnitTargetMaxHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                               ToolTip="{Binding DataContext.SelectedUnitTargetMaxHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </StackPanel>
+
+                    <!-- Hotkey badge: 始终可见（无热键时显示占位），右键可跳转设置页改键。 -->
+                    <ctrl:KeyBadge Grid.Column="2"
+                                   Content="{Binding HotkeyDisplay}"
+                                   ToolTip="右键修改快捷键"
+                                   VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="28">
+                      <ctrl:KeyBadge.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="修改快捷键…"
+                                    Command="{Binding PlacementTarget.DataContext.OpenHotkeySettingsCommand, RelativeSource={RelativeSource Self}}" />
+                          <MenuItem Header="清除快捷键"
+                                    Command="{Binding PlacementTarget.DataContext.ClearHotkeyCommand, RelativeSource={RelativeSource Self}}" />
+                        </ContextMenu>
+                      </ctrl:KeyBadge.ContextMenu>
+                    </ctrl:KeyBadge>
+
+                    <!-- Toggle or Execute -->
+                    <Grid Grid.Column="3" Margin="14,0,0,0" VerticalAlignment="Center">
+                      <ctrl:ToggleSwitch IsChecked="{Binding IsFeatureEnabled, Mode=OneWay}"
+                                         Command="{Binding Command}" ToolTip="{Binding HelpText}"
+                                         Visibility="{Binding IsToggle, Converter={StaticResource BoolVis}}" />
+                      <Button Content="执行" Command="{Binding Command}" ToolTip="{Binding HelpText}"
+                              Style="{DynamicResource SmallButton}" Padding="12,5" FontSize="12">
+                        <Button.Visibility>
+                          <Binding Path="IsToggle" Converter="{StaticResource InvBoolVis}" />
+                        </Button.Visibility>
+                      </Button>
+                    </Grid>
+
+                    <!-- Capability: availability is independent from the current toggle/action state. -->
+                    <Border Grid.Column="4" CornerRadius="8" Padding="7,2" Margin="12,0,0,0"
+                            ToolTip="{Binding CapabilityReason}" VerticalAlignment="Center">
+                      <Border.Style>
+                        <Style TargetType="Border">
+                          <Setter Property="Background" Value="{DynamicResource BrushFactionSovietSoft}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding CapabilityState}" Value="Ready">
+                              <Setter Property="Background" Value="{DynamicResource BrushFactionAlliedSoft}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding CapabilityState}" Value="Waiting">
+                              <Setter Property="Background" Value="{DynamicResource BrushFactionImperialSoft}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Border.Style>
+                      <TextBlock Text="{Binding CapabilityLabel}" FontSize="10" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource BrushError}" />
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding CapabilityState}" Value="Ready">
+                                <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding CapabilityState}" Value="Waiting">
+                                <Setter Property="Foreground" Value="{DynamicResource BrushWarning}" />
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                    </Border>
+
+                    <!-- Execution status -->
+                    <TextBlock Grid.Column="5" Text="{Binding Status}" ToolTip="{Binding HelpText}"
+                               VerticalAlignment="Center" Margin="14,0,0,0"
+                               FontSize="12" MinWidth="50" TextAlignment="Right">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource BrushTextDim}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFeatureEnabled}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ctrl:ActionCard>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
