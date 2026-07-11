@@ -222,8 +222,8 @@ public sealed class TrainerSessionManagerInjectedBackendTests
             ProcessId: 1234,
             VersionProfileId: profile.Id);
 
-        Assert.Throws<InvalidOperationException>(() =>
-            manager.AttachTarget(TestAssets.LoadManifest(), target));
+        var attach = manager.AttachTarget(TestAssets.LoadManifest(), target);
+        Assert.True(attach.Success); // no longer throws; deferred to InstallPatches PatchMismatch
 
         var snapshot = manager.GetDiagnosticSnapshot([]);
         Assert.Equal(TrainerDiagnosticHealth.Error, snapshot.Health);
@@ -750,6 +750,10 @@ public sealed class TrainerSessionManagerInjectedBackendTests
 
         public Task<AgentGameApiToggleSelectedAttackSpeedPayload> ToggleSelectedAttackSpeedAsync(
             int processId, AgentGameApiToggleSelectedAttackSpeedRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<AgentGameApiToggleSelectedAttackRangePayload> ToggleSelectedAttackRangeAsync(
+            int processId, AgentGameApiToggleSelectedAttackRangeRequest request, TimeSpan timeout,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<AgentGameApiTeleportSelectedUnitsToMousePayload> TeleportSelectedUnitsToMouseAsync(

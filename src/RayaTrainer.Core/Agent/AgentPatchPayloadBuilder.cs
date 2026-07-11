@@ -46,15 +46,15 @@ public static class AgentPatchPayloadBuilder
             new Dictionary<string, nint>(StringComparer.OrdinalIgnoreCase),
             profile);
 
-        // Profile-aware hook planning: legacy 1.12 profiles use the raw manifest addresses
-        // verbatim; non-legacy profiles (e.g. 1.13, Uprising) re-derive each hook address +
-        // expected bytes from the profile catalog. Unverified hooks are skipped and returned
-        // as diagnostics rather than silently installed with a wrong address. This filtering
-        // applies equally whether addresses come from the profile catalog or from a live
-        // signature scan — the scan may return 0 for rewritten hooks (NeedsReanalysis).
-        var planResult = profile.Id.Equals("ra3_1.12", StringComparison.OrdinalIgnoreCase)
-            ? new PatchHookPlanResult(PatchHookPlanner.CreatePlans(manifest.PatchManifest), [])
-            : PatchHookPlanner.CreateSupportedPlans(manifest.PatchManifest, profile, includeUnlistedHooks: scannedAddresses is not null);
+        // Profile-aware hook planning: re-derive each hook address + expected bytes from
+        // the profile catalog. Unverified hooks are skipped and returned as diagnostics
+        // rather than silently installed with a wrong address. This filtering applies
+        // equally whether addresses come from the profile catalog or from a live signature
+        // scan — the scan may return 0 for rewritten hooks (NeedsReanalysis).
+        var planResult = PatchHookPlanner.CreateSupportedPlans(
+            manifest.PatchManifest,
+            profile,
+            includeUnlistedHooks: scannedAddresses is not null);
 
         var plans = planResult.Plans;
         var hooks = plans
@@ -83,19 +83,14 @@ public static class AgentPatchPayloadBuilder
         var key = string.IsNullOrWhiteSpace(plan.ReturnLabel)
             ? plan.Address
             : plan.ReturnLabel;
-        return ToAddress(RequireScannedAddress(scannedAddresses, key));
-    }
-
-    private static uint RequireScannedAddress(
-        IReadOnlyDictionary<string, uint> scannedAddresses,
-        string symbolicName)
-    {
-        if (!scannedAddresses.TryGetValue(symbolicName, out var address) || address == 0)
+        if (scannedAddresses.TryGetValue(key, out var scanned) && scanned != 0)
         {
-            throw new InvalidOperationException($"Agent signature catalog is missing '{symbolicName}'.");
+            return ToAddress(scanned);
         }
 
-        return address;
+        // 签名未命中：fallback 到 profile/manifest 固定 RVA。Agent 安装阶段的
+        // original_assembly 字节校验（PatchMismatch）会区分 TW（地址正确）和 EN（地址错误）。
+        return resolver.Resolve(plan.Address);
     }
 
     private static nint ToAddress(uint address)

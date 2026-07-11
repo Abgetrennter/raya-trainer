@@ -67,6 +67,7 @@ public sealed record SignatureDiagnosticSnapshot(
     int RequiredMatchedCount,
     IReadOnlyList<string> RequiredUnresolved,
     IReadOnlyList<string> OptionalUnresolved,
+    IReadOnlyList<string> MatchedSymbols,
     IReadOnlyList<string> SupersededSymbols,
     string Summary);
 
@@ -142,7 +143,7 @@ public sealed record TrainerDiagnosticSnapshot(
         "尚未连接游戏进程。",
         null,
         new AgentDiagnosticSnapshot(false, false, null, null, AgentProtocol.Version, "", 0, "当前没有 Agent 会话。"),
-        new SignatureDiagnosticSnapshot(false, 0, 0, 0, 0, [], [], [], "当前没有签名扫描结果。"),
+        new SignatureDiagnosticSnapshot(false, 0, 0, 0, 0, [], [], [], [], "当前没有签名扫描结果。"),
         new PatchDiagnosticSnapshot(0, 0, 0, [], null, "Patch 尚未安装。"),
         new GameRuntimeDiagnosticSnapshot(null, "未知", null, false, false, "尚未读取游戏循环。"),
         new LaaDiagnosticSnapshot(null, null, false, "尚未检查 LAA 标记。"),

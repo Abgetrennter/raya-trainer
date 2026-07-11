@@ -71,7 +71,8 @@ enum class AgentCommand : uint16_t
     SetSelectedUnitSpeed = 39,
     CaptureSelectedUnits = 40,
     SetSelectedUnitAmmo = 41,
-    ToggleSelectedAttackSpeed = 42
+    ToggleSelectedAttackSpeed = 42,
+    ToggleSelectedAttackRange = 43
 };
 
 // Native agent catalog entry order. This is the host<->DLL contract: the C# host serializes

@@ -8,6 +8,13 @@ public sealed record TrainerManifest(
     PatchManifest PatchManifest,
     IReadOnlyList<ActionDispatchEntry> ActionDispatch);
 
+public enum SelectionExecutionMode
+{
+    Apply,
+    SmartToggle,
+    SingleTarget,
+}
+
 public sealed record TrainerFeature(
     string RawName,
     string DisplayName,
@@ -17,7 +24,8 @@ public sealed record TrainerFeature(
     string? ValueHint,
     IReadOnlyList<TrainerFeatureBytePatch>? ToggleBytePatches = null,
     IReadOnlyList<string>? SupportedProfileIds = null,
-    bool RequiresDirectGameApi = false)
+    bool RequiresDirectGameApi = false,
+    SelectionExecutionMode? SelectionMode = null)
 {
     public bool SupportsProfile(string profileId) =>
         SupportedProfileIds is not { Count: > 0 } ||

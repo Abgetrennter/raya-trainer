@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayaTrainer.AddressLint", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayaTrainer.Smoke", "tools\RayaTrainer.Smoke\RayaTrainer.Smoke.csproj", "{92B67B16-A764-4A50-8C81-6199715E1E51}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayaTrainer.ContractLint", "tools\RayaTrainer.ContractLint\RayaTrainer.ContractLint.csproj", "{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RayaTrainer.Agent", "src\RayaTrainer.Agent\RayaTrainer.Agent.vcxproj", "{5A6CB19E-43FB-44DD-9432-618B0055A84B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +103,26 @@ Global
 		{92B67B16-A764-4A50-8C81-6199715E1E51}.Release|x86.Build.0 = Release|Any CPU
 		{92B67B16-A764-4A50-8C81-6199715E1E51}.Release|x64.ActiveCfg = Release|Any CPU
 		{92B67B16-A764-4A50-8C81-6199715E1E51}.Release|x64.Build.0 = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|x86.Build.0 = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Debug|x64.Build.0 = Debug|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|x86.ActiveCfg = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|x86.Build.0 = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|x64.ActiveCfg = Release|Any CPU
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F}.Release|x64.Build.0 = Release|Any CPU
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Debug|x86.ActiveCfg = Debug|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Debug|x86.Build.0 = Debug|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Debug|x64.ActiveCfg = Debug|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Release|Any CPU.ActiveCfg = Release|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Release|x86.ActiveCfg = Release|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Release|x86.Build.0 = Release|Win32
+		{5A6CB19E-43FB-44DD-9432-618B0055A84B}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -106,5 +130,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F72F5537-7D68-4119-A138-EC1A0886E432} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{92B67B16-A764-4A50-8C81-6199715E1E51} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+		{C4D5E6F7-8A9B-4C0D-8E1F-2A3B4C5D6E7F} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 	EndGlobalSection
 EndGlobal

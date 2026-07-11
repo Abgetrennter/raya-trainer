@@ -129,7 +129,7 @@ public sealed class ReleasePackageValidationTests
         var readme = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
         var claude = File.ReadAllText(Path.Combine(repoRoot, "CLAUDE.md"));
 
-        Assert.Contains("基于合规性，已停止该仓库开发", readme, StringComparison.Ordinal);
+        Assert.Contains("绝对不支持联机 / 多人模式。", readme, StringComparison.Ordinal);
         Assert.Contains("Desktop Runtime", claude, StringComparison.Ordinal);
         Assert.Contains("ASP.NET Core Runtime", claude, StringComparison.Ordinal);
     }

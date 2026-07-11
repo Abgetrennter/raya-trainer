@@ -22,20 +22,16 @@ public sealed class TrainerApiHandlerTests
             CanUseFeaturesValue = true,
             FeatureControllerValue = new FakeFeatureController(),
             TargetProcessIdValue = 1234,
-            InstalledHookCountValue = 35,
-            RemoteSymbolSummaryValue = "ID=0x700000"
+            InstalledHookCountValue = 35
         };
         var handler = new TrainerApiHandler(session, new GameApiCommandQueue(), CreateFeatures());
 
         var status = handler.GetStatus();
 
         Assert.True(status.PatchesInstalled);
-        Assert.True(status.CanUseFeatures);
-        Assert.True(status.HasController);
-        Assert.False(status.HasAgentController);
+        Assert.False(status.AgentReady);
         Assert.Equal(1234, status.TargetProcessId);
         Assert.Equal(35, status.InstalledHookCount);
-        Assert.Equal("ID=0x700000", status.RemoteSymbolSummary);
     }
 
     [Fact]
@@ -328,6 +324,9 @@ public sealed class TrainerApiHandlerTests
                 new ReinforcementSettings(0x4B816FC8, 4, 0)
             ],
             controller.ReinforcementSettingsHistory);
+        Assert.NotNull(result.Items);
+        Assert.Equal(2, result.Items.Count);
+        Assert.All(result.Items, r => Assert.Equal("Executed", r.Status));
     }
 
     [Fact]
@@ -366,6 +365,9 @@ public sealed class TrainerApiHandlerTests
                 new SecretProtocolGrantSettings(0x7A9E4201, 0x3AC47A99)
             ],
             controller.SecretProtocolSettingsHistory);
+        Assert.NotNull(result.Items);
+        Assert.Equal(2, result.Items.Count);
+        Assert.All(result.Items, r => Assert.Equal("Executed", r.Status));
     }
 
     [Fact]
@@ -457,6 +459,41 @@ public sealed class TrainerApiHandlerTests
 
         Assert.False(result.Success);
         Assert.Equal("相关 Hook 已安全跳过。", result.Message);
+    }
+
+    [Fact]
+    public void GetReinforcementCatalogReturnsEntries()
+    {
+        var handler = new TrainerApiHandler(new FakeTrainerSessionService(), new GameApiCommandQueue(), CreateFeatures());
+
+        var catalog = handler.GetReinforcementCatalog();
+
+        Assert.NotNull(catalog.Entries);
+        Assert.NotEmpty(catalog.Entries);
+        Assert.All(catalog.Entries, entry =>
+        {
+            Assert.False(string.IsNullOrEmpty(entry.Name));
+            Assert.False(string.IsNullOrEmpty(entry.Faction));
+            Assert.False(string.IsNullOrEmpty(entry.CodeText));
+        });
+    }
+
+    [Fact]
+    public void GetSecretProtocolCatalogReturnsEntries()
+    {
+        var handler = new TrainerApiHandler(new FakeTrainerSessionService(), new GameApiCommandQueue(), CreateFeatures());
+
+        var catalog = handler.GetSecretProtocolCatalog();
+
+        Assert.NotNull(catalog.Entries);
+        Assert.NotEmpty(catalog.Entries);
+        Assert.All(catalog.Entries, entry =>
+        {
+            Assert.False(string.IsNullOrEmpty(entry.Name));
+            Assert.False(string.IsNullOrEmpty(entry.Faction));
+        });
+        // 原版 RA3 至少有可授予的协议
+        Assert.Contains(catalog.Entries, e => e.CanGrant);
     }
 
     private static TrainerApiHandler CreateConnectedHandler(

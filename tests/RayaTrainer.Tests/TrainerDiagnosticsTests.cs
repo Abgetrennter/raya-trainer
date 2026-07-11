@@ -85,4 +85,11 @@ public sealed class TrainerDiagnosticsTests
         Assert.Contains("%USERPROFILE%", report, StringComparison.Ordinal);
         Assert.DoesNotContain(userProfile, report, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Offline_snapshot_has_empty_matched_symbols()
+    {
+        var snapshot = TrainerDiagnosticSnapshot.Offline;
+        Assert.Empty(snapshot.Signatures.MatchedSymbols);
+    }
 }

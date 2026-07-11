@@ -20,6 +20,9 @@ uint32_t g_hookContinuations[kHookCapacity] = {};
 volatile LONG g_playerObject = 0;
 volatile LONG g_playerOwnerId = 0;
 volatile LONG g_oneHitBody = 0;
+bool g_logicFreezeActive = false;
+bool g_slowMotionActive = false;
+uint32_t g_slowMotionFrameCounter = 0;
 volatile LONG g_oneHitOwner = 0;
 volatile LONG g_oneHitCaller = 0;
 
@@ -186,6 +189,33 @@ void ResetPowerChain(uint32_t node)
         }
         node = next;
     }
+}
+
+// Lazy-allocated executable stub for the GetEffectiveRange short-circuit return.
+// Layout: D9 05 <abs addr> C2 04 00 | <4 bytes float const 0x461C4000 = 10000.0f>
+// Execution: fld dword ptr [const]; retn 4. Never freed; lives for the Agent DLL lifetime.
+uint32_t GetAttackRangeReturnStub()
+{
+    static uint32_t stub = 0;
+    if (stub != 0)
+    {
+        return stub;
+    }
+    constexpr uint32_t kFloatBits = 0x461C4000u; // 10000.0f
+    auto* mem = static_cast<unsigned char*>(
+        VirtualAlloc(nullptr, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+    if (mem == nullptr)
+    {
+        return 0;
+    }
+    const uint32_t floatAddress = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mem)) + 9u;
+    mem[0] = 0xD9; mem[1] = 0x05;                         // fld dword ptr [imm32]
+    std::memcpy(mem + 2, &floatAddress, sizeof(floatAddress));
+    mem[6] = 0xC2; mem[7] = 0x04; mem[8] = 0x00;          // retn 4
+    std::memcpy(mem + 9, &kFloatBits, sizeof(kFloatBits));
+    FlushInstructionCache(GetCurrentProcess(), mem, 13);
+    stub = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mem));
+    return stub;
 }
 
 uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
@@ -444,7 +474,12 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
                 TryRead(object + OwnerOffset(), owner) &&
                 owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)))
             {
-                TryWrite(c.Esi + 4, ReadNativeFeatureState(NativeFeatureStateId::SelectedUnitMaxHealthBits));
+                const auto lockedHealth = ReadNativeFeatureState(NativeFeatureStateId::SelectedUnitMaxHealthBits);
+                TryWrite(c.Esi + 4, lockedHealth);
+                // Sync maxHealth so display ratio health/maxHealth stays 1.0.
+                // Without this, health=9999999f with original maxHealth (e.g. 500)
+                // produces ratio >> 1, which can show as empty health bar.
+                TryWrite(c.Esi + 0xC, lockedHealth);
             }
         }
         // Auto-repair pulse is processed in the same hook as GodMode (old MustCode+0x1220
@@ -504,6 +539,25 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
                 TryRead(owner + 0x20u, ownerId) && ownerId != ReadPlayerOwnerId())
             {
                 TryWrite(c.Esi + 4u, 0u);
+                return 1;
+            }
+        }
+        // GodMode health lock at damage-time: intercepts the health write
+        // [Body+4] before damage is applied, regardless of screen visibility.
+        // Reads [esi-8] for GameObject (same pattern as OneHitKill above).
+        if (IsEnabled(NativeFeatureStateId::GodMode))
+        {
+            uint32_t object = 0;
+            uint32_t owner = 0;
+            if (TryRead(c.Esi - 8u, object) && object != 0 &&
+                TryRead(object + OwnerOffset(), owner) && owner != 0 &&
+                owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)))
+            {
+                const auto lockedHealth = ReadNativeFeatureState(NativeFeatureStateId::SelectedUnitMaxHealthBits);
+                TryWrite(c.Esi + 4u, lockedHealth);
+                // Sync maxHealth to prevent display-ratio overflow
+                // when health >> maxHealth (visible as empty health bar).
+                TryWrite(c.Esi + 0xCu, lockedHealth);
                 return 1;
             }
         }
@@ -568,14 +622,30 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         break;
     case 40:
     {
+        // WeaponStateMachine_ScaleDuration(this, RangeDuration* a2, RangeDuration* a3)
+        // is __fastcall returning __int64 in EDX:EAX and callee-cleans 2 stack args (retn 8).
+        // The owner chain [this+0x18]=WeaponSlot -> [+0x24]=weapon module is consistent
+        // across all four profiles.
+        //
+        // Returning mode 5 (retn 8) short-circuits the whole function. EDX:EAX is set to
+        // {0, 1} = 1 tick. This avoids the RATE_OF_FIRE modifier division inside the
+        // function body: clamping only the input durations (min=max=1) still produces
+        // (int)(1 / rateOfFireMultiplier), which drops to 0 when the unit has veteran
+        // fire-rate bonuses (multiplier > 1.0). Callers treat result==0 as a
+        // state-transition sentinel and leave the unit permanently stuck.
+        //
+        // The on-object flag at WeaponStateMachine+0x7B is set by the SmartToggle
+        // visitor (replaces former g_attackSpeedComponents registry lookup).
         uint32_t state = 0;
         uint32_t component = 0;
+        uint8_t flag = 0;
         if (TryRead(c.Ecx + 0x18u, state) && state != 0 &&
             TryRead(state + 0x24u, component) && component != 0 &&
-            IsAttackSpeedComponentRegistered(component))
+            TryRead(component + 0x7Bu, flag) && (flag & 1u) != 0)
         {
-            TryWrite(c.OriginalEsp + 4u, 1u);
-            TryWrite(c.OriginalEsp + 8u, 1u);
+            c.Eax = 1u;
+            c.Edx = 0u;
+            return 5;
         }
         break;
     }
@@ -590,6 +660,72 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
             {
                 TryWrite(c.OriginalEsp + 8u, 0xFF7FFFFFu);
                 TryWrite(c.OriginalEsp + 0xCu, 0x7F7FFFFFu);
+            }
+        }
+        break;
+    case 43:
+    {
+        // GetEffectiveRange is __thiscall returning float in ST0 with one callee-cleaned
+        // stack arg (retn 4). ECX = WeaponEntry* at entry. When the on-object flag at
+        // WeaponEntry+0x77 is set (XORed by the ToggleSelectedAttackRange visitor), the
+        // handler redirects execution to a pre-built stub that loads 10000.0f into ST0
+        // and returns via retn 4 — short-circuiting the entire function body. The stub
+        // avoids the need for an x87-aware trampoline mode.
+        uint8_t flag = 0;
+        const auto stub = GetAttackRangeReturnStub();
+        if (stub != 0 && TryRead(c.Ecx + 0x77u, flag) && (flag & 1u) != 0)
+        {
+            c.Eax = stub;
+            return 3;
+        }
+        break;
+    }
+    case 44:
+        // Logic Time Freeze + Slow Motion (pseudo-turn-based / micro-control).
+        // Both reuse the same seam: [GameLogic+0x15C] (PauseManager pause-type).
+        // Nonzero freezes sim; ~15 frame-advance/anim/main-loop sites gate on it.
+        // We bypass DoPause to skip the UI/input ceremony — player keeps full
+        // real-time command authority. Returns mode 0 (side-effect write only).
+        //
+        // Freeze: write 1 every frame → sim fully frozen, input responsive.
+        // Slow-motion: alternate 0/1 every frame → sim advances 1 of every 2
+        //   frames → 50% real speed. Input always responsive.
+        // Priority: freeze > slow-motion. Disable transition clears our write
+        //   once; when both inactive we touch nothing (respect game's own pause).
+        if (IsEnabled(NativeFeatureStateId::LogicTimeFreeze))
+        {
+            uint32_t gameLogic = 0;
+            if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
+            {
+                TryWrite(gameLogic + 0x15Cu, 1u);
+            }
+            g_logicFreezeActive = true;
+            g_slowMotionActive = false;
+        }
+        else if (IsEnabled(NativeFeatureStateId::SlowMotionMode))
+        {
+            g_slowMotionFrameCounter++;
+            uint32_t gateValue = (g_slowMotionFrameCounter & 1u) ? 1u : 0u;
+            uint32_t gameLogic = 0;
+            if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
+            {
+                TryWrite(gameLogic + 0x15Cu, gateValue);
+            }
+            g_slowMotionActive = true;
+            g_logicFreezeActive = false;
+        }
+        else
+        {
+            if (g_logicFreezeActive || g_slowMotionActive)
+            {
+                uint32_t gameLogic = 0;
+                if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
+                {
+                    TryWrite(gameLogic + 0x15Cu, 0u);
+                }
+                g_logicFreezeActive = false;
+                g_slowMotionActive = false;
+                g_slowMotionFrameCounter = 0;
             }
         }
         break;

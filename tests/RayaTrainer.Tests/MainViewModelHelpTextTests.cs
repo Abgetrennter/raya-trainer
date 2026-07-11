@@ -18,7 +18,7 @@ public sealed class MainViewModelHelpTextTests
         var viewModel = SharedTestDoubles.LoadDefaultViewModel();
         var groupedFeatures = viewModel.FeatureToggle.Groups.SelectMany(group => group.Features).ToArray();
 
-        var damage = Assert.Single(viewModel.FeatureToggle.Groups, group => group.Name == "伤害与无敌");
+        var damage = Assert.Single(viewModel.SelectedUnit.Groups, group => group.Name == "伤害与无敌");
         Assert.Contains(damage.Features, feature => feature.DisplayName == "玩家全建筑/单位无敌");
         Assert.Contains(damage.Features, feature => feature.DisplayName == "一击必杀敌方建筑物/单位");
         Assert.DoesNotContain(damage.Features, feature => feature.DisplayName == "秘密协议忽略基地需求");
@@ -38,13 +38,13 @@ public sealed class MainViewModelHelpTextTests
     }
 
     [Fact]
-    public void SelectedUnitOtherGroupContainsSingleAttackSpeedToggle()
+    public void SelectedUnitOtherGroupHidesUnverifiedWeaponToggles()
     {
         var viewModel = LoadViewModel();
-        var group = Assert.Single(viewModel.FeatureToggle.Groups, group => group.Name == "选中单位 · 其他");
+        var group = Assert.Single(viewModel.SelectedUnit.Groups, group => group.Name == "选中单位 · 其他");
 
-        Assert.Contains(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Speed");
-        Assert.DoesNotContain(group.Features, item => item.Feature.RawName == "Restore Selected Unit Attack Speed");
+        Assert.DoesNotContain(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Speed");
+        Assert.DoesNotContain(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Range");
     }
 
     [Fact]

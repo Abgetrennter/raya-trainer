@@ -472,6 +472,11 @@ void* BuildNativeTrampoline(const ParsedHook& hook, const std::vector<unsigned c
     code.insert(code.end(), { 0x83, 0xF8, 0x04, 0x0F, 0x84 });
     const auto skipAdjust4Operand = code.size();
     AppendUInt32(code, 0);
+    // Mode 5: callee-cleans-2-args direct return (retn 8). Used by hooks that need to
+    // short-circuit a __fastcall(this, a2, a3) function and supply their own EDX:EAX.
+    code.insert(code.end(), { 0x83, 0xF8, 0x05, 0x0F, 0x84 });
+    const auto return8Operand = code.size();
+    AppendUInt32(code, 0);
     code.insert(code.end(), { 0x89, 0x44, 0x24, 0x1C, 0x61, 0x9D, 0xFF, 0xE0 });
 
     const auto returnOffset = code.size();
@@ -479,6 +484,9 @@ void* BuildNativeTrampoline(const ParsedHook& hook, const std::vector<unsigned c
 
     const auto return4Offset = code.size();
     code.insert(code.end(), { 0x61, 0x9D, 0xC2, 0x04, 0x00 });
+
+    const auto return8Offset = code.size();
+    code.insert(code.end(), { 0x61, 0x9D, 0xC2, 0x08, 0x00 });
 
     const auto skipOriginalOffset = code.size();
     code.insert(code.end(), { 0x61, 0x9D, 0xE9 });
@@ -528,6 +536,9 @@ void* BuildNativeTrampoline(const ParsedHook& hook, const std::vector<unsigned c
     PatchRelative32(code, skipAdjust4Operand,
         base + static_cast<uint32_t>(skipAdjust4Operand + 4),
         base + static_cast<uint32_t>(skipAdjust4Offset));
+    PatchRelative32(code, return8Operand,
+        base + static_cast<uint32_t>(return8Operand + 4),
+        base + static_cast<uint32_t>(return8Offset));
     PatchRelative32(code, skipJumpOperand,
         base + static_cast<uint32_t>(skipJumpOperand + 4), continuation);
     PatchRelative32(code, executeJumpOperand,

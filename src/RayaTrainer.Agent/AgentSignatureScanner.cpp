@@ -245,6 +245,12 @@ static constexpr auto kHook41FrameRateUnlockGameUpdate = MakeBuiltInPattern(
 static constexpr auto kHook42ZoomClamp = MakeBuiltInPattern(
     "_BackZoomClamp",
     "F3 0F 10 4C 24 08 F3 0F 10 44 24 04 0F 2F C8 76 05 D9 44 24 08 C3"); // 1.12 0x4FDBD0, 1.13 0x4D81E0, Uprising 1.0/1.1 0x4DB620/0x4E44D0
+static constexpr auto kHook43SelectedUnitAttackRangeScale = MakeBuiltInPattern(
+    "_BackSelectedUnitAttackRangeScale",
+    "51 53 8B 5C 24 0C 85 DB 55 56 57 89 4C 24 10"); // 1.12 0x6F9460 GetEffectiveRange
+static constexpr auto kHook44LogicTimeFreezeGate = MakeBuiltInPattern(
+    "_BackLogicTimeFreezeGate",
+    "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 0D ? ? ? ? 80 B9"); // 1.12 0x626625 game-update entry (sub_626620+5)
 
 // Bootstrap and profile address catalog. Code entries resolve to their match address. Data
 // entries use a unique code reference as the anchor and read the wildcarded absolute operand.
@@ -412,6 +418,8 @@ static constexpr Signature kBuiltInSignatures[] = {
     kHook40UprisingChallengeMoney.ToSignature(),
     kHook41FrameRateUnlockGameUpdate.ToSignature(),
     kHook42ZoomClamp.ToSignature(),
+    kHook43SelectedUnitAttackRangeScale.ToSignature(),
+    kHook44LogicTimeFreezeGate.ToSignature(),
     kRva1160.ToSignature(),
     kRva1437.ToSignature(),
     kRva143C.ToSignature(),
@@ -454,8 +462,8 @@ static constexpr Signature kBuiltInSignatures[] = {
     kRva88DFD0.ToSignature(SignatureAddressMode::Absolute32AtOffset, 4),
 };
 
-static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 82);
-constexpr size_t kBuiltInHookCount = 42;
+static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 84);
+constexpr size_t kBuiltInHookCount = 44;
 
 // Process-local memory read wrapped in SEH, matching the pattern used elsewhere in the DLL
 // (AgentMemoryAccess.cpp / AgentPatchManager.cpp). Returns true on success.

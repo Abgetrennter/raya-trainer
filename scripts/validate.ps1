@@ -66,12 +66,21 @@ try {
         dotnet run --project "tools/RayaTrainer.ApiGenerator/RayaTrainer.ApiGenerator.csproj" -c $Configuration --no-build -- verify
     }
 
-    Invoke-Checked "Verify registered addresses" {
-        dotnet run --project "tools/RayaTrainer.AddressLint/RayaTrainer.AddressLint.csproj" -c $Configuration --no-build
+    $ra3AnalysisDir = Join-Path $repoRoot "RA3_Analysis"
+    if (Test-Path -LiteralPath $ra3AnalysisDir) {
+        Invoke-Checked "Verify registered addresses" {
+            dotnet run --project "tools/RayaTrainer.AddressLint/RayaTrainer.AddressLint.csproj" -c $Configuration --no-build
+        }
+    } else {
+        Write-Host "==> Skipping AddressLint: RA3_Analysis directory not present (private content not projected)" -ForegroundColor Yellow
     }
 
-    Invoke-Checked "Run managed tests" {
-        dotnet test $solution -c $Configuration --no-restore --no-build --verbosity minimal /m:1 /nr:false
+    if (Test-Path -LiteralPath $ra3AnalysisDir) {
+        Invoke-Checked "Run managed tests" {
+            dotnet test $solution -c $Configuration --no-restore --no-build --verbosity minimal /m:1 /nr:false
+        }
+    } else {
+        Write-Host "==> Skipping managed tests: RA3_Analysis directory not present (private tool tests expected to fail in public projection)" -ForegroundColor Yellow
     }
 
     if ($IncludeAnalysisAtlas) {

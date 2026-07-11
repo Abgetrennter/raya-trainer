@@ -6,17 +6,6 @@ namespace RayaTrainer.Core.Patching;
 
 public static class PatchHookPlanner
 {
-    public static IReadOnlyList<PatchHookPlan> CreatePlans(PatchManifest manifest)
-    {
-        return manifest.Hooks
-            // The legacy planner is the canonical RA3 1.12 path. Keep globally
-            // supported hooks and hooks explicitly verified for 1.12, while
-            // continuing to exclude Uprising-only entries.
-            .Where(hook => hook.SupportedProfileIds is not { Count: > 0 } || hook.SupportsProfile("ra3_1.12"))
-            .Select(hook => CreatePlan(hook, hook.Address))
-            .ToArray();
-    }
-
     public static PatchHookPlanResult CreateSupportedPlans(
         PatchManifest manifest,
         Ra3VersionProfile profile,

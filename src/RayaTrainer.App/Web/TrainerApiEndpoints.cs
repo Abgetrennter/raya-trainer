@@ -70,6 +70,24 @@ public static class TrainerApiEndpoints
             return unauthorized ?? Results.Ok(handler.GetPresets());
         });
 
+        api.MapGet("/reinforcements/catalog", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetReinforcementCatalog());
+        });
+
+        api.MapGet("/secret-protocols/catalog", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetSecretProtocolCatalog());
+        });
+
         api.MapGet("/ws", TrainerWebSocketEndpoint.HandleAsync);
 
         api.MapPost("/toggles/{featureId}", async (
@@ -266,6 +284,13 @@ public static class TrainerApiEndpoints
     }
 
     private static IResult ToHttpResult(TrainerWebCommandResult result)
+    {
+        return result.Success
+            ? Results.Ok(result)
+            : Results.BadRequest(result);
+    }
+
+    private static IResult ToHttpResult(TrainerWebQueueResult result)
     {
         return result.Success
             ? Results.Ok(result)

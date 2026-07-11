@@ -11,6 +11,7 @@ tests/RayaTrainer.Agent.Tests/
 tools/RayaTrainer.ApiGenerator/
 tools/RayaTrainer.AddressLint/
 tools/RayaTrainer.Smoke/
+tools/RayaTrainer.ContractLint/
 
 # Scripts (publish + validate + preflight + this tool)
 scripts/publish.ps1
@@ -38,9 +39,12 @@ THIRD-PARTY-NOTICES.txt
 # Public README
 README.md
 
-# Asset packs explicitly approved (per docs/asset-approvals.md)
+# Asset packs: Status=approved AND Distribution=source-and-binary (per docs/asset-approvals.md)
 src/RayaTrainer.Core/Assets/Catalogs/Corona/
 src/RayaTrainer.Core/Assets/Catalogs/ReferenceNotes/
+
+# Public docs (release notes must be visible in public repo)
+docs/release-notes/
 
 # Application icon (RayaTrainer branding)
 RA3_modifier_icon.ico

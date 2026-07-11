@@ -11,12 +11,9 @@ public enum TrainerFeatureType
 
 public sealed record TrainerWebStatusResponse(
     bool PatchesInstalled,
-    bool CanUseFeatures,
-    bool HasController,
-    bool HasAgentController,
+    bool AgentReady,
     int? TargetProcessId,
-    int InstalledHookCount,
-    string RemoteSymbolSummary);
+    int InstalledHookCount);
 
 public sealed record TrainerWebCommandResult(
     bool Success,
@@ -130,3 +127,37 @@ public sealed record TrainerTemplateModelReplacementRequest(
 public sealed record TrainerTemplateWeaponReplacementRequest(
     string TemplateName,
     string NewWeaponName);
+
+public sealed record ReinforcementCatalogEntry(
+    string Mod,
+    string Faction,
+    string CodeText,
+    uint Code,
+    string Name,
+    string? SourceId);
+
+public sealed record ReinforcementCatalogResponse(
+    IReadOnlyList<ReinforcementCatalogEntry> Entries);
+
+public sealed record SecretProtocolCatalogEntry(
+    string Mod,
+    string Faction,
+    string Name,
+    string PlayerTechIdText,
+    string UpgradeIdText,
+    uint PlayerTechId,
+    uint UpgradeId,
+    bool CanGrant);
+
+public sealed record SecretProtocolCatalogResponse(
+    IReadOnlyList<SecretProtocolCatalogEntry> Entries);
+
+public sealed record TrainerQueueItemResult(
+    int Index,
+    string Status,
+    string Message);
+
+public sealed record TrainerWebQueueResult(
+    bool Success,
+    string Message,
+    IReadOnlyList<TrainerQueueItemResult> Items);

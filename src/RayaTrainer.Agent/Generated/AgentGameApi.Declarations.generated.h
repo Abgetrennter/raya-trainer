@@ -150,3 +150,8 @@ AgentStatusCode ToggleSelectedAttackSpeedFromPayload(
     const unsigned char* payload,
     uint32_t length,
     AgentGameApiToggleSelectedAttackSpeedPayload& result);
+
+AgentStatusCode ToggleSelectedAttackRangeFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiToggleSelectedAttackRangePayload& result);

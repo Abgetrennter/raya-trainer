@@ -63,7 +63,8 @@ public static class TrainerFeatureCatalog
             null,
             [],
             null,
-            "0x0E");
+            "0x0E",
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature SecretProtocolBindingProbeFeature =
         new(
@@ -99,7 +100,8 @@ public static class TrainerFeatureCatalog
             null,
             [],
             null,
-            "0x12");
+            "0x12",
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature ClearPlayerTechLocksFeature =
         new(
@@ -135,7 +137,8 @@ public static class TrainerFeatureCatalog
             null,
             [],
             null,
-            "0x16");
+            "0x16",
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature FillSelectedUnitAmmoFeature =
         new(
@@ -144,7 +147,8 @@ public static class TrainerFeatureCatalog
             null,
             [],
             null,
-            "0x17");
+            "0x17",
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature ResetSelectedUnitAmmoFeature =
         new(
@@ -153,7 +157,8 @@ public static class TrainerFeatureCatalog
             null,
             [],
             null,
-            "0x18");
+            "0x18",
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature ToggleSelectedUnitAttackSpeedFeature =
         new(
@@ -163,7 +168,19 @@ public static class TrainerFeatureCatalog
             [],
             null,
             "0x19",
-            SupportedProfileIds: ["ra3_1.12", "ra3_1.13", "ra3_uprising_1.0", "ra3_uprising_1.1"]);
+            SupportedProfileIds: ["ra3_1.12", "ra3_1.13", "ra3_uprising_1.0", "ra3_uprising_1.1"],
+            SelectionMode: SelectionExecutionMode.SmartToggle);
+
+    private static readonly TrainerFeature ToggleSelectedUnitAttackRangeFeature =
+        new(
+            "Toggle Selected Unit Attack Range",
+            "选择的单位无限射程（切换，仅当前实例）",
+            "'",
+            [],
+            null,
+            "0x1B",
+            SupportedProfileIds: ["ra3_1.12", "ra3_1.13", "ra3_uprising_1.0", "ra3_uprising_1.1"],
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature SecretProtocolDependencyBypassFeature =
         new(
@@ -200,7 +217,8 @@ public static class TrainerFeatureCatalog
             [],
             null,
             "0x19",
-            RequiresDirectGameApi: true);
+            RequiresDirectGameApi: true,
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature RestoreProductionQueueFeature =
         new(
@@ -210,7 +228,8 @@ public static class TrainerFeatureCatalog
             [],
             null,
             "0x19",
-            RequiresDirectGameApi: true);
+            RequiresDirectGameApi: true,
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature TeleportSelectedUnitsToMouseFeature =
         new(
@@ -220,7 +239,8 @@ public static class TrainerFeatureCatalog
             [],
             null,
             "0x1A",
-            RequiresDirectGameApi: true);
+            RequiresDirectGameApi: true,
+            SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature RunInBackgroundFeature =
         new(
@@ -228,6 +248,24 @@ public static class TrainerFeatureCatalog
             "允许后台响应（失焦时修改器仍可响应，仅限单机/遭遇战）",
             null,
             ["Run In Background"],
+            null,
+            null);
+
+    private static readonly TrainerFeature LogicTimeFreezeFeature =
+        new(
+            "Logic Time Freeze",
+            "时间冻结（伪回合制，仅限单机/遭遇战）",
+            null,
+            ["Logic Time Freeze"],
+            null,
+            null);
+
+    private static readonly TrainerFeature LogicTimeSlowMotionFeature =
+        new(
+            "Logic Time Slow Motion",
+            "时间慢放（50% 速度，仅限单机/遭遇战）",
+            null,
+            ["Logic Time Slow Motion"],
             null,
             null);
 
@@ -309,10 +347,11 @@ public static class TrainerFeatureCatalog
                 TeleportSelectedUnitsToMouseFeature,
                 RunInBackgroundFeature,
                 FrameRateUnlockFeature,
+                LogicTimeFreezeFeature,
+                LogicTimeSlowMotionFeature,
                 SetTargetHealthFeature,
                 FillSelectedUnitAmmoFeature,
-                ResetSelectedUnitAmmoFeature,
-                ToggleSelectedUnitAttackSpeedFeature
+                ResetSelectedUnitAmmoFeature
             ])
             .ToArray();
     }
@@ -359,7 +398,7 @@ public static class TrainerFeatureCatalog
     {
         if (!SourceTrainerOverrides.TryGetValue(feature.RawName, out var featureOverride))
         {
-            return feature;
+            return feature with { SelectionMode = ResolveSelectionMode(feature.RawName) };
         }
 
         if (featureOverride.Hide)
@@ -374,9 +413,40 @@ public static class TrainerFeatureCatalog
             EnableFlags = featureOverride.EnableFlags ?? feature.EnableFlags,
             DispatchTarget = featureOverride.DispatchTarget ?? feature.DispatchTarget,
             ValueHint = featureOverride.HasValueHintOverride ? featureOverride.ValueHint : feature.ValueHint,
-            ToggleBytePatches = featureOverride.ToggleBytePatches
+            ToggleBytePatches = featureOverride.ToggleBytePatches,
+            SelectionMode = ResolveSelectionMode(feature.RawName)
         };
     }
+
+    private static SelectionExecutionMode? ResolveSelectionMode(string rawName) => rawName switch
+    {
+        // SmartToggle: 两阶段智能统一
+        "Toggle Selected Unit Attack Speed" => SelectionExecutionMode.SmartToggle,
+        // SingleTarget: 仅首个选中单位
+        "Destory Select Unit" => SelectionExecutionMode.SingleTarget,
+        "Select Unit Copy For Me" => SelectionExecutionMode.SingleTarget,
+        // Apply: 单阶段遍历直接执行
+        "Select Unit HP MAX" => SelectionExecutionMode.Apply,
+        "Select Unit HP MIN" => SelectionExecutionMode.Apply,
+        "Restore Select Unit Normal HP" => SelectionExecutionMode.Apply,
+        "Set Selected Unit Target Health" => SelectionExecutionMode.Apply,
+        "Select Unit Super Speed" => SelectionExecutionMode.Apply,
+        "Select Unit Slow Speed" => SelectionExecutionMode.Apply,
+        "Select Unit Freeze" => SelectionExecutionMode.Apply,
+        "Restore Select Unit Speed" => SelectionExecutionMode.Apply,
+        "Fill Selected Unit Ammo" => SelectionExecutionMode.Apply,
+        "Reset Selected Unit Ammo" => SelectionExecutionMode.Apply,
+        "Select Unit Level UP" => SelectionExecutionMode.Apply,
+        "Select Unit Change ID" => SelectionExecutionMode.Apply,
+        "Teleport Selected Units To Mouse" => SelectionExecutionMode.Apply,
+        "Expand Production Queue" => SelectionExecutionMode.Apply,
+        "Restore Production Queue" => SelectionExecutionMode.Apply,
+        "Set Unit Support State" => SelectionExecutionMode.Apply,
+        "Grant Selected Object Upgrade" => SelectionExecutionMode.Apply,
+        // Attack Range 暂不改，标为 Apply 保持现状
+        "Toggle Selected Unit Attack Range" => SelectionExecutionMode.Apply,
+        _ => null,
+    };
 
     private static string? ResolveHotkey(TrainerFeature feature, IReadOnlyDictionary<string, string> hotkeys)
     {

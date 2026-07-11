@@ -39,8 +39,8 @@ public sealed class FeatureItemViewModel : ViewModelBase
     private static string? NormalizeOverride(string? overrideValue) =>
         string.IsNullOrWhiteSpace(overrideValue) ? null : overrideValue;
 
-    /// <summary>徽章显示文本：无热键时显示「＋」引导用户右键添加。</summary>
-    public string HotkeyDisplay => string.IsNullOrWhiteSpace(Hotkey) ? "＋" : Hotkey;
+    /// <summary>徽章显示文本：无热键时显示空字符串，避免「＋」误导为已分配的按键。</summary>
+    public string HotkeyDisplay => string.IsNullOrWhiteSpace(Hotkey) ? "" : Hotkey;
 
     /// <summary>
     /// 运行时热重载入口：用新解析出的热键文本刷新徽章显示，无需重建整个 Feature 列表。
@@ -366,6 +366,8 @@ public sealed class FeatureItemViewModel : ViewModelBase
             "Secret Protocol Binding Probe" => "进入对局后执行；固定授予盟军 AirPower 作为同阵营正控，并授予日本 EnhancedKamikaze 观察跨阵营被动绑定。",
             "Soviet Orbital Refuse Rank 1 Probe" => "进入对局后执行；固定授予 PlayerTech_Soviet_OrbitalRefuse_Rank1，用于验证跨阵营主动协议是否出现在协议面板并可释放。",
             "Clear Player Tech Locks" => "清空地图脚本 Lock Player Tech 写入的玩家科技锁 bitmask，并兼容清理当前玩家 PlayerTechManager 锁表。",
+            "Logic Time Freeze" => "开启后游戏里的所有单位、战斗、生产和计时都会完全冻结，但你的鼠标和按键照常反应，可以慢慢下命令。再按一次解冻，冻结期间下的命令会一起执行。仅限单机/遭遇战，联机会不同步。",
+            "Logic Time Slow Motion" => "开启后游戏速度降为一半（50%），单位移动和战斗都变慢，方便精细操作。鼠标和按键照常反应，不影响你的操作速度。再按一次恢复正常速度。仅限单机/遭遇战，联机会不同步。",
             _ => "按原版修改器动作表执行该功能。"
         };
     }

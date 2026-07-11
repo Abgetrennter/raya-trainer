@@ -39,6 +39,9 @@ jobs:
           pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel namespace
           pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel dependency
 
+      - name: Contract consistency lint
+        run: dotnet run --project tools/RayaTrainer.ContractLint/RayaTrainer.ContractLint.csproj -c Release -- .
+
       - name: Validate analysis atlas (non-blocking)
         continue-on-error: true
         run: powershell -ExecutionPolicy Bypass -File ./scripts/validate-analysis-index.ps1 -Rebuild

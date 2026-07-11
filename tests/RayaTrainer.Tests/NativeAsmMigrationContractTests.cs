@@ -36,7 +36,7 @@ public sealed class NativeAsmMigrationContractTests
         var gameApi = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "AgentGameApi.cpp"));
         var hooks = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "AgentNativeHooks.cpp"));
 
-        Assert.Contains("const auto component = FindFirstSelectedComponent();", gameApi, StringComparison.Ordinal);
+        Assert.Contains("uint32_t FindFirstSelectedComponent()", gameApi, StringComparison.Ordinal);
         Assert.Contains("const auto component = FindFirstSelectedObjectComponent();", gameApi, StringComparison.Ordinal);
         Assert.Contains("SafeReadU32(object + 0x138u, component)", gameApi, StringComparison.Ordinal);
         Assert.Contains("SafeReadStructureU32(component, NativeCatalogEntry::ProductionModulesOffset", gameApi, StringComparison.Ordinal);

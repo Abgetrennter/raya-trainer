@@ -118,8 +118,7 @@ constexpr uint32_t kDefaultNativeCatalogRvas[kNativeCatalogEntryCount] = {
 
 uint32_t g_nativeCatalogRvas[kNativeCatalogEntryCount] = {};
 bool g_nativeCatalogReady = false;
-uint32_t g_attackSpeedComponents[64] = {};
-uint32_t g_attackSpeedComponentCount = 0;
+
 
 
 bool TryReadUInt32(const unsigned char* payload, uint32_t length, uint32_t& offset, uint32_t& value)
@@ -139,6 +138,32 @@ bool SafeReadU32(uint32_t address, uint32_t& value)
     __try
     {
         std::memcpy(&value, reinterpret_cast<const void*>(static_cast<uintptr_t>(address)), sizeof(value));
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+bool SafeReadU8(uint32_t address, uint8_t& value)
+{
+    __try
+    {
+        value = *reinterpret_cast<const uint8_t*>(static_cast<uintptr_t>(address));
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+bool SafeWriteU8(uint32_t address, uint8_t value)
+{
+    __try
+    {
+        *reinterpret_cast<uint8_t*>(static_cast<uintptr_t>(address)) = value;
         return true;
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
@@ -448,6 +473,114 @@ bool VisitSelectedObjects(
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// SmartToggle: 两阶段智能统一 flag 状态
+//
+// 行为：
+//   1. 第一阶段遍历读取每个选中单位的 flag 字节
+//   2. 判断：全 OFF → targetValue=1（统一开启）
+//          全 ON  → targetValue=0（统一关闭）
+//          混合   → targetValue=1（统一至 ON）
+//   3. 第二阶段遍历写入 targetValue
+//
+// Attack Speed 专用版本。reader/writer 通过 adapter visitor 适配
+// VisitSelectedObjects 的签名。
+// ---------------------------------------------------------------------------
+
+// SmartToggle 内部状态：第一阶段累积读取结果
+struct SmartToggleScanState
+{
+    uint32_t firstValue;     // 第一个单位的 flag 值（0 或 1）
+    bool hasFirst;           // 是否已读到第一个有效值
+    bool mixed;              // 是否出现不同值
+    uint32_t validCount;     // 有效读取计数
+};
+
+// 全局 SmartToggle 扫描状态（每次 ExecuteSmartToggleOnSelection 调用前重置）
+// 使用 thread_local 因为 game thread dispatch 是单线程的
+static thread_local SmartToggleScanState g_smartToggleScan;
+
+// Attack Speed flag reader: 读 WeaponStateMachine+0x7B
+static uint32_t ReadAttackSpeedFlag(uint32_t component)
+{
+    uint8_t flag = 0;
+    if (!SafeReadU8(component + 0x7Bu, flag))
+    {
+        return 0;
+    }
+    return (flag & 1u) != 0 ? 1u : 0u;
+}
+
+// Attack Speed flag writer: 写 WeaponStateMachine+0x7B
+static uint32_t WriteAttackSpeedFlag(uint32_t component, uint32_t value)
+{
+    uint8_t byteValue = static_cast<uint8_t>(value != 0 ? 1u : 0u);
+    return SafeWriteU8(component + 0x7Bu, byteValue) ? 1u : 0u;
+}
+
+// Adapter: 第一阶段读取 visitor（Attack Speed 专用）
+static uint32_t SmartToggleReadAdapter(uint32_t component, const uint32_t*)
+{
+    uint32_t value = ReadAttackSpeedFlag(component);
+    if (!g_smartToggleScan.hasFirst)
+    {
+        g_smartToggleScan.firstValue = value;
+        g_smartToggleScan.hasFirst = true;
+    }
+    else if (value != g_smartToggleScan.firstValue)
+    {
+        g_smartToggleScan.mixed = true;
+    }
+    ++g_smartToggleScan.validCount;
+    return 1;
+}
+
+// Adapter: 第二阶段写入 visitor（Attack Speed 专用）
+static uint32_t SmartToggleWriteAdapter(uint32_t component, const uint32_t* arguments)
+{
+    uint32_t value = arguments != nullptr ? arguments[0] : 1u;
+    return WriteAttackSpeedFlag(component, value);
+}
+
+// SmartToggle 执行器（Attack Speed 专用版本）
+bool ExecuteSmartToggleOnSelection(uint32_t& affectedCount)
+{
+    affectedCount = 0;
+
+    // 第一阶段：扫描
+    g_smartToggleScan = {};
+    uint32_t scanCount = 0;
+    if (!VisitSelectedObjects(SmartToggleReadAdapter, nullptr, scanCount) || scanCount == 0)
+    {
+        return false;
+    }
+
+    // 决定目标值：全 OFF→1, 全 ON→0, 混合→1
+    uint32_t targetValue;
+    if (!g_smartToggleScan.hasFirst || g_smartToggleScan.validCount == 0)
+    {
+        return false;
+    }
+    if (g_smartToggleScan.mixed)
+    {
+        targetValue = 1u;
+    }
+    else
+    {
+        targetValue = g_smartToggleScan.firstValue != 0 ? 0u : 1u;
+    }
+
+    // 第二阶段：写入
+    const uint32_t writeArgs[] = { targetValue };
+    uint32_t writeCount = 0;
+    if (!VisitSelectedObjects(SmartToggleWriteAdapter, writeArgs, writeCount))
+    {
+        return false;
+    }
+    affectedCount = writeCount;
+    return true;
+}
+
 uint32_t SetSelectedStatusBitVisitor(uint32_t component, const uint32_t* arguments)
 {
     const auto domain = arguments[0];
@@ -685,22 +818,25 @@ uint32_t FindFirstSelectedObjectComponent()
     return component;
 }
 
-void LevelUpSelectedOnGameThread(const uint32_t* arguments, uint32_t* results)
+uint32_t LevelUpSelectedVisitor(uint32_t component, const uint32_t* arguments)
 {
-    results[0] = 0;
-    const auto component = FindFirstSelectedComponent();
     uint32_t veterancy = 0;
     const auto moduleBase = reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr));
     const auto functionRva = ResolveNativeCatalogRva(NativeCatalogEntry::LevelUpSelected);
-    if (component == 0 || moduleBase == 0 || functionRva == 0 ||
+    if (moduleBase == 0 || functionRva == 0 ||
         !SafeReadStructureU32(component, NativeCatalogEntry::VeterancyOffset, veterancy) || veterancy == 0)
     {
-        return;
+        return 0;
     }
     using LevelUpFunction = uint32_t(__thiscall*)(void*, uint32_t, uint32_t, uint32_t);
     const auto function = reinterpret_cast<LevelUpFunction>(moduleBase + functionRva);
     function(reinterpret_cast<void*>(static_cast<uintptr_t>(veterancy)), arguments[0], arguments[1], arguments[2]);
-    results[0] = 1;
+    return 1;
+}
+
+void LevelUpSelectedOnGameThread(const uint32_t* arguments, uint32_t* results)
+{
+    results[1] = VisitSelectedObjects(LevelUpSelectedVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
 void KillUnitOnGameThread(const uint32_t*, uint32_t* results)
@@ -713,9 +849,14 @@ void KillUnitOnGameThread(const uint32_t*, uint32_t* results)
     {
         return;
     }
-    using KillUnitFunction = uint32_t(__thiscall*)(void*);
+    // sub_79EA50 is __thiscall(GameObject* this, int a2, int a3, int a4) and does retn 0Ch
+    // (callee cleans 3 stack args). The engine's own kill path calls it as
+    // sub_79EA50(obj, 6, 1, 0) from sub_58F1A0 and sub_79ECB0. Declaring it with fewer
+    // args (the previous __thiscall(void*)) left ESP off by 12 bytes after the call and
+    // triggered Run-Time Check Failure #0.
+    using KillUnitFunction = uint32_t(__thiscall*)(void*, int, int, int);
     const auto function = reinterpret_cast<KillUnitFunction>(moduleBase + functionRva);
-    function(reinterpret_cast<void*>(static_cast<uintptr_t>(component)));
+    function(reinterpret_cast<void*>(static_cast<uintptr_t>(component)), 6, 1, 0);
     results[0] = 1;
 }
 
@@ -1164,29 +1305,58 @@ void SetSelectedUnitAmmoOnGameThread(const uint32_t* arguments, uint32_t* result
     results[1] = VisitSelectedObjects(SetSelectedAmmoVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-uint32_t ToggleSelectedAttackSpeedVisitor(uint32_t component, const uint32_t*)
+void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
 {
-    for (uint32_t index = 0; index < g_attackSpeedComponentCount; ++index)
-    {
-        if (g_attackSpeedComponents[index] == component)
-        {
-            --g_attackSpeedComponentCount;
-            g_attackSpeedComponents[index] = g_attackSpeedComponents[g_attackSpeedComponentCount];
-            g_attackSpeedComponents[g_attackSpeedComponentCount] = 0;
-            return 1;
-        }
-    }
-    if (g_attackSpeedComponentCount >= 64)
+    uint32_t affectedCount = 0;
+    results[1] = ExecuteSmartToggleOnSelection(affectedCount) ? 1u : 0u;
+    results[0] = affectedCount;
+}
+
+// ToggleSelectedAttackRange: XOR byte[WeaponEntry+0x77] for every weapon entry of every
+// selected object. The on-object flag is consumed by the GetEffectiveRange native hook
+// (case 43) which returns 10000.0f when the flag is set. The flag follows object
+// lifecycle — no registry, no stale pointers.
+uint32_t ToggleSelectedAttackRangeVisitor(uint32_t component, const uint32_t*)
+{
+    uint32_t container = 0;
+    uint32_t cursor = 0;
+    uint32_t end = 0;
+    if (!SafeReadStructureU32(component, NativeCatalogEntry::WeaponContainerOffset, container) || container == 0 ||
+        !SafeReadU32(container + 0x24u, cursor) ||
+        !SafeReadU32(container + 0x28u, end) || cursor >= end)
     {
         return 0;
     }
-    g_attackSpeedComponents[g_attackSpeedComponentCount++] = component;
-    return 1;
+    uint32_t changed = 0;
+    for (; cursor < end; cursor += sizeof(uint32_t))
+    {
+        uint32_t slot = 0;
+        uint32_t entries = 0;
+        uint8_t active = 0;
+        if (!SafeReadU32(cursor, slot) || slot == 0 ||
+            !SafeReadU8(slot + 0xA4u, active) || active == 0 ||
+            !SafeReadU32(slot + 0x94u, entries) || entries == 0)
+        {
+            continue;
+        }
+        for (uint32_t index = 0; index < 6; ++index)
+        {
+            uint32_t entry = 0;
+            uint8_t flag = 0;
+            if (SafeReadU32(entries + index * sizeof(uint32_t), entry) && entry != 0 &&
+                SafeReadU8(entry + 0x77u, flag) &&
+                SafeWriteU8(entry + 0x77u, static_cast<uint8_t>(flag ^ 1u)))
+            {
+                ++changed;
+            }
+        }
+    }
+    return changed != 0 ? 1u : 0u;
 }
 
-void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
+void ToggleSelectedAttackRangeOnGameThread(const uint32_t*, uint32_t* results)
 {
-    results[1] = VisitSelectedObjects(ToggleSelectedAttackSpeedVisitor, nullptr, results[0]) ? 1u : 0u;
+    results[1] = VisitSelectedObjects(ToggleSelectedAttackRangeVisitor, nullptr, results[0]) ? 1u : 0u;
 }
 
 uint32_t TeleportSelectedUnitVisitor(uint32_t component, const uint32_t* arguments)
@@ -1368,22 +1538,10 @@ bool HasNativeCatalog()
     return g_nativeCatalogReady;
 }
 
-bool IsAttackSpeedComponentRegistered(uint32_t component)
-{
-    for (uint32_t index = 0; index < g_attackSpeedComponentCount; ++index)
-    {
-        if (g_attackSpeedComponents[index] == component)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
+// No-op after Attack Speed registry removal; retained for call-site stability
+// (called from ResetNativeHookRuntime in AgentNativeHooks.cpp).
 void ResetNativeGameApiRuntimeState()
 {
-    std::memset(g_attackSpeedComponents, 0, sizeof(g_attackSpeedComponents));
-    g_attackSpeedComponentCount = 0;
 }
 
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry)
@@ -1858,85 +2016,41 @@ AgentStatusCode DispatchNativeSetSelectedStatusBit(
     const AgentGameApiSetSelectedStatusBitRequest& request,
     AgentGameApiSetSelectedStatusBitPayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
     const auto validBit = request.Domain == 0 ? request.BitIndex < 0xE0u : request.BitIndex < 0x1C9u;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi) ||
-        request.Domain >= 2 || !validBit)
+    if (request.Domain >= 2 || !validBit)
     {
+        result = {};
+        result.AgentVersion = kAgentProtocolVersion;
         result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
         result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
         return AgentStatusCode::InvalidCommand;
     }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
-
     const uint32_t arguments[] = { request.Domain, request.BitIndex, request.Enabled };
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        SetSelectedStatusBitOnGameThread, arguments, 3, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed &&
-        nativeResult.Values[1] != 0 && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    return DispatchNativeAction(request, result, SetSelectedStatusBitOnGameThread, arguments, 3);
 }
 
 AgentStatusCode DispatchNativeSetSelectedUnitHealth(
     const AgentGameApiSetSelectedUnitHealthRequest& request,
     AgentGameApiSetSelectedUnitHealthPayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi) ||
-        request.Mode == 0 || request.Mode >= 5)
+    if (request.Mode == 0 || request.Mode >= 5)
     {
+        result = {};
+        result.AgentVersion = kAgentProtocolVersion;
         result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
         result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
         return AgentStatusCode::InvalidCommand;
     }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
-
     uint32_t healthBits = 0;
     uint32_t maxHealthBits = 0;
     std::memcpy(&healthBits, &request.Health, sizeof(healthBits));
     std::memcpy(&maxHealthBits, &request.MaxHealth, sizeof(maxHealthBits));
     const uint32_t arguments[] = { request.Mode, healthBits, maxHealthBits };
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        SetSelectedUnitHealthOnGameThread, arguments, 3, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed &&
-        nativeResult.Values[1] != 0 && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    return DispatchNativeAction(request, result, SetSelectedUnitHealthOnGameThread, arguments, 3);
 }
 
+// Not consolidated to DispatchNativeAction: needs result.ExpandedStructureCount
+// = nativeResult.Values[0] before the success check, which the template doesn't support.
 AgentStatusCode DispatchNativeExpandProductionQueue(
     const AgentGameApiExpandProductionQueueRequest& request,
     AgentGameApiExpandProductionQueuePayload& result)
@@ -1980,141 +2094,38 @@ AgentStatusCode DispatchNativeTeleportSelectedUnitsToMouse(
     const AgentGameApiTeleportSelectedUnitsToMouseRequest& request,
     AgentGameApiTeleportSelectedUnitsToMousePayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi))
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
-        return AgentStatusCode::InvalidCommand;
-    }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
-
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        TeleportSelectedUnitsToMouseOnGameThread, 0, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed &&
-        nativeResult.Values[1] != 0 && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    return DispatchNativeAction(request, result, TeleportSelectedUnitsToMouseOnGameThread, nullptr, 0);
 }
 
 AgentStatusCode DispatchNativeLevelUpSelected(
     const AgentGameApiLevelUpSelectedRequest& request,
     AgentGameApiLevelUpSelectedPayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi) || request.Count == 0)
+    if (request.Count == 0)
     {
+        result = {};
+        result.AgentVersion = kAgentProtocolVersion;
         result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
         result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
         return AgentStatusCode::InvalidCommand;
     }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
     const uint32_t arguments[] = { request.Count, request.Rank, request.Flags };
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        LevelUpSelectedOnGameThread, arguments, 3, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    return DispatchNativeAction(request, result, LevelUpSelectedOnGameThread, arguments, 3);
 }
 
 AgentStatusCode DispatchNativeKillUnit(
     const AgentGameApiKillUnitRequest& request,
     AgentGameApiKillUnitPayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi))
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
-        return AgentStatusCode::InvalidCommand;
-    }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        KillUnitOnGameThread, 0, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    return DispatchNativeAction(request, result, KillUnitOnGameThread, nullptr, 0);
 }
 
 AgentStatusCode DispatchNativeSetUnitState(
     const AgentGameApiSetUnitStateRequest& request,
     AgentGameApiSetUnitStatePayload& result)
 {
-    result = {};
-    result.AgentVersion = kAgentProtocolVersion;
-    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi))
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
-        return AgentStatusCode::InvalidCommand;
-    }
-    if (IsInShellMode())
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
-        return AgentStatusCode::Ok;
-    }
-    AgentGameThreadResult nativeResult = {};
-    const auto nativeStatus = RunNativeRequest(
-        SetUnitStateOnGameThread, request.StateFlags, request.TimeoutMilliseconds, nativeResult,
-        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
-    if (nativeStatus == AgentGameThreadDispatchStatus::Completed &&
-        nativeResult.Values[1] != 0 && nativeResult.Values[0] != 0)
-    {
-        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
-        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
-        return AgentStatusCode::Ok;
-    }
-    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
-    result.StatusCode = static_cast<uint16_t>(timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
-    result.DispatchStatus = static_cast<uint32_t>(timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::NoSelectedUnit);
-    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+    const uint32_t arguments[] = { request.StateFlags };
+    return DispatchNativeAction(request, result, SetUnitStateOnGameThread, arguments, 1);
 }
 
 AgentStatusCode DispatchNativeCreateUnit(
@@ -2376,6 +2387,13 @@ AgentStatusCode DispatchNativeToggleSelectedAttackSpeed(
     AgentGameApiToggleSelectedAttackSpeedPayload& result)
 {
     return DispatchNativeAction(request, result, ToggleSelectedAttackSpeedOnGameThread, nullptr, 0);
+}
+
+AgentStatusCode DispatchNativeToggleSelectedAttackRange(
+    const AgentGameApiToggleSelectedAttackRangeRequest& request,
+    AgentGameApiToggleSelectedAttackRangePayload& result)
+{
+    return DispatchNativeAction(request, result, ToggleSelectedAttackRangeOnGameThread, nullptr, 0);
 }
 
 #include "Generated/AgentGameApi.Dispatch.generated.inc"

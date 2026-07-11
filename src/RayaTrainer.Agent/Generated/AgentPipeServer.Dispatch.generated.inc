@@ -240,3 +240,11 @@ if (command == AgentCommand::ToggleSelectedAttackSpeed)
     WriteGameApiResponse(pipe, header, result);
     return;
 }
+
+if (command == AgentCommand::ToggleSelectedAttackRange)
+{
+    AgentGameApiToggleSelectedAttackRangePayload result = {};
+    ToggleSelectedAttackRangeFromPayload(payload.data(), header.PayloadLength, result);
+    WriteGameApiResponse(pipe, header, result);
+    return;
+}

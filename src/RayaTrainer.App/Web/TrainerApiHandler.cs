@@ -46,12 +46,9 @@ public sealed class TrainerApiHandler
     {
         return new TrainerWebStatusResponse(
             _session.ArePatchesInstalled,
-            _session.CanUseFeatures,
-            _session.FeatureController is not null,
             _session.FeatureController is IAgentFeatureController { SupportsDirectGameApi: true },
             _session.TargetProcessId,
-            _session.InstalledHookCount,
-            _session.RemoteSymbolSummary);
+            _session.InstalledHookCount);
     }
 
     public TrainerDiagnosticSnapshot GetDiagnostics()
@@ -119,6 +116,36 @@ public sealed class TrainerApiHandler
                     preset => preset.Name)
                 .Select(ToPresetInfo)
                 .ToArray());
+    }
+
+    public ReinforcementCatalogResponse GetReinforcementCatalog()
+    {
+        var entries = ReinforcementUnitCatalog.LoadWithCustomFile()
+            .Select(u => new ReinforcementCatalogEntry(
+                u.Mod,
+                u.Faction,
+                u.CodeText,
+                u.Code,
+                u.Name,
+                u.SourceId))
+            .ToArray();
+        return new ReinforcementCatalogResponse(entries);
+    }
+
+    public SecretProtocolCatalogResponse GetSecretProtocolCatalog()
+    {
+        var entries = SecretProtocolCatalog.LoadWithCustomFile()
+            .Select(p => new SecretProtocolCatalogEntry(
+                p.Mod,
+                p.Faction,
+                p.Name,
+                p.PlayerTechIdText,
+                p.UpgradeText,
+                p.PlayerTechId,
+                p.UpgradeId,
+                p.CanGrant))
+            .ToArray();
+        return new SecretProtocolCatalogResponse(entries);
     }
 
     public Task<TrainerWebCommandResult> SetToggleAsync(
@@ -225,7 +252,7 @@ public sealed class TrainerApiHandler
         }, cancellationToken);
     }
 
-    public Task<TrainerWebCommandResult> ExecuteReinforcementQueueAsync(
+    public Task<TrainerWebQueueResult> ExecuteReinforcementQueueAsync(
         TrainerReinforcementQueueRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -233,19 +260,18 @@ public sealed class TrainerApiHandler
         var ready = RequireController(out var controller);
         if (ready is not null)
         {
-            return Task.FromResult(Publish(ready));
+            return Task.FromResult(new TrainerWebQueueResult(false, ready.Message, Array.Empty<TrainerQueueItemResult>()));
         }
 
         if (request.Entries is null || request.Entries.Count == 0)
         {
-            return Task.FromResult(Publish(Failed("增援队列为空。")));
+            return Task.FromResult(new TrainerWebQueueResult(false, "增援队列为空。", Array.Empty<TrainerQueueItemResult>()));
         }
 
         var invalidReinforcementIndex = FirstInvalidReinforcementEntryIndex(request.Entries);
         if (invalidReinforcementIndex >= 0)
         {
-            return Task.FromResult(Publish(Failed(
-                $"增援队列参数无效：第 {invalidReinforcementIndex + 1} 项的单位 ID、数量或等级超出允许范围。")));
+            return Task.FromResult(new TrainerWebQueueResult(false, $"增援队列参数无效：第 {invalidReinforcementIndex + 1} 项的单位 ID、数量或等级超出允许范围。", Array.Empty<TrainerQueueItemResult>()));
         }
 
         var feature = RequireFeature(WeNeedBackRawName);
@@ -267,7 +293,7 @@ public sealed class TrainerApiHandler
                     token,
                     onWaitStatusChanged: CreateWaitStatusCallback())
                 .ConfigureAwait(false);
-            return Publish(QueueResult("增援队列", results.Count, results.Count(result => result.Status == ReinforcementQueueItemStatus.Executed)));
+            return BuildReinforcementQueueResult(results);
         }, cancellationToken);
     }
 
@@ -303,7 +329,7 @@ public sealed class TrainerApiHandler
         }, cancellationToken);
     }
 
-    public Task<TrainerWebCommandResult> GrantSecretProtocolQueueAsync(
+    public Task<TrainerWebQueueResult> GrantSecretProtocolQueueAsync(
         TrainerSecretProtocolQueueRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -311,19 +337,18 @@ public sealed class TrainerApiHandler
         var ready = RequireController(out var controller);
         if (ready is not null)
         {
-            return Task.FromResult(Publish(ready));
+            return Task.FromResult(new TrainerWebQueueResult(false, ready.Message, Array.Empty<TrainerQueueItemResult>()));
         }
 
         if (request.Entries is null || request.Entries.Count == 0)
         {
-            return Task.FromResult(Publish(Failed("秘密协议队列为空。")));
+            return Task.FromResult(new TrainerWebQueueResult(false, "秘密协议队列为空。", Array.Empty<TrainerQueueItemResult>()));
         }
 
         var invalidSecretProtocolIndex = FirstInvalidSecretProtocolEntryIndex(request.Entries);
         if (invalidSecretProtocolIndex >= 0)
         {
-            return Task.FromResult(Publish(Failed(
-                $"秘密协议队列参数无效：第 {invalidSecretProtocolIndex + 1} 项的 PlayerTech 和 Upgrade 不能同时为 0。")));
+            return Task.FromResult(new TrainerWebQueueResult(false, $"秘密协议队列参数无效：第 {invalidSecretProtocolIndex + 1} 项的 PlayerTech 和 Upgrade 不能同时为 0。", Array.Empty<TrainerQueueItemResult>()));
         }
 
         var feature = RequireFeature(SecretProtocolGrantRawName);
@@ -348,7 +373,7 @@ public sealed class TrainerApiHandler
                     token,
                     onWaitStatusChanged: CreateWaitStatusCallback())
                 .ConfigureAwait(false);
-            return Publish(QueueResult("秘密协议队列", results.Count, results.Count(result => result.Status == SecretProtocolQueueItemStatus.Executed)));
+            return BuildSecretProtocolQueueResult(results);
         }, cancellationToken);
     }
 
@@ -607,6 +632,34 @@ public sealed class TrainerApiHandler
         return executed == total
             ? Succeeded($"{label}已执行：成功 {executed}/{total}。")
             : Failed($"{label}执行完成：成功 {executed}/{total}。");
+    }
+
+    private static TrainerWebQueueResult BuildReinforcementQueueResult(
+        IReadOnlyList<ReinforcementQueueResult> results)
+    {
+        var items = results
+            .Select((r, i) => new TrainerQueueItemResult(i, r.Status.ToString(), r.Message))
+            .ToArray();
+        var executed = results.Count(r => r.Status == ReinforcementQueueItemStatus.Executed);
+        var success = executed == results.Count;
+        return new TrainerWebQueueResult(
+            success,
+            $"成功 {executed}/{results.Count}。",
+            items);
+    }
+
+    private static TrainerWebQueueResult BuildSecretProtocolQueueResult(
+        IReadOnlyList<SecretProtocolQueueResult> results)
+    {
+        var items = results
+            .Select((r, i) => new TrainerQueueItemResult(i, r.Status.ToString(), r.Message))
+            .ToArray();
+        var executed = results.Count(r => r.Status == SecretProtocolQueueItemStatus.Executed);
+        var success = executed == results.Count;
+        return new TrainerWebQueueResult(
+            success,
+            $"成功 {executed}/{results.Count}。",
+            items);
     }
 
     private static TrainerWebCommandResult Succeeded(string message)

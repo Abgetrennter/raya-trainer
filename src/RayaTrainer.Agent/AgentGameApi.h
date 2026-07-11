@@ -88,7 +88,6 @@ AgentStatusCode SetNativeCatalogFromPayload(const unsigned char* payload, uint32
 // Resolves a catalog entry RVA. Always returns a value: the runtime catalog entry when
 // present, otherwise the 1.12 compile-time default.
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry);
-bool IsAttackSpeedComponentRegistered(uint32_t component);
 uint32_t ResolveCurrentPlayerPointer();
 void ResetNativeGameApiRuntimeState();
 

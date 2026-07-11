@@ -5,11 +5,11 @@ namespace RayaTrainer.Tests;
 
 internal static class TestAssets
 {
-    public const int CurrentManifestHookCount = 42;
-    public const int CurrentStandardHookCount = 40;
-    public const int CurrentRa3113HookCount = 39;
-    public const int CurrentUprisingHookCount = 37;
-    public const int CurrentUiFeatureCount = 46;
+    public const int CurrentManifestHookCount = 44;
+    public const int CurrentStandardHookCount = 42;
+    public const int CurrentRa3113HookCount = 40;
+    public const int CurrentUprisingHookCount = 38;
+    public const int CurrentUiFeatureCount = 47;
 
     public static TrainerManifest LoadManifest()
     {

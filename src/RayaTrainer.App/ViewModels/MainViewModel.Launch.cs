@@ -18,7 +18,7 @@ public sealed partial class MainViewModel
         {
             if (Diagnostics.Health == RayaTrainer.Core.Diagnostics.TrainerDiagnosticHealth.Error)
             {
-                SelectedPageIndex = 5;
+                SelectedPageIndex = 6;
                 return;
             }
 
@@ -30,7 +30,7 @@ public sealed partial class MainViewModel
 
             if (Diagnostics.Health == RayaTrainer.Core.Diagnostics.TrainerDiagnosticHealth.Error)
             {
-                SelectedPageIndex = 5;
+                SelectedPageIndex = 6;
                 return;
             }
 
@@ -54,7 +54,7 @@ public sealed partial class MainViewModel
         if (Diagnostics.Health is RayaTrainer.Core.Diagnostics.TrainerDiagnosticHealth.Error or
             RayaTrainer.Core.Diagnostics.TrainerDiagnosticHealth.Attention)
         {
-            SelectedPageIndex = 5;
+            SelectedPageIndex = 6;
             return;
         }
 

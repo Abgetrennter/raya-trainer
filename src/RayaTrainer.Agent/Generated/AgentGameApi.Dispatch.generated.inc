@@ -1097,3 +1097,37 @@ AgentStatusCode ToggleSelectedAttackSpeedFromPayload(
     }
     return DispatchNativeToggleSelectedAttackSpeed(request, result);
 }
+
+bool TryReadToggleSelectedAttackRangeRequest(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiToggleSelectedAttackRangeRequest& request)
+{
+    if (length != sizeof(AgentGameApiToggleSelectedAttackRangeRequest)) return false;
+    uint32_t offset = 0;
+    if (!(TryReadUInt32(payload, length, offset, request.TimeoutMilliseconds)
+        && TryReadUInt32(payload, length, offset, request.EnableDirectGameApi)
+        && offset == length))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+AgentStatusCode ToggleSelectedAttackRangeFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiToggleSelectedAttackRangePayload& result)
+{
+    AgentGameApiToggleSelectedAttackRangeRequest request = {};
+    if (!TryReadToggleSelectedAttackRangeRequest(payload, length, request))
+    {
+        result = {};
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.AgentVersion = kAgentProtocolVersion;
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Failed);
+        return AgentStatusCode::InvalidCommand;
+    }
+    return DispatchNativeToggleSelectedAttackRange(request, result);
+}

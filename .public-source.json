@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "migrationToolVersion": "1.0.0",
-  "sourceSha": "9af44b699f4bb32b2ce55901f0faa858bf0f7b62",
-  "exportedAt": "2026-07-07T12:57:52.1388888+00:00",
-  "allowlistHash": "e54e7183f10ab5c268ff8fd7fbeb259f0a2b9acd77ddce898bffa4a2b67e4675",
+  "sourceSha": "e84682fd63bbd9835b9b59120ba0dc652e9614d1",
+  "exportedAt": "2026-07-11T09:09:39.2414209+00:00",
+  "allowlistHash": "826955ac62eff6aa02b7d229eb573f776d52b06c1f2309c7815160deb12c5a7f",
   "assetPacks": [
     {
       "packId": "corona",
       "version": "1.0.0",
-      "manifestHash": "b26a0966d23afc9fc392dbb1ea0ef053270d42ba2acc4afa2311861d8b659f19"
+      "manifestHash": "300b0893c9cc4c50ace46a688ba5f6d73f414d84852e905ce404b83978e2232d"
     },
     {
       "packId": "reference-notes",

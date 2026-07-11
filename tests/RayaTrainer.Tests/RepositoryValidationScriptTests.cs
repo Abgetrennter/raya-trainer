@@ -33,6 +33,14 @@ public sealed class RepositoryValidationScriptTests
     }
 
     [Fact]
+    public void PublicAllowlistContainsContractLint()
+    {
+        var root = RepositoryRoot();
+        var allowlist = File.ReadAllText(Path.Combine(root, "scripts", "migrate-allowlist.txt"));
+        Assert.Contains("tools/RayaTrainer.ContractLint/", allowlist, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ContinuousIntegrationUsesUnifiedValidationEntryPoint()
     {
         var root = RepositoryRoot();
@@ -41,6 +49,43 @@ public sealed class RepositoryValidationScriptTests
 
         Assert.Contains("./scripts/validate.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("./scripts/validate.ps1", release, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GetTreeHashSuppressesCryptoReturnValues()
+    {
+        var root = RepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "scripts", "migrate-to-public.ps1"));
+
+        // Get-TreeHash must suppress TransformBlock/TransformFinalBlock return values
+        // because PowerShell emits them into the output stream, corrupting the hashtable return.
+        Assert.Contains("[void]$sha.TransformBlock(", script, StringComparison.Ordinal);
+        Assert.Contains("[void]$sha.TransformFinalBlock(", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GetTreeHashExcludesVerifyReceiptFile()
+    {
+        var root = RepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "scripts", "migrate-to-public.ps1"));
+
+        // Get-TreeHash must exclude .verify-receipt.json so that Verify
+        // (hashes before writing receipt) and Publish (hashes after receipt
+        // exists) compute over the same file set.
+        Assert.Contains("-ne '.verify-receipt.json'", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddressLintStepGuardedByRa3AnalysisPresence()
+    {
+        var root = RepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "scripts", "validate.ps1"));
+
+        // AddressLint requires RA3_Analysis/07_修改点索引/address_registry.md
+        // which is private and not projected to the public repo.
+        // The validate.ps1 must guard it behind a directory presence check.
+        Assert.Contains("RA3_Analysis", script, StringComparison.Ordinal);
+        Assert.Contains("Skipping AddressLint", script, StringComparison.Ordinal);
     }
 
     private static string RepositoryRoot()

@@ -12,11 +12,11 @@ public sealed class AgentNativeDispatcherContractTests
         var hook = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "AgentHooks.asm"));
         var dispatcher = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "AgentGameThreadDispatcher.cpp"));
 
-        Assert.Contains("BuildTrampoline", patchManager, StringComparison.Ordinal);
+        Assert.Contains("BuildNativeTrampoline", patchManager, StringComparison.Ordinal);
         Assert.Contains("AgentNativeHookBridge", patchManager, StringComparison.Ordinal);
         Assert.Contains("call AgentNativeHookHandler", hook, StringComparison.Ordinal);
         Assert.Contains("fxsave [eax]", hook, StringComparison.Ordinal);
-        Assert.Contains("fxrstor [eax]", hook, StringComparison.Ordinal);
+        Assert.Contains("fxrstor [edx]", hook, StringComparison.Ordinal);
         Assert.Contains("AgentGameThreadDispatcher::Pump", dispatcher, StringComparison.Ordinal);
         Assert.Contains("InterlockedCompareExchange", dispatcher, StringComparison.Ordinal);
     }
@@ -28,12 +28,12 @@ public sealed class AgentNativeDispatcherContractTests
         var catalog = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Core", "Agent", "apis.json"));
         var routing = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "Generated", "AgentGameApi.NativeRouting.generated.h"));
 
-        Assert.Contains("\"implementation\": \"native\"", catalog, StringComparison.Ordinal);
+        Assert.Contains("\"implementation\":\"native\"", catalog, StringComparison.Ordinal);
         Assert.Contains("kGeneratedGameApiRoutes", routing, StringComparison.Ordinal);
         Assert.Contains("GeneratedGameApiRoute::Native, // GetThingClass", routing, StringComparison.Ordinal);
         Assert.Contains("GeneratedGameApiRoute::Native, // ReadSelectedUnitCode", routing, StringComparison.Ordinal);
         Assert.Contains("GeneratedGameApiRoute::Native, // GetCurrentPlayer", routing, StringComparison.Ordinal);
-        Assert.Contains("kGeneratedNativeGameApiBitmap = 0x0000000003FFFFFFull", routing, StringComparison.Ordinal);
+        Assert.Contains("kGeneratedNativeGameApiBitmap = 0x000000007FFFFFFFull", routing, StringComparison.Ordinal);
     }
 
     private static string RepositoryRoot()

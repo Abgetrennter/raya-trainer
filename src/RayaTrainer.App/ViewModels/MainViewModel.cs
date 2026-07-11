@@ -93,10 +93,23 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         var hotkeys = settings.Hotkeys;
         var configuredFeatures = TrainerFeatureCatalog.ApplyHotkeyOverrides(uiFeatures, hotkeys);
         _hotkeys = hotkeys;
+        // 预过滤：把选中单位分组的功能分给 SelectedUnitViewModel，
+        // 避免 FeatureToggleViewModel 的 GetGroupName fallback 错误分组。
+        var selectedUnitGroupNames = TrainerFeatureGroupCatalog.SelectedUnitGroupingNames;
+        var selectedUnitFeatures = configuredFeatures
+            .Where(f => selectedUnitGroupNames.Contains(f.DisplayName, StringComparer.Ordinal))
+            .ToList();
+        var selectedUnitNameSet = selectedUnitFeatures
+            .Select(f => f.DisplayName)
+            .ToHashSet(StringComparer.Ordinal);
+        var mainFeatures = configuredFeatures
+            .Where(f => !selectedUnitNameSet.Contains(f.DisplayName))
+            .ToList();
         GameLaunch = new GameLaunchViewModel(settings, () => IsBusy, message => StatusMessage = message, SaveLauncherSettings);
         _attachTimeoutSeconds = settings.AttachTimeoutSeconds;
         _hidePrimaryActionCard = settings.HidePrimaryActionCard;
-        FeatureToggle = new FeatureToggleViewModel(this, configuredFeatures, settings);
+        FeatureToggle = new FeatureToggleViewModel(this, mainFeatures, settings);
+        SelectedUnit = new SelectedUnitViewModel(this, selectedUnitFeatures);
         var executeReinforcementQueueHotkey = ResolveConfiguredHotkey(hotkeys, ExecuteReinforcementQueueHotkeyName);
         var readSelectedUnitCodeHotkey = ResolveConfiguredHotkey(hotkeys, ReadSelectedUnitCodeHotkeyName);
         var getMeBaseFeature = RequireFeature(configuredFeatures, GetMeBaseRawName);
@@ -162,7 +175,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         InstallPatchesCommand = new RelayCommand(InstallPatches, () => _sessionManager.CanUseFeatures && !ArePatchesInstalled);
         RestorePatchesCommand = new RelayCommand(RestorePatches);
         SelectCandidateCommand = new RelayCommand<DetectedRa3Target>(SelectCandidate);
-        OpenDiagnosticsCommand = new RelayCommand(() => SelectedPageIndex = 5);
+        OpenDiagnosticsCommand = new RelayCommand(() => SelectedPageIndex = 6);
         PrimaryActionCommand = new RelayCommand(
             () => _ = ExecutePrimaryActionAsync(),
             () => !IsBusy && !HasSelectableCandidates);
@@ -216,6 +229,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
     public ThemeViewModel Theme { get; }
     public GameSessionViewModel GameSession => _gameSession;
     public FeatureToggleViewModel FeatureToggle { get; }
+    public SelectedUnitViewModel SelectedUnit { get; }
     public ReinforcementViewModel Reinforcement { get; }
     public SecretProtocolViewModel SecretProtocol { get; }
     public DiagnosticsViewModel Diagnostics { get; }
@@ -494,6 +508,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         _autoRepair.Stop();
         _gameSession.ResetGameState();
         FeatureToggle.ResetToggleStates();
+        SelectedUnit.ResetToggleStates();
         _sessionWorkflow.End(targetOffline: false);
         NotifySessionStateChanged();
         RaiseAvailabilityChangedForAllFeatures();
@@ -534,7 +549,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
     void IFeatureHost.OnFeatureToggleChanged(TrainerFeature feature, bool enabled) => OnFeatureToggleChanged(feature, enabled);
     void IFeatureHost.CompleteActionIfNeeded(TrainerFeature feature, ActionDispatchResult result) => CompleteActionIfNeeded(feature, result);
     ReinforcementSettings IFeatureHost.GetReinforcementSettings() => Reinforcement.GetReinforcementSettings();
-    void IFeatureHost.OpenHotkeySettings() => SelectedPageIndex = 6;
+    void IFeatureHost.OpenHotkeySettings() => SelectedPageIndex = 7;
 
     void IFeatureHost.ClearHotkey(TrainerFeature feature)
     {
@@ -566,6 +581,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         _gameSession.ResetGameState();
         StopHotkeys();
         FeatureToggle.ResetToggleStates();
+        SelectedUnit.ResetToggleStates();
         _sessionWorkflow.End(targetOffline);
 
         NotifySessionStateChanged();
@@ -578,6 +594,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
     {
         GameLaunch.RaiseCommandStates();
         FeatureToggle.RaiseFeatureCommandStates();
+        SelectedUnit.RaiseFeatureCommandStates();
         Reinforcement.RaiseCommandStates();
         SecretProtocol.RaiseCommandStates();
         LaunchAndLoadCommand.RaiseCanExecuteChanged();
@@ -590,6 +607,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
     private void RaiseFeatureCommandStates()
     {
         FeatureToggle.RaiseFeatureCommandStates();
+        SelectedUnit.RaiseFeatureCommandStates();
         SecretProtocol.RaiseFeatureCommandStates();
     }
 
@@ -633,6 +651,7 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         // Sync toggle checkboxes with bootstrap-initialized flags (e.g. RunInBackground
         // defaults to on via its defaultBytes initializer) so the UI matches live state.
         FeatureToggle.RefreshToggleStates();
+        SelectedUnit.RefreshToggleStates();
     }
 
     private void OnTargetProcessOffline(object? sender, TargetProcessOfflineEventArgs e)
@@ -721,9 +740,11 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
     private IEnumerable<HotkeyActionBinding> CreateActionHotkeyBindings()
     {
         // 动作热键构建留 MainVM（设计稿契约），命令转发 Reinforcement 子 VM
-        if (TryCreateActionHotkeyBinding(_getMeBaseFeature, Reinforcement.GetMeBaseCommand) is { } getMeBaseBinding) yield return getMeBaseBinding;
-        if (TryCreateActionHotkeyBinding(_weNeedBackFeature, Reinforcement.ExecuteReinforcementCommand) is { } reinforcementBinding) yield return reinforcementBinding;
-        if (TryCreateActionHotkeyBinding(_copyForMeFeature, Reinforcement.CopySelectedUnitCommand) is { } copyBinding) yield return copyBinding;
+        // 这三个功能不在 TrainerFeatureGroupCatalog 分组里，没有 feature item binding，
+        // 只能通过 action binding 注册热键。AllowRepeat=true 支持长按连续执行。
+        if (TryCreateActionHotkeyBinding(_getMeBaseFeature, Reinforcement.GetMeBaseCommand) is { } getMeBaseBinding) yield return getMeBaseBinding with { AllowRepeat = true };
+        if (TryCreateActionHotkeyBinding(_weNeedBackFeature, Reinforcement.ExecuteReinforcementCommand) is { } reinforcementBinding) yield return reinforcementBinding with { AllowRepeat = true };
+        if (TryCreateActionHotkeyBinding(_copyForMeFeature, Reinforcement.CopySelectedUnitCommand) is { } copyBinding) yield return copyBinding with { AllowRepeat = true };
         if (_executeReinforcementQueueHotkey is not null) yield return new HotkeyActionBinding(_executeReinforcementQueueHotkey, () => Reinforcement.ExecuteReinforcementQueueCommand.Execute(null), () => Reinforcement.ExecuteReinforcementQueueCommand.CanExecute(null));
         if (_readSelectedUnitCodeHotkey is not null) yield return new HotkeyActionBinding(_readSelectedUnitCodeHotkey, () => Reinforcement.ReadSelectedUnitCodeCommand.Execute(null), () => Reinforcement.ReadSelectedUnitCodeCommand.CanExecute(null), AllowRepeat: true);
     }
@@ -742,7 +763,9 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
 
     private IEnumerable<FeatureItemViewModel> AllFeatureItems()
     {
-        return FeatureToggle.AllFeatureItems().Concat(SecretProtocol.AllFeatureItems());
+        return FeatureToggle.AllFeatureItems()
+            .Concat(SelectedUnit.AllFeatureItems())
+            .Concat(SecretProtocol.AllFeatureItems());
     }
 
     private void StopHotkeys() => _hotkeyCoordinator.Stop();

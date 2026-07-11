@@ -27,12 +27,12 @@ public sealed class TrainerFeatureCatalogTests
         var playerGodMode = Assert.Single(features, feature => feature.RawName == "Player God Mode");
         Assert.Equal("玩家全建筑/单位无敌", playerGodMode.DisplayName);
         Assert.Equal("Ctrl+F11", playerGodMode.Hotkey);
-        Assert.Equal(new[] { "iEnable+16" }, playerGodMode.EnableFlags);
+        Assert.Equal(new[] { "Player God Mode" }, playerGodMode.EnableFlags);
         Assert.Null(playerGodMode.ValueHint);
         var playerOneKillMode = Assert.Single(features, feature => feature.RawName == "Player One Kill Mode");
         Assert.Equal("一击必杀敌方建筑物/单位", playerOneKillMode.DisplayName);
         Assert.Equal("Ctrl+F12", playerOneKillMode.Hotkey);
-        Assert.Equal(new[] { "iEnable+17" }, playerOneKillMode.EnableFlags);
+        Assert.Equal(new[] { "Player One Kill Mode" }, playerOneKillMode.EnableFlags);
         Assert.Null(playerOneKillMode.ValueHint);
         Assert.Contains(features, feature =>
             feature.DisplayName == "选择的单位高速移动" &&
@@ -43,7 +43,7 @@ public sealed class TrainerFeatureCatalogTests
         var captureUnit = Assert.Single(features, feature => feature.RawName == "Select Unit Change ID");
         Assert.Equal("俘虏选择的建筑物/单位", captureUnit.DisplayName);
         Assert.Equal("O", captureUnit.Hotkey);
-        Assert.Equal("MustCode2+800", captureUnit.DispatchTarget);
+        Assert.Null(captureUnit.DispatchTarget);
         Assert.Equal("0x09", captureUnit.ValueHint);
         Assert.Contains(features, feature =>
             feature.DisplayName == "摧毁选择的建筑物/单位" &&
@@ -73,7 +73,7 @@ public sealed class TrainerFeatureCatalogTests
         var dependencyBypass = Assert.Single(features, feature => feature.RawName == "Secret Protocol Dependency Bypass");
         Assert.Equal("秘密协议忽略基地需求", dependencyBypass.DisplayName);
         Assert.Null(dependencyBypass.Hotkey);
-        Assert.Equal(new[] { "iEnable+64" }, dependencyBypass.EnableFlags);
+        Assert.Equal(new[] { "Secret Protocol Dependency Bypass" }, dependencyBypass.EnableFlags);
         Assert.Null(dependencyBypass.DispatchTarget);
         Assert.Null(dependencyBypass.ValueHint);
     }
@@ -94,13 +94,13 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Equal("选择的单位弹药填满", fill.DisplayName);
         Assert.Null(fill.Hotkey);
         Assert.Equal("0x17", fill.ValueHint);
-        Assert.Equal("MustCode+3C00", fill.DispatchTarget);
+        Assert.Null(fill.DispatchTarget);
 
         var reset = Assert.Single(features, f => f.RawName == "Reset Selected Unit Ammo");
         Assert.Equal("选择的单位弹药归1", reset.DisplayName);
         Assert.Null(reset.Hotkey);
         Assert.Equal("0x18", reset.ValueHint);
-        Assert.Equal("MustCode+3D00", reset.DispatchTarget);
+        Assert.Null(reset.DispatchTarget);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
 
         var freeBuild = Assert.Single(features, feature => feature.RawName == "Free Build");
-        Assert.Equal(new[] { "iEnable+68" }, freeBuild.EnableFlags);
+        Assert.Equal(new[] { "Free Build" }, freeBuild.EnableFlags);
         Assert.Null(freeBuild.ToggleBytePatches);
         Assert.Null(freeBuild.ValueHint);
     }
@@ -125,7 +125,7 @@ public sealed class TrainerFeatureCatalogTests
 
         var ignorePrerequisites = Assert.Single(features, feature => feature.RawName == "Ignore Prerequisites");
         Assert.Equal("忽略建造前置条件", ignorePrerequisites.DisplayName);
-        Assert.Equal(new[] { "iEnable+19" }, ignorePrerequisites.EnableFlags);
+        Assert.Equal(new[] { "Ignore Prerequisites" }, ignorePrerequisites.EnableFlags);
         Assert.Null(ignorePrerequisites.ToggleBytePatches);
     }
 
@@ -136,10 +136,10 @@ public sealed class TrainerFeatureCatalogTests
 
         var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
 
-        // Original baseline was 36. Two ammo entries (MAX + hidden MAX2) now both hidden
-        // removes 1 from the UI, and two new fill/reset actions add 2 → 37 total.
-        // The merged attack-speed toggle replaces the old add/restore pair, reducing
-        // the current grid by one item.
+        // Current count = 47. Breakdown: ~45 visible features from the manifest (excluding
+        // two hidden weapon effects: Toggle Selected Unit Attack Speed, Toggle Selected
+        // Unit Attack Range) plus 2 panel-only actions (TemplateModelReplacement,
+        // TemplateWeaponReplacement).
         Assert.Equal(TestAssets.CurrentUiFeatureCount, features.Count);
     }
 
@@ -153,7 +153,7 @@ public sealed class TrainerFeatureCatalogTests
         var setUnitState = Assert.Single(features, feature => feature.RawName == "Set Unit Support State");
         Assert.Equal("选择的建筑物/单位设置伪装状态", setUnitState.DisplayName);
         Assert.Null(setUnitState.Hotkey);
-        Assert.Equal("MustCode2+D00", setUnitState.DispatchTarget);
+        Assert.Null(setUnitState.DispatchTarget);
         Assert.Equal("0x0E", setUnitState.ValueHint);
     }
 
@@ -178,7 +178,7 @@ public sealed class TrainerFeatureCatalogTests
         var runInBackground = Assert.Single(features, feature => feature.RawName == "Run In Background");
         Assert.Equal("允许后台响应（失焦时修改器仍可响应，仅限单机/遭遇战）", runInBackground.DisplayName);
         Assert.Null(runInBackground.Hotkey);
-        Assert.Equal(new[] { "iEnable+1B" }, runInBackground.EnableFlags);
+        Assert.Equal(new[] { "Run In Background" }, runInBackground.EnableFlags);
         Assert.Null(runInBackground.DispatchTarget);
         Assert.Null(runInBackground.ValueHint);
         Assert.Null(runInBackground.ToggleBytePatches);
@@ -272,7 +272,8 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Equal("移动选中单位到鼠标位置", teleport.DisplayName);
         Assert.True(teleport.RequiresDirectGameApi);
         Assert.Equal("0x1A", teleport.ValueHint);
-        Assert.Equal("选中单位 · 其他", TrainerFeatureGroupCatalog.GetGroupName(teleport));
+        // 选中单位分组已移至独立选项卡，GetGroupName fallback 到"秘密协议与扩展操作"
+        Assert.Equal("秘密协议与扩展操作", TrainerFeatureGroupCatalog.GetGroupName(teleport));
     }
 
     [Fact]
@@ -288,6 +289,27 @@ public sealed class TrainerFeatureCatalogTests
         Assert.DoesNotContain(features, feature => feature.RawName == "Replace Template Model");
         Assert.DoesNotContain(features, feature => feature.RawName == "Replace Template Weapon");
         Assert.Equal(features.Select(feature => feature.RawName), uiFeatures.Select(feature => feature.RawName));
+    }
+
+    [Fact]
+    public void FeatureToggleGroupsExcludeSelectedUnitGroups()
+    {
+        var groups = TrainerFeatureGroupCatalog.Groups;
+
+        Assert.Equal(4, groups.Count);
+        Assert.DoesNotContain(groups, g => g.Name.Contains("选中单位"));
+        Assert.DoesNotContain(groups, g => g.Name == "伤害与无敌");
+    }
+
+    [Fact]
+    public void SelectedUnitGroupingNamesContainsExpectedDisplayNames()
+    {
+        var names = TrainerFeatureGroupCatalog.SelectedUnitGroupingNames;
+
+        Assert.Contains("选择的建筑物/单位无限生命值", names);
+        Assert.Contains("摧毁选择的建筑物/单位", names);
+        Assert.Contains("玩家全建筑/单位无敌", names);
+        Assert.Equal(17, names.Count);
     }
 
     [Fact]
@@ -321,7 +343,8 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Equal("K", hotkeys["Get Me Base"]);
         Assert.Equal("J", hotkeys["We Need Back"]);
         Assert.Equal("I", hotkeys["Select Unit Copy For Me"]);
-        Assert.Equal(";", hotkeys["Toggle Selected Unit Attack Speed"]);
+        Assert.DoesNotContain("Toggle Selected Unit Attack Speed", hotkeys.Keys);
+        Assert.DoesNotContain("Toggle Selected Unit Attack Range", hotkeys.Keys);
         Assert.DoesNotContain("Fill Selected Unit Ammo", hotkeys.Keys);
         // 旧版以 DisplayName 作 key 的契约已废弃，确保不再混入。
         Assert.DoesNotContain("增加玩家战场资金", hotkeys.Keys);
@@ -355,7 +378,7 @@ public sealed class TrainerFeatureCatalogTests
 
         Assert.Equal("Grant Secret Protocol", feature.RawName);
         Assert.Equal("授予秘密协议", feature.DisplayName);
-        Assert.Equal("MustCode+1400", feature.DispatchTarget);
+        Assert.Null(feature.DispatchTarget);
         Assert.Equal("0x11", feature.ValueHint);
     }
 
@@ -378,7 +401,7 @@ public sealed class TrainerFeatureCatalogTests
 
         Assert.Equal("Grant Selected Object Upgrade", feature.RawName);
         Assert.Equal("授予选中建筑 Upgrade", feature.DisplayName);
-        Assert.Equal("MustCode+1600", feature.DispatchTarget);
+        Assert.Null(feature.DispatchTarget);
         Assert.Equal("0x12", feature.ValueHint);
     }
 
@@ -391,7 +414,7 @@ public sealed class TrainerFeatureCatalogTests
 
         Assert.Equal("清除玩家科技锁", feature.DisplayName);
         Assert.Null(feature.Hotkey);
-        Assert.Equal("MustCode+2000", feature.DispatchTarget);
+        Assert.Null(feature.DispatchTarget);
         Assert.Equal("0x13", feature.ValueHint);
     }
 
@@ -402,7 +425,7 @@ public sealed class TrainerFeatureCatalogTests
 
         Assert.Equal("Replace Template Model", feature.RawName);
         Assert.Equal("替换单位模板模型", feature.DisplayName);
-        Assert.Equal("MustCode+2200", feature.DispatchTarget);
+        Assert.Null(feature.DispatchTarget);
         Assert.Equal("0x14", feature.ValueHint);
     }
 
@@ -413,24 +436,8 @@ public sealed class TrainerFeatureCatalogTests
 
         Assert.Equal("Replace Template Weapon", feature.RawName);
         Assert.Equal("替换单位模板武器", feature.DisplayName);
-        Assert.Equal("MustCode+2400", feature.DispatchTarget);
+        Assert.Null(feature.DispatchTarget);
         Assert.Equal("0x15", feature.ValueHint);
-    }
-
-    [Fact]
-    public void SelectedUnitAttackSpeedToggleIsInstanceScopedAndVersionGated()
-    {
-        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
-        var toggle = Assert.Single(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
-
-        Assert.Contains("切换", toggle.DisplayName, StringComparison.Ordinal);
-        Assert.Equal(";", toggle.Hotkey);
-        Assert.Equal("0x19", toggle.ValueHint);
-        Assert.DoesNotContain(features, feature => feature.RawName == "Restore Selected Unit Attack Speed");
-        Assert.True(toggle.SupportsProfile("ra3_1.12"));
-        Assert.True(toggle.SupportsProfile("ra3_1.13"));
-        Assert.True(toggle.SupportsProfile("ra3_uprising_1.0"));
-        Assert.True(toggle.SupportsProfile("ra3_uprising_1.1"));
     }
 
     [Fact]
@@ -470,6 +477,71 @@ public sealed class TrainerFeatureCatalogTests
             protocol.UpgradeId == 0xE11E7985 &&
             protocol.SpecialPower == "SpecialPower_Celestial_ElectromagneticGun" &&
             protocol.CanGrant);
+    }
+
+    [Fact]
+    public void UnverifiedSelectedUnitWeaponEffectsAreNotExposedInUi()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        Assert.DoesNotContain(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
+        Assert.DoesNotContain(features, feature => feature.RawName == "Toggle Selected Unit Attack Range");
+
+        // Group catalog regression: removed display names absent, known good name present.
+        Assert.DoesNotContain("选择的单位满攻速（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
+        Assert.DoesNotContain("选择的单位无限射程（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
+        Assert.Contains("选择的单位弹药填满", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
+    }
+
+    [Fact]
+    public void KillUnitFeatureHasSingleTargetSelectionMode()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var kill = Assert.Single(features, feature => feature.RawName == "Destory Select Unit");
+        Assert.Equal(SelectionExecutionMode.SingleTarget, kill.SelectionMode);
+    }
+
+    [Fact]
+    public void HealthMaxFeatureHasApplySelectionMode()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var healthMax = Assert.Single(features, feature => feature.RawName == "Select Unit HP MAX");
+        Assert.Equal(SelectionExecutionMode.Apply, healthMax.SelectionMode);
+    }
+
+    [Fact]
+    public void AllSelectionBasedFeaturesHaveSelectionMode()
+    {
+        var uiFeatures = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var panelActions = TrainerFeatureCatalog.CreatePanelActions();
+        var features = uiFeatures.Concat(panelActions).ToList();
+
+        var selectionRawNames = new[]
+        {
+            "Select Unit HP MAX",
+            "Select Unit HP MIN",
+            "Restore Select Unit Normal HP",
+            "Set Selected Unit Target Health",
+            "Select Unit Super Speed",
+            "Select Unit Slow Speed",
+            "Select Unit Freeze",
+            "Restore Select Unit Speed",
+            "Fill Selected Unit Ammo",
+            "Reset Selected Unit Ammo",
+            "Select Unit Level UP",
+            "Select Unit Change ID",
+            "Destory Select Unit",
+            "Select Unit Copy For Me",
+            "Teleport Selected Units To Mouse",
+            "Expand Production Queue",
+            "Restore Production Queue",
+            "Set Unit Support State",
+            "Grant Selected Object Upgrade",
+        };
+        foreach (var rawName in selectionRawNames)
+        {
+            var feature = Assert.Single(features, f => f.RawName == rawName);
+            Assert.NotNull(feature.SelectionMode);
+        }
     }
 
     private static void AssertBytePatch(

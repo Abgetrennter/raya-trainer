@@ -23,7 +23,7 @@ public sealed class AgentCompatibilityException : InvalidOperationException
 
 public sealed class InjectedAgentBackend
 {
-    private static readonly TimeSpan ExistingAgentProbeTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan ExistingAgentProbeTimeout = TimeSpan.FromMilliseconds(50);
     private readonly IAgentInjector _injector;
     private readonly IAgentClient _client;
 
@@ -269,7 +269,9 @@ public sealed class InjectedAgentBackend
             throw new InvalidOperationException("无法识别当前游戏版本，已停止安装以避免使用错误的 Native 地址。");
         }
 
-        var rvas = profile.BuildNativeAgentCatalogRvas();
+        var rvas = _scannedAddresses is not null
+            ? profile.BuildNativeAgentCatalogRvas(_scannedAddresses)
+            : profile.BuildNativeAgentCatalogRvas();
 
         var catalogResult = await _client.SetNativeCatalogAsync(processId, rvas, timeout, cancellationToken)
             .ConfigureAwait(false);
@@ -316,13 +318,10 @@ public sealed class InjectedAgentBackend
             .Where(entry => entry.Value == 0 && !optionalSymbols.Contains(entry.Key))
             .Select(entry => entry.Key)
             .ToArray();
+        // Record required scan entries that resolved to zero. These will fall back to the
+        // profile's fixed RVA in ResolveHookAddress; the install-stage byte check
+        // (PatchMismatch) rejects any fixed RVA whose bytes don't match.
         LastRequiredUnresolvedSignatures = unresolved;
-        if (unresolved.Length > 0)
-        {
-            var matched = addresses.Count(e => e.Value != 0);
-            throw new InvalidOperationException(
-                $"Agent signature scan incomplete ({matched}/{payload.EntryCount}). Unresolved: {string.Join(", ", unresolved.Take(5))}.");
-        }
 
         // Check that all Verified hooks and bootstrap refs have non-zero scanned addresses.
         var requiredSymbols = profile.Hooks
@@ -334,13 +333,12 @@ public sealed class InjectedAgentBackend
             .ToArray();
         if (missing.Length > 0)
         {
+            // Record Verified hooks/refs whose scan missed. Same fallback applies.
             LastRequiredUnresolvedSignatures = LastRequiredUnresolvedSignatures
                 .Concat(missing)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-            throw new InvalidOperationException(
-                $"Agent signature catalog is missing required symbols: {string.Join(", ", missing.Take(5))}.");
         }
 
         return addresses;

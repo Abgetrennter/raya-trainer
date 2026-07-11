@@ -305,6 +305,7 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
             "Fill Selected Unit Ammo" => SetSelectedUnitAmmo(0x7FFFFFFF, timeout),
             "Reset Selected Unit Ammo" => SetSelectedUnitAmmo(1, timeout),
             "Toggle Selected Unit Attack Speed" => ToggleSelectedAttackSpeed(timeout),
+            "Toggle Selected Unit Attack Range" => ToggleSelectedAttackRange(timeout),
             TrainerFeatureIds.Money or
             "Challenge Money" or
             "Danger Level MAX" or
@@ -371,6 +372,8 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
             "Ignore Quantity Limit" => NativeFeatureStateId.IgnoreQuantityLimit,
             "Run In Background" => NativeFeatureStateId.RunInBackground,
             "Frame Rate Unlock 60fps" => NativeFeatureStateId.FrameRateUnlock,
+            "Logic Time Freeze" => NativeFeatureStateId.LogicTimeFreeze,
+            "Logic Time Slow Motion" => NativeFeatureStateId.SlowMotionMode,
             _ => 0
         };
         return stateId != 0;

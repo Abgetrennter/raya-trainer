@@ -88,6 +88,43 @@ public sealed class Ra3VersionProfile
         return rvas;
     }
 
+    /// <summary>
+    /// Builds the ordered native agent catalog RVAs, preferring signature-scanned
+    /// addresses for address-class entries (global pointers and engine functions)
+    /// and falling back to the profile's verified RVA when a scan is unavailable or
+    /// missed. Constant-class entries (structure offsets and mode flags) always use
+    /// the profile value.
+    /// </summary>
+    public IReadOnlyList<uint> BuildNativeAgentCatalogRvas(
+        IReadOnlyDictionary<string, uint>? scannedAddresses)
+    {
+        if (scannedAddresses is null)
+        {
+            return BuildNativeAgentCatalogRvas();
+        }
+
+        var rvas = new uint[NativeAgentCatalog.ExpectedEntryCount];
+        for (var index = 0; index < NativeAgentCatalog.ExpectedEntryCount; index++)
+        {
+            var name = NativeAgentCatalog.EntryNames[index];
+            var fixedRva = (uint)ResolveVerifiedRva("NativeAgentRefs", name);
+
+            if (NativeAgentRefSignatureMapping.TryGetSignatureKey(name, out var sigKey)
+                && scannedAddresses.TryGetValue(sigKey, out var scanned) && scanned != 0)
+            {
+                // The signature scanner returns absolute virtual addresses (VA), but the
+                // native agent catalog expects RVAs (the DLL adds the module base internally).
+                rvas[index] = scanned - (uint)ModuleBaseVa;
+            }
+            else
+            {
+                rvas[index] = fixedRva;
+            }
+        }
+
+        return rvas;
+    }
+
     private IReadOnlyDictionary<string, VersionedAddress> Catalog(string catalogName)
     {
         return catalogName switch

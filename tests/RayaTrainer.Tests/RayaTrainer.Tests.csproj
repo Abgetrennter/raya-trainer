@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\RayaTrainer.Core\RayaTrainer.Core.csproj" />
     <ProjectReference Include="..\..\tools\RayaTrainer.ApiGenerator\RayaTrainer.ApiGenerator.csproj" />
     <ProjectReference Include="..\..\tools\RayaTrainer.AddressLint\RayaTrainer.AddressLint.csproj" />
+    <ProjectReference Include="..\..\tools\RayaTrainer.ContractLint\RayaTrainer.ContractLint.csproj" />
   </ItemGroup>
 
   <ItemGroup>

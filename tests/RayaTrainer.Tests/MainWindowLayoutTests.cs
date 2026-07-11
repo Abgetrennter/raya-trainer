@@ -96,12 +96,23 @@ public sealed class MainWindowLayoutTests
     }
 
     [Fact]
+    public void SidebarExposesSelectedUnitPage()
+    {
+        var document = LoadXaml("MainWindow.xaml");
+
+        Assert.NotNull(FindByAttribute(document, "Text", "选中单位"));
+        Assert.NotNull(FindByAttribute(document, "DataContext", "{Binding SelectedUnit}"));
+        Assert.NotNull(FindByAttribute(document, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=1}"));
+    }
+
+    [Fact]
     public void SidebarExposesStatusEditorPage()
     {
         var document = LoadXaml("MainWindow.xaml");
 
+        Assert.NotNull(FindByAttribute(document, "Text", "选中单位"));
         Assert.NotNull(FindByAttribute(document, "Text", "状态编辑器"));
-        Assert.NotNull(FindByAttribute(document, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=4}"));
+        Assert.NotNull(FindByAttribute(document, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=5}"));
     }
 
     [Fact]
@@ -112,8 +123,8 @@ public sealed class MainWindowLayoutTests
 
         // 侧边栏导航项存在。
         Assert.NotNull(FindByAttribute(window, "Text", "设置"));
-        // 内容区按 ConverterParameter=6 切换可见性。
-        Assert.NotNull(FindByAttribute(window, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=6}"));
+        // 内容区按 ConverterParameter=7 切换可见性。
+        Assert.NotNull(FindByAttribute(window, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=7}"));
         // 设置页绑定到 MainViewModel.HotkeySettings。
         Assert.NotNull(FindByAttribute(window, "DataContext", "{Binding HotkeySettings}"));
         // 设置页核心控件：捕获控件 + 保存/恢复按钮。
@@ -130,7 +141,7 @@ public sealed class MainWindowLayoutTests
 
         Assert.NotNull(FindByAttribute(window, "Text", "诊断"));
         Assert.True(HasAttribute(window, "Command", "{Binding OpenDiagnosticsCommand}"));
-        Assert.NotNull(FindByAttribute(window, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=5}"));
+        Assert.NotNull(FindByAttribute(window, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=6}"));
         Assert.NotNull(FindByAttribute(diagnostics, "ItemsSource", "{Binding Stages}"));
         Assert.NotNull(FindByAttribute(diagnostics, "Command", "{Binding RefreshCommand}"));
         Assert.NotNull(FindByAttribute(diagnostics, "Command", "{Binding ExportCommand}"));

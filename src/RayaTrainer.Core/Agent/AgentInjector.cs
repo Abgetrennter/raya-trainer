@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO.Pipes;
 using System.Text;
 
 namespace RayaTrainer.Core.Agent;
@@ -22,27 +21,7 @@ public sealed class AgentInjector : IAgentInjector
     private const uint PageReadWrite = 0x04;
     private const uint WaitObject0 = 0x00000000;
     private const uint WaitTimeout = 0x00000102;
-    private const int LegacyPipeProbeTimeoutMs = 200;
-
     private readonly IAgentInjectorApi _api;
-
-    private static bool IsLegacyAgentRunning(int processId)
-    {
-        var legacyPipeName = AgentPipeName.LegacyForProcessId(processId);
-        try
-        {
-            using var client = new NamedPipeClientStream(
-                ".",
-                legacyPipeName,
-                PipeDirection.InOut,
-                PipeOptions.None);
-            client.Connect(LegacyPipeProbeTimeoutMs);
-            return client.IsConnected;
-        }
-        catch (TimeoutException) { return false; }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
-    }
 
     public AgentInjector()
         : this(Kernel32AgentInjectorApi.Instance)
@@ -69,14 +48,6 @@ public sealed class AgentInjector : IAgentInjector
         if (string.IsNullOrWhiteSpace(agentDllPath) || !File.Exists(agentDllPath))
         {
             throw new FileNotFoundException("Agent DLL was not found.", agentDllPath);
-        }
-
-        if (IsLegacyAgentRunning(processId))
-        {
-            return new AgentInjectionResult(
-                false,
-                "检测到旧版 Agent 仍在运行（Ra3Trainer.Agent pipe 响应）。请重启游戏后再连接，修改器不支持双协议接管。",
-                0);
         }
 
         var fullPath = Path.GetFullPath(agentDllPath);

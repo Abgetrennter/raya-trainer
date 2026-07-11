@@ -32,6 +32,8 @@ enum class NativeFeatureStateId : uint32_t
     DangerLevelMode = 22,
     RestoreOrePulse = 23,
     AutoRepair = 24,
+    SlowMotionMode = 25,
+    LogicTimeFreeze = 26,
     MoneyAmount = 100,
     PowerValue = 101,
     SecretProtocolPointValue = 102,

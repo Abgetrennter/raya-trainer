@@ -87,7 +87,7 @@ public sealed class TrainerWebHostLayoutTests
         Assert.Contains("bool RequiresParameters", contracts, StringComparison.Ordinal);
         Assert.Contains("f.capabilityState !== 'Ready'", index, StringComparison.Ordinal);
         Assert.Contains("f.requiresParameters", index, StringComparison.Ordinal);
-        Assert.Contains("请使用下方专用控制", index, StringComparison.Ordinal);
+        Assert.Contains("capabilityHint", index, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -212,6 +212,27 @@ public sealed class TrainerWebHostLayoutTests
         await using var host = TrainerWebHost.Create(session, TestAssets.LoadManifest());
 
         Assert.NotNull(host);
+    }
+
+    [Fact]
+    public void CatalogEndpointsRequireAuthorization()
+    {
+        var root = RepositoryRoot();
+        var endpoints = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.App", "Web", "TrainerApiEndpoints.cs"));
+
+        Assert.Contains("RequireAuthorized(context, tokenStore)", ExtractMapBlock(endpoints, "MapGet(\"/reinforcements/catalog\""));
+        Assert.Contains("RequireAuthorized(context, tokenStore)", ExtractMapBlock(endpoints, "MapGet(\"/secret-protocols/catalog\""));
+    }
+
+    [Fact]
+    public void MobileCatalogPickerOverlayExists()
+    {
+        var root = RepositoryRoot();
+        var index = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.App", "Web", "wwwroot", "index.html"));
+
+        Assert.Contains("picker-overlay", index, StringComparison.Ordinal);
+        Assert.Contains("openPicker('reinforcement')", index, StringComparison.Ordinal);
+        Assert.Contains("openPicker('protocol')", index, StringComparison.Ordinal);
     }
 
     private static string RepositoryRoot()

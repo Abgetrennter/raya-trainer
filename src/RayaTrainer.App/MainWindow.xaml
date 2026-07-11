@@ -63,8 +63,9 @@
         <ListBox DockPanel.Dock="Top"
                  SelectedIndex="{Binding SelectedPageIndex, Mode=TwoWay}"
                  Style="{StaticResource SidebarNavList}" Margin="0,12,0,0">
-          <ListBoxItem><TextBlock Text="功能开关" /></ListBoxItem>
-          <ListBoxItem>
+           <ListBoxItem><TextBlock Text="功能开关" /></ListBoxItem>
+           <ListBoxItem><TextBlock Text="选中单位" /></ListBoxItem>
+           <ListBoxItem>
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="增援与替换" />
               <Border Margin="8,0,0,0" CornerRadius="8" Padding="6,2"
@@ -466,12 +467,13 @@
       <!-- Row 4: Page Content -->
       <Grid Grid.Row="4">
         <pages:FeaturesPage DataContext="{Binding FeatureToggle}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=0}" />
-        <pages:ReinforcementPage DataContext="{Binding Reinforcement}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=1}" />
-        <pages:SecretProtocolPage DataContext="{Binding SecretProtocol}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=2}" />
-        <pages:ToolsPage DataContext="{Binding Tools}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=3}" />
-        <pages:StatusEditorPage Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=4}" />
-        <pages:DiagnosticsPage DataContext="{Binding Diagnostics}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=5}" />
-        <pages:HotkeySettingsPage DataContext="{Binding HotkeySettings}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=6}" />
+        <pages:SelectedUnitPage DataContext="{Binding SelectedUnit}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=1}" />
+        <pages:ReinforcementPage DataContext="{Binding Reinforcement}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=2}" />
+        <pages:SecretProtocolPage DataContext="{Binding SecretProtocol}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=3}" />
+        <pages:ToolsPage DataContext="{Binding Tools}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=4}" />
+        <pages:StatusEditorPage Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=5}" />
+        <pages:DiagnosticsPage DataContext="{Binding Diagnostics}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=6}" />
+        <pages:HotkeySettingsPage DataContext="{Binding HotkeySettings}" Visibility="{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=7}" />
       </Grid>
     </Grid>
   </Grid>

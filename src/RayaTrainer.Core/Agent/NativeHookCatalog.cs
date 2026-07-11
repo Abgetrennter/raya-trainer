@@ -46,7 +46,9 @@ public static class NativeHookCatalog
             ["_BackBackgroundRunPauseGate"] = 39,
             ["_BackSelectedUnitAttackSpeedScale"] = 40,
             ["_BackFrameRateUnlockGameUpdate"] = 41,
-            ["_BackZoomClamp"] = 42
+            ["_BackZoomClamp"] = 42,
+            ["_BackSelectedUnitAttackRangeScale"] = 43,
+            ["_BackLogicTimeFreezeGate"] = 44
         };
 
     public static uint GetHookId(string? returnLabel)

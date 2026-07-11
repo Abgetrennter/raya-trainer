@@ -37,7 +37,7 @@ public sealed class CompatibilitySamplerTests
 
         var points = CompatibilitySamplePlanner.Create(manifest, resolver);
 
-        Assert.Single(points);
+        Assert.Equal(2, points.Count);
         var hook = Assert.Single(points, point => point.AddressExpression == "ra3_1.12.game+1000");
         Assert.Equal(CompatibilitySamplePointCategory.Hook, hook.Category);
         Assert.Equal("Player Money Code", hook.Title);

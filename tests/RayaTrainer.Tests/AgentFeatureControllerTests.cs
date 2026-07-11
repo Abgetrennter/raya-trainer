@@ -30,232 +30,6 @@ public sealed class AgentFeatureControllerTests
     }
 
     [Fact]
-    public void SetToggleSendsEnableFlagsAndDirectBytePatchesToAgent()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-        var feature = new TrainerFeature(
-            "Free Build",
-            "建筑物可随地建造",
-            "L",
-            ["iEnable+F"],
-            null,
-            null,
-            [new TrainerFeatureBytePatch("MustCode+1201", [0xEB, 0x0C], [0x75, 0x0C])]);
-
-        controller.SetToggle(feature, true);
-
-        Assert.Equal(AgentCommand.SetToggle, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x70010Fu, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal([0x01], write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x701401u, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal([0xEB, 0x0C], write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void SetToggleSendsIndirectBytePatchAsAgentDereferenceWrite()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-        var feature = new TrainerFeature(
-            "Free Build",
-            "建筑物可随地建造",
-            "L",
-            [],
-            null,
-            null,
-            [new TrainerFeatureBytePatch("[MustCode+1201]", [0xEB, 0x0C], [0x75, 0x0C])]);
-
-        controller.SetToggle(feature, true);
-
-        var write = Assert.Single(client.LastWriteRequest!.Writes);
-        Assert.Equal(0x701401u, write.Address);
-        Assert.Equal(AgentMemoryAddressMode.DereferenceUInt32, write.AddressMode);
-        Assert.Equal([0xEB, 0x0C], write.Bytes);
-    }
-
-    [Fact]
-    public void TriggerActionSendsReinforcementSettingsBeforeDispatch()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-        var feature = new TrainerFeature("We Need Back", "呼叫战场增援", "J", [], "MustCode2+B00", "0x0C");
-
-        controller.TriggerAction(feature, new ReinforcementSettings(0x12345678, 12, 2));
-
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x700124u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x12345678u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700128u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(12u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x70012Cu, write.Address);
-                Assert.Equal(BitConverter.GetBytes(2u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700120u, write.Address);
-                Assert.Equal([0x0C], write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void WriteResourceValuesSendsRuntimeParameters()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        controller.WriteResourceValues(new ResourceValueSettings(123456, 234567, 9));
-
-        Assert.Equal(AgentCommand.WriteResourceValues, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x700130u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(123456u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700134u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(234567u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700138u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(9u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x7001DCu, write.Address);
-                Assert.Equal(BitConverter.GetBytes(9999999.0f), write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void WriteSecretProtocolGrantSettingsSendsRuntimeParameters()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        controller.WriteSecretProtocolGrantSettings(new SecretProtocolGrantSettings(0xDD6C4C5B, 0x33D87C97));
-
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x70015Cu, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0xDD6C4C5Bu), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700160u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x33D87C97u), write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void WriteTemplateModelReplacementSettingsSendsRuntimeParametersAndClearsStatus()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        controller.WriteTemplateModelReplacementSettings(new TemplateModelReplacementSettings(0x11111111, 0x22222222));
-
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x70016Cu, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x11111111u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700170u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x22222222u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700174u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0u), write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void WriteTemplateWeaponReplacementSettingsSendsRuntimeParametersAndClearsStatus()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        controller.WriteTemplateWeaponReplacementSettings(new TemplateWeaponReplacementSettings(0x11111111, 0x22222222));
-
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal(0x700178u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x11111111u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x70017Cu, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0x22222222u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal(0x700180u, write.Address);
-                Assert.Equal(BitConverter.GetBytes(0u), write.Bytes);
-            });
-    }
-
-    [Fact]
-    public void ReadSecretProtocolBindingProbeResultReadsRuntimeDiagnosticsThroughAgent()
-    {
-        var client = new FakeAgentClient();
-        client.EnqueueRead(0x700140, BitConverter.GetBytes(0x20000000u));
-        client.EnqueueRead(0x700144, BitConverter.GetBytes(0x20001320u));
-        client.EnqueueRead(0x700148, BitConverter.GetBytes(0x12345678u));
-        client.EnqueueRead(0x70014C, BitConverter.GetBytes((uint)SecretProtocolBindingItemStatus.TechAndUpgradeGranted));
-        client.EnqueueRead(0x700150, BitConverter.GetBytes(0x23456789u));
-        client.EnqueueRead(0x700154, BitConverter.GetBytes((uint)SecretProtocolBindingItemStatus.TechGrantedUpgradeManuallyGranted));
-        client.EnqueueRead(0x700158, BitConverter.GetBytes((uint)SecretProtocolBindingProbeStatus.Completed));
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        var result = controller.ReadSecretProtocolBindingProbeResult();
-
-        Assert.Equal(0x20000000u, result.PlayerAddress);
-        Assert.Equal(0x20001320u, result.ScienceManagerAddress);
-        Assert.Equal(0x12345678u, result.AirPowerTechAddress);
-        Assert.Equal(SecretProtocolBindingItemStatus.TechAndUpgradeGranted, result.AirPowerStatus);
-        Assert.Equal(0x23456789u, result.EnhancedKamikazeTechAddress);
-        Assert.Equal(SecretProtocolBindingItemStatus.TechGrantedUpgradeManuallyGranted, result.EnhancedKamikazeStatus);
-        Assert.Equal(SecretProtocolBindingProbeStatus.Completed, result.Status);
-        Assert.Equal(7, client.ReadRequests.Count);
-    }
-
-    [Fact]
     public void ReadSelectedUnitCodeUsesGameApiMailboxThroughAgent()
     {
         var client = new FakeAgentClient();
@@ -284,22 +58,6 @@ public sealed class AgentFeatureControllerTests
         Assert.Equal(GameApiDispatchStatus.Completed, result);
         Assert.Equal(5000u, client.LastSetSelectedStatusBitRequest!.TimeoutMilliseconds);
         Assert.Equal(TimeSpan.FromSeconds(8), client.LastSetSelectedStatusBitPipeTimeout);
-    }
-
-    [Fact]
-    public void WriteTargetHealthValueUsesSetSelectedUnitHealthGameApi()
-    {
-        var client = new FakeAgentClient();
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-
-        controller.WriteTargetHealthValue(123f, 456f);
-
-        Assert.Null(client.LastWriteCommand);
-        Assert.Equal(1u, client.LastSetSelectedUnitHealthRequest!.Mode);
-        Assert.Equal(123f, client.LastSetSelectedUnitHealthRequest.Health);
-        Assert.Equal(456f, client.LastSetSelectedUnitHealthRequest.MaxHealth);
-        Assert.Equal(5000u, client.LastSetSelectedUnitHealthRequest.TimeoutMilliseconds);
-        Assert.Equal(TimeSpan.FromSeconds(8), client.LastSetSelectedUnitHealthPipeTimeout);
     }
 
     [Fact]
@@ -403,26 +161,6 @@ public sealed class AgentFeatureControllerTests
     }
 
     [Fact]
-    public async Task TriggerActionAndWaitForConsumptionPollsAgentUntilDispatchClears()
-    {
-        var client = new FakeAgentClient();
-        client.EnqueueRead(0x700120, [0x08]);
-        client.EnqueueRead(0x700120, [0x00]);
-        var controller = new AgentFeatureController(client, 1234, AgentStatus);
-        var feature = new TrainerFeature("Select Unit Level UP", "选择的单位快速升级", "P", [], "MustCode2+700", "0x08");
-
-        var result = await controller.TriggerActionAndWaitForConsumptionAsync(
-            feature,
-            timeout: TimeSpan.FromMilliseconds(100),
-            pollInterval: TimeSpan.FromMilliseconds(1));
-
-        Assert.Equal(ActionDispatchResult.Consumed, result);
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        Assert.Equal([0x08], Assert.Single(client.LastWriteRequest!.Writes).Bytes);
-        Assert.Equal(2, client.ReadRequests.Count);
-    }
-
-    [Fact]
     public void ReadGameModeUsesSemanticAgentCommandWithoutMemoryReads()
     {
         var client = new FakeAgentClient();
@@ -433,6 +171,182 @@ public sealed class AgentFeatureControllerTests
         Assert.Equal(GameRuntimeConstants.GameModeShell, gameMode);
         Assert.Equal(1, client.GameModeCallCount);
         Assert.Empty(client.ReadRequests);
+    }
+
+    [Fact]
+    public void WriteResourceValuesSendsNativeFeatureStateEntries()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+
+        controller.WriteResourceValues(new ResourceValueSettings(123456, 234567, 9));
+
+        Assert.Equal(AgentCommand.SetToggle, client.LastWriteCommand);
+        Assert.NotNull(client.LastWriteRequest);
+        Assert.Collection(
+            client.LastWriteRequest!.Writes,
+            write =>
+            {
+                Assert.Equal((uint)NativeFeatureStateId.MoneyAmount, write.Address);
+                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+                Assert.Equal(BitConverter.GetBytes(123456u), write.Bytes);
+            },
+            write =>
+            {
+                Assert.Equal((uint)NativeFeatureStateId.PowerValue, write.Address);
+                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+                Assert.Equal(BitConverter.GetBytes(234567u), write.Bytes);
+            },
+            write =>
+            {
+                Assert.Equal((uint)NativeFeatureStateId.SecretProtocolPointValue, write.Address);
+                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+                Assert.Equal(BitConverter.GetBytes(9u), write.Bytes);
+            },
+            write =>
+            {
+                Assert.Equal((uint)NativeFeatureStateId.SelectedUnitMaxHealthBits, write.Address);
+                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+                Assert.Equal(BitConverter.GetBytes(9999999f), write.Bytes);
+            });
+    }
+
+    [Fact]
+    public void SetToggleWritesNativeFeatureStateEntryForMappedFeature()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        var feature = new TrainerFeature("Player God Mode", "无敌", null, [], null, null);
+
+        controller.SetToggle(feature, true);
+
+        Assert.Equal(AgentCommand.SetToggle, client.LastWriteCommand);
+        var write = Assert.Single(client.LastWriteRequest!.Writes);
+        Assert.Equal((uint)NativeFeatureStateId.GodMode, write.Address);
+        Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+        Assert.Equal(BitConverter.GetBytes(1u), write.Bytes);
+    }
+
+    [Fact]
+    public void SetToggleAppliesConcreteAddressBytePatchesViaTriggerAction()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        var feature = new TrainerFeature(
+            "Player God Mode",
+            "无敌",
+            null,
+            [],
+            null,
+            null,
+            [new TrainerFeatureBytePatch("ra3_1.12.game+6CFDFE", [0xEB, 0x0C], [0x75, 0x0C])]);
+
+        controller.SetToggle(feature, true);
+
+        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
+        var write = Assert.Single(client.LastWriteRequest!.Writes);
+        Assert.Equal(0xACFDFEu, write.Address);
+        Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
+        Assert.Equal([0xEB, 0x0C], write.Bytes);
+    }
+
+    [Fact]
+    public void TriggerActionRoutesLevelUpToGameApi()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        var feature = new TrainerFeature("Select Unit Level UP", "选择的单位快速升级", null, [], null, null);
+
+        controller.TriggerAction(feature);
+
+        Assert.Null(client.LastWriteCommand);
+        Assert.NotNull(client.LastLevelUpRequest);
+        Assert.Equal(1u, client.LastLevelUpRequest!.Count);
+        Assert.Equal(0u, client.LastLevelUpRequest.Rank);
+        Assert.Equal(0u, client.LastLevelUpRequest.Flags);
+        Assert.True(client.LastLevelUpRequest.EnableDirectGameApi);
+        Assert.Equal(5000u, client.LastLevelUpRequest.TimeoutMilliseconds);
+    }
+
+    [Fact]
+    public void TriggerActionRoutesReinforcementToGameApiUsingCachedSettings()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        controller.WriteReinforcementSettings(new ReinforcementSettings(0x11112222, 5, 3));
+        var feature = new TrainerFeature(TrainerFeatureIds.Reinforcement, "We Need Back", null, [], null, null);
+
+        controller.TriggerAction(feature);
+
+        Assert.Null(client.LastWriteCommand);
+        Assert.NotNull(client.LastWeNeedBackRequest);
+        Assert.Equal(0x11112222u, client.LastWeNeedBackRequest!.UnitTypeId);
+        Assert.Equal(5u, client.LastWeNeedBackRequest.Count);
+        Assert.Equal(3u, client.LastWeNeedBackRequest.Rank);
+        Assert.True(client.LastWeNeedBackRequest.EnableDirectGameApi);
+    }
+
+    [Fact]
+    public void WriteSecretProtocolGrantSettingsFeedsTriggerAction()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+
+        controller.WriteSecretProtocolGrantSettings(new SecretProtocolGrantSettings(0xAAAABBBB, 0xCCCCDDDD));
+        Assert.Null(client.LastWriteCommand);
+
+        var feature = new TrainerFeature(TrainerFeatureIds.GrantSecretProtocol, "Grant Secret Protocol", null, [], null, null);
+        controller.TriggerAction(feature);
+
+        Assert.NotNull(client.LastGrantSecretProtocolRequest);
+        Assert.Equal(0xAAAABBBBu, client.LastGrantSecretProtocolRequest!.TechHash);
+        Assert.Equal(0xCCCCDDDDu, client.LastGrantSecretProtocolRequest.UpgradeHash);
+        Assert.True(client.LastGrantSecretProtocolRequest.EnableDirectGameApi);
+    }
+
+    [Fact]
+    public void WriteTemplateReplacementSettingsFeedTriggerAction()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+
+        // Model replacement
+        controller.WriteTemplateModelReplacementSettings(new TemplateModelReplacementSettings(0x11111111, 0x22222222));
+        var modelFeature = new TrainerFeature(TrainerFeatureIds.ReplaceTemplateModel, "Replace Template Model", null, [], null, null);
+        controller.TriggerAction(modelFeature);
+        Assert.NotNull(client.LastReplaceTemplateModelRequest);
+        Assert.Equal(0x11111111u, client.LastReplaceTemplateModelRequest!.TargetHash);
+        Assert.Equal(0x22222222u, client.LastReplaceTemplateModelRequest.DonorHash);
+        Assert.True(client.LastReplaceTemplateModelRequest.EnableDirectGameApi);
+
+        // Weapon replacement
+        controller.WriteTemplateWeaponReplacementSettings(new TemplateWeaponReplacementSettings(0x33333333, 0x44444444));
+        var weaponFeature = new TrainerFeature(TrainerFeatureIds.ReplaceTemplateWeapon, "Replace Template Weapon", null, [], null, null);
+        controller.TriggerAction(weaponFeature);
+        Assert.NotNull(client.LastReplaceTemplateWeaponRequest);
+        Assert.Equal(0x33333333u, client.LastReplaceTemplateWeaponRequest!.TargetHash);
+        Assert.Equal(0x44444444u, client.LastReplaceTemplateWeaponRequest.DonorHash);
+        Assert.True(client.LastReplaceTemplateWeaponRequest.EnableDirectGameApi);
+    }
+
+    [Fact]
+    public void WriteTargetHealthValueFeedsTriggerActionDispatch()
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+
+        controller.WriteTargetHealthValue(123f, 456f);
+        Assert.Null(client.LastWriteCommand);
+
+        var feature = new TrainerFeature(TrainerFeatureIds.SetSelectedUnitTargetHealth, "Set Selected Unit Target Health", null, [], null, null);
+        controller.TriggerAction(feature);
+
+        Assert.Null(client.LastWriteCommand);
+        Assert.NotNull(client.LastSetSelectedUnitHealthRequest);
+        Assert.Equal(1u, client.LastSetSelectedUnitHealthRequest!.Mode);
+        Assert.Equal(123f, client.LastSetSelectedUnitHealthRequest.Health);
+        Assert.Equal(456f, client.LastSetSelectedUnitHealthRequest.MaxHealth);
+        Assert.True(client.LastSetSelectedUnitHealthRequest.EnableDirectGameApi);
     }
 
     private sealed class FakeAgentClient : IAgentClient
@@ -451,6 +365,11 @@ public sealed class AgentFeatureControllerTests
         public TimeSpan LastExpandProductionQueuePipeTimeout { get; private set; }
         public AgentGameApiTeleportSelectedUnitsToMouseRequest? LastTeleportSelectedUnitsToMouseRequest { get; private set; }
         public TimeSpan LastTeleportSelectedUnitsToMousePipeTimeout { get; private set; }
+        public AgentGameApiLevelUpSelectedRequest? LastLevelUpRequest { get; private set; }
+        public AgentGameApiWeNeedBackRequest? LastWeNeedBackRequest { get; private set; }
+        public AgentGameApiGrantSecretProtocolRequest? LastGrantSecretProtocolRequest { get; private set; }
+        public AgentGameApiReplaceTemplateModelRequest? LastReplaceTemplateModelRequest { get; private set; }
+        public AgentGameApiReplaceTemplateWeaponRequest? LastReplaceTemplateWeaponRequest { get; private set; }
         public List<AgentMemoryReadRequest> ReadRequests { get; } = [];
         public int ReadSelectedUnitSnapshotApiCallCount { get; private set; }
         public int GameModeCallCount { get; private set; }
@@ -546,6 +465,7 @@ public sealed class AgentFeatureControllerTests
             TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
+            LastLevelUpRequest = request;
             return Task.FromResult(new AgentGameApiLevelUpSelectedPayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
@@ -623,6 +543,7 @@ public sealed class AgentFeatureControllerTests
             TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
+            LastWeNeedBackRequest = request;
             return Task.FromResult(new AgentGameApiWeNeedBackPayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
@@ -763,6 +684,7 @@ public sealed class AgentFeatureControllerTests
             TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
+            LastGrantSecretProtocolRequest = request;
             return Task.FromResult(new AgentGameApiGrantSecretProtocolPayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
@@ -824,6 +746,7 @@ public sealed class AgentFeatureControllerTests
             TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
+            LastReplaceTemplateModelRequest = request;
             return Task.FromResult(new AgentGameApiReplaceTemplateModelPayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
@@ -839,6 +762,7 @@ public sealed class AgentFeatureControllerTests
             TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
+            LastReplaceTemplateWeaponRequest = request;
             return Task.FromResult(new AgentGameApiReplaceTemplateWeaponPayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
@@ -914,6 +838,10 @@ public sealed class AgentFeatureControllerTests
 
         public Task<AgentGameApiToggleSelectedAttackSpeedPayload> ToggleSelectedAttackSpeedAsync(
             int processId, AgentGameApiToggleSelectedAttackSpeedRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<AgentGameApiToggleSelectedAttackRangePayload> ToggleSelectedAttackRangeAsync(
+            int processId, AgentGameApiToggleSelectedAttackRangeRequest request, TimeSpan timeout,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<AgentGameApiTeleportSelectedUnitsToMousePayload> TeleportSelectedUnitsToMouseAsync(

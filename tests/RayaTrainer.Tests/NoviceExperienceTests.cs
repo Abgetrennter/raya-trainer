@@ -103,7 +103,7 @@ public sealed class NoviceExperienceTests
 
         viewModel.PrimaryActionCommand.Execute(null);
 
-        Assert.Equal(5, viewModel.SelectedPageIndex);
+        Assert.Equal(6, viewModel.SelectedPageIndex);
         Assert.Equal(TrainerDiagnosticHealth.Error, viewModel.Diagnostics.Health);
     }
 
