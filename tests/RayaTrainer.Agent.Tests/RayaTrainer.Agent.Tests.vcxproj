@@ -32,8 +32,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AgentGameThreadDispatcherTests.cpp" />
+    <ClCompile Include="NativePointerSetTests.cpp" />
     <ClCompile Include="..\..\src\RayaTrainer.Agent\AgentGameThreadDispatcher.cpp" />
   </ItemGroup>
-  <ItemGroup><ClInclude Include="..\..\src\RayaTrainer.Agent\AgentGameThreadDispatcher.h" /></ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\RayaTrainer.Agent\AgentGameThreadDispatcher.h" />
+    <ClInclude Include="..\..\src\RayaTrainer.Agent\NativePointerSet.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

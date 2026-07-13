@@ -21,7 +21,7 @@ public static class AgentProtocolContracts
     public static void Contract_Fingerprint_EncodesV9AndMagic()
     {
         // High 32 bits = ASCII "RAYA" (LE) = 0x52415941.
-        // Low 32 bits encode (Version=9 << 16 | 1) = 0x00090001.
-        Assert.Equal(0x5241594100090001UL, AgentBuildIdentity.Fingerprint);
+        // Low 32 bits encode (Version=9 << 16 | 6) = 0x00090006.
+        Assert.Equal(0x5241594100090006UL, AgentBuildIdentity.Fingerprint);
     }
 }

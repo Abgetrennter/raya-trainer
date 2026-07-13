@@ -39,7 +39,7 @@ public sealed class NativeAsmMigrationContractTests
         Assert.Contains("uint32_t FindFirstSelectedComponent()", gameApi, StringComparison.Ordinal);
         Assert.Contains("const auto component = FindFirstSelectedObjectComponent();", gameApi, StringComparison.Ordinal);
         Assert.Contains("SafeReadU32(object + 0x138u, component)", gameApi, StringComparison.Ordinal);
-        Assert.Contains("SafeReadStructureU32(component, NativeCatalogEntry::ProductionModulesOffset", gameApi, StringComparison.Ordinal);
+        Assert.Contains("SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::ProductionModulesOffset", gameApi, StringComparison.Ordinal);
 
         // The legacy clear action indexes the GameClient lock table with GameClient+0x28,
         // then separately resolves the current player for the science containers.

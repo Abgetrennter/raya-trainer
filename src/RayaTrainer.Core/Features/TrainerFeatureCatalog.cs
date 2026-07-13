@@ -9,6 +9,8 @@ public static class TrainerFeatureCatalog
     internal const string ExpandProductionQueueRawName = TrainerFeatureIds.ExpandProductionQueue;
     internal const string RestoreProductionQueueRawName = TrainerFeatureIds.RestoreProductionQueue;
     internal const string TeleportSelectedUnitsToMouseRawName = TrainerFeatureIds.TeleportSelectedUnitsToMouse;
+    internal const string ClearSelectedAttackSpeedEffectsRawName = TrainerFeatureIds.ClearSelectedAttackSpeedEffects;
+    internal const string ClearSelectedAttackRangeEffectsRawName = TrainerFeatureIds.ClearSelectedAttackRangeEffects;
 
     private static readonly IReadOnlyDictionary<string, FeatureOverride> SourceTrainerOverrides =
         new Dictionary<string, FeatureOverride>(StringComparer.Ordinal)
@@ -174,12 +176,36 @@ public static class TrainerFeatureCatalog
     private static readonly TrainerFeature ToggleSelectedUnitAttackRangeFeature =
         new(
             "Toggle Selected Unit Attack Range",
-            "选择的单位无限射程（切换，仅当前实例）",
-            "'",
+            "选择的单位无限射程与索敌（切换，仅当前实例）",
+            null,
             [],
             null,
             "0x1B",
+            SupportedProfileIds: ["ra3_1.12"],
+            SelectionMode: SelectionExecutionMode.Apply);
+
+    private static readonly TrainerFeature ClearSelectedAttackSpeedEffectsFeature =
+        new(
+            TrainerFeatureIds.ClearSelectedAttackSpeedEffects,
+            "清空满攻速单位",
+            null,
+            [],
+            null,
+            null,
+            RequiresDirectGameApi: true,
             SupportedProfileIds: ["ra3_1.12", "ra3_1.13", "ra3_uprising_1.0", "ra3_uprising_1.1"],
+            SelectionMode: SelectionExecutionMode.Apply);
+
+    private static readonly TrainerFeature ClearSelectedAttackRangeEffectsFeature =
+        new(
+            TrainerFeatureIds.ClearSelectedAttackRangeEffects,
+            "清空无限射程单位",
+            null,
+            [],
+            null,
+            null,
+            RequiresDirectGameApi: true,
+            SupportedProfileIds: ["ra3_1.12"],
             SelectionMode: SelectionExecutionMode.Apply);
 
     private static readonly TrainerFeature SecretProtocolDependencyBypassFeature =
@@ -351,7 +377,11 @@ public static class TrainerFeatureCatalog
                 LogicTimeSlowMotionFeature,
                 SetTargetHealthFeature,
                 FillSelectedUnitAmmoFeature,
-                ResetSelectedUnitAmmoFeature
+                ResetSelectedUnitAmmoFeature,
+                ToggleSelectedUnitAttackSpeedFeature,
+                ToggleSelectedUnitAttackRangeFeature,
+                ClearSelectedAttackSpeedEffectsFeature,
+                ClearSelectedAttackRangeEffectsFeature
             ])
             .ToArray();
     }
@@ -445,6 +475,8 @@ public static class TrainerFeatureCatalog
         "Grant Selected Object Upgrade" => SelectionExecutionMode.Apply,
         // Attack Range 暂不改，标为 Apply 保持现状
         "Toggle Selected Unit Attack Range" => SelectionExecutionMode.Apply,
+        "Clear Selected Attack Speed Effects" => SelectionExecutionMode.Apply,
+        "Clear Selected Attack Range Effects" => SelectionExecutionMode.Apply,
         _ => null,
     };
 

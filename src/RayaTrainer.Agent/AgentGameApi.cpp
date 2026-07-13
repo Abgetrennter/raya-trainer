@@ -6,6 +6,7 @@
 #include "AgentGameApi.h"
 #include "AgentGameThreadDispatcher.h"
 #include "AgentNativeHooks.h"
+#include "NativePointerSet.h"
 
 namespace RayaTrainer::agent
 {
@@ -433,7 +434,10 @@ void GrantSecretProtocolOnGameThread(const uint32_t* arguments, uint32_t* result
     results[0] = invoked && GrantUpgradeToContext(player, definition, 1) ? 1u : 0u;
 }
 
-using SelectedObjectVisitor = uint32_t(*)(uint32_t component, const uint32_t* arguments);
+// Selection nodes store Drawable*. The corresponding GameObject* is reached via
+// Drawable+0x138. Keep both pointers explicit because hook-side identity checks
+// must use the same GameObject* observed by the weapon subsystem.
+using SelectedObjectVisitor = uint32_t(*)(uint32_t selectedDrawable, uint32_t gameObject, const uint32_t* arguments);
 
 bool VisitSelectedObjects(
     SelectedObjectVisitor visitor,
@@ -455,12 +459,12 @@ bool VisitSelectedObjects(
 
     for (uint32_t index = 0; index < count && node != 0; ++index)
     {
-        uint32_t object = 0;
-        uint32_t component = 0;
-        if (SafeReadU32(node + 0x08u, object) && object != 0 &&
-            SafeReadU32(object + 0x138u, component) && component != 0)
+        uint32_t selectedDrawable = 0;
+        uint32_t gameObject = 0;
+        if (SafeReadU32(node + 0x08u, selectedDrawable) && selectedDrawable != 0 &&
+            SafeReadU32(selectedDrawable + 0x138u, gameObject) && gameObject != 0)
         {
-            visitedCount += visitor(component, arguments);
+            visitedCount += visitor(selectedDrawable, gameObject, arguments);
         }
 
         uint32_t next = 0;
@@ -487,107 +491,55 @@ bool VisitSelectedObjects(
 // VisitSelectedObjects 的签名。
 // ---------------------------------------------------------------------------
 
-// SmartToggle 内部状态：第一阶段累积读取结果
-struct SmartToggleScanState
-{
-    uint32_t firstValue;     // 第一个单位的 flag 值（0 或 1）
-    bool hasFirst;           // 是否已读到第一个有效值
-    bool mixed;              // 是否出现不同值
-    uint32_t validCount;     // 有效读取计数
-};
+// ---------------------------------------------------------------------------
+// Registry sets for selected weapon effects
+// ---------------------------------------------------------------------------
 
-// 全局 SmartToggle 扫描状态（每次 ExecuteSmartToggleOnSelection 调用前重置）
-// 使用 thread_local 因为 game thread dispatch 是单线程的
-static thread_local SmartToggleScanState g_smartToggleScan;
+// Tracks which GameObjects have attack speed override enabled.
+static NativePointerSet<256> g_attackSpeedObjects;
 
-// Attack Speed flag reader: 读 WeaponStateMachine+0x7B
-static uint32_t ReadAttackSpeedFlag(uint32_t component)
+// Tracks which selected GameObjects have attack range override enabled.
+// Selection nodes contain Drawable*, while weapon range functions receive the
+// associated GameObject* (= Drawable+0x138) as their first stack argument.
+static NativePointerSet<1024> g_attackRangeObjects;
+
+// Thread-local temp buffers for collection during traversal.
+static thread_local uint32_t g_tempObjectBuffer[4096];
+static thread_local uint32_t g_tempObjectCount;
+
+static thread_local uint32_t g_tempRangeObjectBuffer[1024];
+static thread_local uint32_t g_tempRangeObjectCount;
+
+// Collector: gather valid component pointer (= [GameObject+0x138]) for speed set.
+// Must match what Hook 40 reads from [WeaponSlot+0x24].
+static uint32_t CollectSpeedObjectsVisitor(uint32_t /*gameObject*/, uint32_t component, const uint32_t*)
 {
-    uint8_t flag = 0;
-    if (!SafeReadU8(component + 0x7Bu, flag))
+    if (component != 0 && g_tempObjectCount < 4096)
     {
-        return 0;
+        g_tempObjectBuffer[g_tempObjectCount++] = component;
     }
-    return (flag & 1u) != 0 ? 1u : 0u;
-}
-
-// Attack Speed flag writer: 写 WeaponStateMachine+0x7B
-static uint32_t WriteAttackSpeedFlag(uint32_t component, uint32_t value)
-{
-    uint8_t byteValue = static_cast<uint8_t>(value != 0 ? 1u : 0u);
-    return SafeWriteU8(component + 0x7Bu, byteValue) ? 1u : 0u;
-}
-
-// Adapter: 第一阶段读取 visitor（Attack Speed 专用）
-static uint32_t SmartToggleReadAdapter(uint32_t component, const uint32_t*)
-{
-    uint32_t value = ReadAttackSpeedFlag(component);
-    if (!g_smartToggleScan.hasFirst)
-    {
-        g_smartToggleScan.firstValue = value;
-        g_smartToggleScan.hasFirst = true;
-    }
-    else if (value != g_smartToggleScan.firstValue)
-    {
-        g_smartToggleScan.mixed = true;
-    }
-    ++g_smartToggleScan.validCount;
     return 1;
 }
 
-// Adapter: 第二阶段写入 visitor（Attack Speed 专用）
-static uint32_t SmartToggleWriteAdapter(uint32_t component, const uint32_t* arguments)
+// Collector: gather the GameObject* used by WeaponTemplate range functions.
+static uint32_t CollectRangeObjectsVisitor(uint32_t /*selectedDrawable*/, uint32_t gameObject, const uint32_t*)
 {
-    uint32_t value = arguments != nullptr ? arguments[0] : 1u;
-    return WriteAttackSpeedFlag(component, value);
+    if (gameObject == 0 || g_tempRangeObjectCount >= 1024)
+    {
+        return 0;
+    }
+
+    g_tempRangeObjectBuffer[g_tempRangeObjectCount++] = gameObject;
+    return 1;
 }
 
-// SmartToggle 执行器（Attack Speed 专用版本）
-bool ExecuteSmartToggleOnSelection(uint32_t& affectedCount)
-{
-    affectedCount = 0;
-
-    // 第一阶段：扫描
-    g_smartToggleScan = {};
-    uint32_t scanCount = 0;
-    if (!VisitSelectedObjects(SmartToggleReadAdapter, nullptr, scanCount) || scanCount == 0)
-    {
-        return false;
-    }
-
-    // 决定目标值：全 OFF→1, 全 ON→0, 混合→1
-    uint32_t targetValue;
-    if (!g_smartToggleScan.hasFirst || g_smartToggleScan.validCount == 0)
-    {
-        return false;
-    }
-    if (g_smartToggleScan.mixed)
-    {
-        targetValue = 1u;
-    }
-    else
-    {
-        targetValue = g_smartToggleScan.firstValue != 0 ? 0u : 1u;
-    }
-
-    // 第二阶段：写入
-    const uint32_t writeArgs[] = { targetValue };
-    uint32_t writeCount = 0;
-    if (!VisitSelectedObjects(SmartToggleWriteAdapter, writeArgs, writeCount))
-    {
-        return false;
-    }
-    affectedCount = writeCount;
-    return true;
-}
-
-uint32_t SetSelectedStatusBitVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t SetSelectedStatusBitVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     const auto domain = arguments[0];
     const auto bitIndex = arguments[1];
     const auto enabled = arguments[2];
     const auto baseOffset = domain == 0 ? 0x80u : 0xA0u;
-    const auto address = component + baseOffset + ((bitIndex >> 5u) * sizeof(uint32_t));
+    const auto address = weaponStoreUser + baseOffset + ((bitIndex >> 5u) * sizeof(uint32_t));
     uint32_t value = 0;
     if (!SafeReadU32(address, value))
     {
@@ -602,11 +554,11 @@ void SetSelectedStatusBitOnGameThread(const uint32_t* arguments, uint32_t* resul
     results[1] = VisitSelectedObjects(SetSelectedStatusBitVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-uint32_t SetSelectedUnitHealthVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t SetSelectedUnitHealthVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t body = 0;
     const auto bodyOffset = ResolveStructureOffset(NativeCatalogEntry::BodyOffset);
-    if (bodyOffset == 0 || !SafeReadU32(component + bodyOffset, body) || body == 0)
+    if (bodyOffset == 0 || !SafeReadU32(weaponStoreUser + bodyOffset, body) || body == 0)
     {
         return 0;
     }
@@ -651,10 +603,10 @@ bool IsProductionUpdateName(uint32_t address)
     }
 }
 
-uint32_t ExpandProductionQueueVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t ExpandProductionQueueVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t modules = 0;
-    if (!SafeReadStructureU32(component, NativeCatalogEntry::ProductionModulesOffset, modules) || modules == 0)
+    if (!SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::ProductionModulesOffset, modules) || modules == 0)
     {
         return 0;
     }
@@ -818,13 +770,13 @@ uint32_t FindFirstSelectedObjectComponent()
     return component;
 }
 
-uint32_t LevelUpSelectedVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t LevelUpSelectedVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t veterancy = 0;
     const auto moduleBase = reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr));
     const auto functionRva = ResolveNativeCatalogRva(NativeCatalogEntry::LevelUpSelected);
     if (moduleBase == 0 || functionRva == 0 ||
-        !SafeReadStructureU32(component, NativeCatalogEntry::VeterancyOffset, veterancy) || veterancy == 0)
+        !SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::VeterancyOffset, veterancy) || veterancy == 0)
     {
         return 0;
     }
@@ -860,22 +812,22 @@ void KillUnitOnGameThread(const uint32_t*, uint32_t* results)
     results[0] = 1;
 }
 
-uint32_t SetUnitStateVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t SetUnitStateVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t first = 0;
     uint32_t second = 0;
     const auto firstOffset = ResolveStructureOffset(NativeCatalogEntry::UnitStatePrimaryOffset);
     const auto secondOffset = ResolveStructureOffset(NativeCatalogEntry::UnitStateSecondaryOffset);
     if (firstOffset == 0 || secondOffset == 0 ||
-        !SafeReadU32(component + firstOffset, first) || !SafeReadU32(component + secondOffset, second))
+        !SafeReadU32(weaponStoreUser + firstOffset, first) || !SafeReadU32(weaponStoreUser + secondOffset, second))
     {
         return 0;
     }
     const auto requested = arguments == nullptr ? 0u : arguments[0];
     const auto primaryFlags = requested == 0 ? 0x80000000u : requested;
     const auto secondaryFlags = requested == 0 ? 0x00000800u : 0u;
-    return SafeWriteU32(component + firstOffset, first | primaryFlags) &&
-        SafeWriteU32(component + secondOffset, second | secondaryFlags) ? 1u : 0u;
+    return SafeWriteU32(weaponStoreUser + firstOffset, first | primaryFlags) &&
+        SafeWriteU32(weaponStoreUser + secondOffset, second | secondaryFlags) ? 1u : 0u;
 }
 
 void SetUnitStateOnGameThread(const uint32_t* arguments, uint32_t* results)
@@ -883,14 +835,14 @@ void SetUnitStateOnGameThread(const uint32_t* arguments, uint32_t* results)
     results[1] = VisitSelectedObjects(SetUnitStateVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-uint32_t GrantSelectedUpgradeVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t GrantSelectedUpgradeVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t upgradeStore = 0;
     const auto definition = arguments[0];
     const auto moduleBase = reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr));
     const auto hasRva = ResolveNativeCatalogRva(NativeCatalogEntry::PlayerGetUpgradeStore);
     if (definition == 0 || moduleBase == 0 || hasRva == 0 ||
-        !SafeReadStructureU32(component, NativeCatalogEntry::ObjectOwnerOffset, upgradeStore) || upgradeStore == 0)
+        !SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::ObjectOwnerOffset, upgradeStore) || upgradeStore == 0)
     {
         return 0;
     }
@@ -1205,7 +1157,7 @@ uint32_t ApplyMovementSpeedEntry(uint32_t entry, uint32_t mode, bool requireActi
     return SafeWriteU32(entry + 0x08u, target) ? 1u : 0u;
 }
 
-uint32_t SetSelectedUnitSpeedVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t SetSelectedUnitSpeedVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     const auto movementOffset = ResolveNativeCatalogRva(NativeCatalogEntry::MovementModuleOffset);
     const auto containerOffset = ResolveNativeCatalogRva(NativeCatalogEntry::MovementContainerOffset);
@@ -1214,7 +1166,7 @@ uint32_t SetSelectedUnitSpeedVisitor(uint32_t component, const uint32_t* argumen
     uint32_t first = 0;
     uint32_t second = 0;
     if (movementOffset == 0 || containerOffset == 0 ||
-        !SafeReadU32(component + movementOffset, movement) || movement == 0 ||
+        !SafeReadU32(weaponStoreUser + movementOffset, movement) || movement == 0 ||
         !SafeReadU32(movement + containerOffset, container) || container == 0)
     {
         return 0;
@@ -1231,10 +1183,10 @@ void SetSelectedUnitSpeedOnGameThread(const uint32_t* arguments, uint32_t* resul
     results[1] = VisitSelectedObjects(SetSelectedUnitSpeedVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-uint32_t CaptureSelectedUnitVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t CaptureSelectedUnitVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     return SafeWriteStructureU32(
-        component, NativeCatalogEntry::ObjectOwnerOffset, arguments[0]) ? 1u : 0u;
+        weaponStoreUser, NativeCatalogEntry::ObjectOwnerOffset, arguments[0]) ? 1u : 0u;
 }
 
 void CaptureSelectedUnitsOnGameThread(const uint32_t*, uint32_t* results)
@@ -1264,12 +1216,12 @@ void CaptureSelectedUnitsOnGameThread(const uint32_t*, uint32_t* results)
     results[1] = VisitSelectedObjects(CaptureSelectedUnitVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-uint32_t SetSelectedAmmoVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t SetSelectedAmmoVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t container = 0;
     uint32_t cursor = 0;
     uint32_t end = 0;
-    if (!SafeReadStructureU32(component, NativeCatalogEntry::WeaponContainerOffset, container) || container == 0 ||
+    if (!SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::WeaponContainerOffset, container) || container == 0 ||
         !SafeReadU32(container + 0x24u, cursor) ||
         !SafeReadU32(container + 0x28u, end) || cursor >= end)
     {
@@ -1305,61 +1257,94 @@ void SetSelectedUnitAmmoOnGameThread(const uint32_t* arguments, uint32_t* result
     results[1] = VisitSelectedObjects(SetSelectedAmmoVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
+// ToggleSelectedAttackSpeed: smart toggle via g_attackSpeedObjects set.
+// All off → enable all; all on → disable all; mixed → enable all.
 void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
 {
-    uint32_t affectedCount = 0;
-    results[1] = ExecuteSmartToggleOnSelection(affectedCount) ? 1u : 0u;
-    results[0] = affectedCount;
-}
+    g_tempObjectCount = 0;
+    uint32_t visitedCount = 0;
+    VisitSelectedObjects(CollectSpeedObjectsVisitor, nullptr, visitedCount);
 
-// ToggleSelectedAttackRange: XOR byte[WeaponEntry+0x77] for every weapon entry of every
-// selected object. The on-object flag is consumed by the GetEffectiveRange native hook
-// (case 43) which returns 10000.0f when the flag is set. The flag follows object
-// lifecycle — no registry, no stale pointers.
-uint32_t ToggleSelectedAttackRangeVisitor(uint32_t component, const uint32_t*)
-{
-    uint32_t container = 0;
-    uint32_t cursor = 0;
-    uint32_t end = 0;
-    if (!SafeReadStructureU32(component, NativeCatalogEntry::WeaponContainerOffset, container) || container == 0 ||
-        !SafeReadU32(container + 0x24u, cursor) ||
-        !SafeReadU32(container + 0x28u, end) || cursor >= end)
+    if (g_tempObjectCount == 0)
     {
-        return 0;
+        results[0] = 0;
+        results[1] = 0;
+        return;
     }
-    uint32_t changed = 0;
-    for (; cursor < end; cursor += sizeof(uint32_t))
+
+    bool hasDisabled = false;
+    for (uint32_t i = 0; i < g_tempObjectCount; ++i)
     {
-        uint32_t slot = 0;
-        uint32_t entries = 0;
-        uint8_t active = 0;
-        if (!SafeReadU32(cursor, slot) || slot == 0 ||
-            !SafeReadU8(slot + 0xA4u, active) || active == 0 ||
-            !SafeReadU32(slot + 0x94u, entries) || entries == 0)
+        if (!g_attackSpeedObjects.Contains(g_tempObjectBuffer[i]))
         {
-            continue;
-        }
-        for (uint32_t index = 0; index < 6; ++index)
-        {
-            uint32_t entry = 0;
-            uint8_t flag = 0;
-            if (SafeReadU32(entries + index * sizeof(uint32_t), entry) && entry != 0 &&
-                SafeReadU8(entry + 0x77u, flag) &&
-                SafeWriteU8(entry + 0x77u, static_cast<uint8_t>(flag ^ 1u)))
-            {
-                ++changed;
-            }
+            hasDisabled = true;
+            break;
         }
     }
-    return changed != 0 ? 1u : 0u;
+    const bool enable = hasDisabled;
+
+    if (!g_attackSpeedObjects.CanApply(g_tempObjectBuffer, g_tempObjectCount, enable))
+    {
+        results[0] = 0;
+        results[1] = 0;
+        return;
+    }
+
+    if (!g_attackSpeedObjects.Apply(g_tempObjectBuffer, g_tempObjectCount, enable))
+    {
+        results[0] = 0;
+        results[1] = 0;
+        return;
+    }
+
+    results[0] = g_tempObjectCount;
+    results[1] = 1;
 }
 
+// ToggleSelectedAttackRange: smart toggle via the owner GameObject set.
 void ToggleSelectedAttackRangeOnGameThread(const uint32_t*, uint32_t* results)
 {
-    results[1] = VisitSelectedObjects(ToggleSelectedAttackRangeVisitor, nullptr, results[0]) ? 1u : 0u;
+    g_tempRangeObjectCount = 0;
+    uint32_t visitedCount = 0;
+    VisitSelectedObjects(CollectRangeObjectsVisitor, nullptr, visitedCount);
+
+    if (g_tempRangeObjectCount == 0)
+    {
+        results[0] = 0;
+        results[1] = 0;
+        return;
+    }
+
+    bool hasDisabled = false;
+    for (uint32_t i = 0; i < g_tempRangeObjectCount; ++i)
+    {
+        if (!g_attackRangeObjects.Contains(g_tempRangeObjectBuffer[i]))
+        {
+            hasDisabled = true;
+            break;
+        }
+    }
+    const bool enable = hasDisabled;
+
+    if (!g_attackRangeObjects.CanApply(g_tempRangeObjectBuffer, g_tempRangeObjectCount, enable))
+    {
+        results[0] = 0;
+        results[1] = 0;
+        return;
+    }
+
+    if (!g_attackRangeObjects.Apply(g_tempRangeObjectBuffer, g_tempRangeObjectCount, enable))
+    {
+        results[0] = 0;
+        results[1] = 0;
+        return;
+    }
+
+    results[0] = g_tempRangeObjectCount;
+    results[1] = 1;
 }
 
-uint32_t TeleportSelectedUnitVisitor(uint32_t component, const uint32_t* arguments)
+uint32_t TeleportSelectedUnitVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
 {
     uint32_t movable = 0;
     NativeVector3 position = {};
@@ -1367,10 +1352,10 @@ uint32_t TeleportSelectedUnitVisitor(uint32_t component, const uint32_t* argumen
     std::memcpy(&delta.X, &arguments[0], sizeof(float));
     std::memcpy(&delta.Y, &arguments[1], sizeof(float));
     std::memcpy(&delta.Z, &arguments[2], sizeof(float));
-    if (!SafeReadStructureU32(component, NativeCatalogEntry::MovementModuleOffset, movable) || movable == 0 ||
-        !SafeReadFloat(component + 0x38u, position.X) ||
-        !SafeReadFloat(component + 0x3Cu, position.Y) ||
-        !SafeReadFloat(component + 0x40u, position.Z))
+    if (!SafeReadStructureU32(weaponStoreUser, NativeCatalogEntry::MovementModuleOffset, movable) || movable == 0 ||
+        !SafeReadFloat(weaponStoreUser + 0x38u, position.X) ||
+        !SafeReadFloat(weaponStoreUser + 0x3Cu, position.Y) ||
+        !SafeReadFloat(weaponStoreUser + 0x40u, position.Z))
     {
         return 0;
     }
@@ -1386,7 +1371,7 @@ uint32_t TeleportSelectedUnitVisitor(uint32_t component, const uint32_t* argumen
     }
     using SetPositionFunction = void(__thiscall*)(void*, const NativeVector3*);
     const auto function = reinterpret_cast<SetPositionFunction>(moduleBase + functionRva);
-    function(reinterpret_cast<void*>(static_cast<uintptr_t>(component)), &position);
+    function(reinterpret_cast<void*>(static_cast<uintptr_t>(weaponStoreUser)), &position);
     return 1;
 }
 
@@ -1538,10 +1523,22 @@ bool HasNativeCatalog()
     return g_nativeCatalogReady;
 }
 
-// No-op after Attack Speed registry removal; retained for call-site stability
-// (called from ResetNativeHookRuntime in AgentNativeHooks.cpp).
+// Clears weapon-effect sets on reset.
+// Called from ResetNativeHookRuntime in AgentNativeHooks.cpp.
 void ResetNativeGameApiRuntimeState()
 {
+    g_attackSpeedObjects.Clear();
+    g_attackRangeObjects.Clear();
+}
+
+bool IsAttackSpeedComponent(uint32_t component)
+{
+    return g_attackSpeedObjects.Contains(component);
+}
+
+bool IsAttackRangeObject(uint32_t gameObject)
+{
+    return g_attackRangeObjects.Contains(gameObject);
 }
 
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry)
@@ -2394,6 +2391,34 @@ AgentStatusCode DispatchNativeToggleSelectedAttackRange(
     AgentGameApiToggleSelectedAttackRangePayload& result)
 {
     return DispatchNativeAction(request, result, ToggleSelectedAttackRangeOnGameThread, nullptr, 0);
+}
+
+void ClearSelectedAttackSpeedEffectsOnGameThread(const uint32_t*, uint32_t* results)
+{
+    g_attackSpeedObjects.Clear();
+    results[0] = 1u;
+    results[1] = 1u;
+}
+
+void ClearSelectedAttackRangeEffectsOnGameThread(const uint32_t*, uint32_t* results)
+{
+    g_attackRangeObjects.Clear();
+    results[0] = 1u;
+    results[1] = 1u;
+}
+
+AgentStatusCode DispatchNativeClearSelectedAttackSpeedEffects(
+    const AgentGameApiClearSelectedAttackSpeedEffectsRequest& request,
+    AgentGameApiClearSelectedAttackSpeedEffectsPayload& result)
+{
+    return DispatchNativeAction(request, result, ClearSelectedAttackSpeedEffectsOnGameThread, nullptr, 0);
+}
+
+AgentStatusCode DispatchNativeClearSelectedAttackRangeEffects(
+    const AgentGameApiClearSelectedAttackRangeEffectsRequest& request,
+    AgentGameApiClearSelectedAttackRangeEffectsPayload& result)
+{
+    return DispatchNativeAction(request, result, ClearSelectedAttackRangeEffectsOnGameThread, nullptr, 0);
 }
 
 #include "Generated/AgentGameApi.Dispatch.generated.inc"

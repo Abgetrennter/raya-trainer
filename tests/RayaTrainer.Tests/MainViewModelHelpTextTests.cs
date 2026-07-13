@@ -38,13 +38,13 @@ public sealed class MainViewModelHelpTextTests
     }
 
     [Fact]
-    public void SelectedUnitOtherGroupHidesUnverifiedWeaponToggles()
+    public void SelectedUnitOtherGroupShowsInstanceScopedWeaponToggles()
     {
         var viewModel = LoadViewModel();
         var group = Assert.Single(viewModel.SelectedUnit.Groups, group => group.Name == "选中单位 · 其他");
 
-        Assert.DoesNotContain(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Speed");
-        Assert.DoesNotContain(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Range");
+        Assert.Contains(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Speed");
+        Assert.Contains(group.Features, item => item.Feature.RawName == "Toggle Selected Unit Attack Range");
     }
 
     [Fact]

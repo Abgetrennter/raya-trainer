@@ -33,7 +33,7 @@ public sealed class AgentNativeDispatcherContractTests
         Assert.Contains("GeneratedGameApiRoute::Native, // GetThingClass", routing, StringComparison.Ordinal);
         Assert.Contains("GeneratedGameApiRoute::Native, // ReadSelectedUnitCode", routing, StringComparison.Ordinal);
         Assert.Contains("GeneratedGameApiRoute::Native, // GetCurrentPlayer", routing, StringComparison.Ordinal);
-        Assert.Contains("kGeneratedNativeGameApiBitmap = 0x000000007FFFFFFFull", routing, StringComparison.Ordinal);
+        Assert.Contains("kGeneratedNativeGameApiBitmap = 0x00000001FFFFFFFFull", routing, StringComparison.Ordinal);
     }
 
     private static string RepositoryRoot()

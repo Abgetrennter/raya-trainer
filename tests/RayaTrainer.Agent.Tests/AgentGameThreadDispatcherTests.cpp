@@ -7,6 +7,8 @@
 
 #include "../../src/RayaTrainer.Agent/AgentGameThreadDispatcher.h"
 
+extern int RunNativePointerSetTests();
+
 namespace
 {
 int g_failures = 0;
@@ -78,11 +80,12 @@ int main()
 {
     DispatchRunsOnlyWhenPumpExecutes();
     TimedOutPendingRequestCanBeReused();
+    g_failures += RunNativePointerSetTests();
     if (g_failures != 0)
     {
         return 1;
     }
 
-    std::cout << "Agent game-thread dispatcher tests passed\n";
+    std::cout << "All agent tests passed\n";
     return 0;
 }

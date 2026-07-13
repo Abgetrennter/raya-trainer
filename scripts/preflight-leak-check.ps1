@@ -42,8 +42,11 @@ function Test-SourceTree {
         'tools/CommentStripper',
         '.agents', '.claude', '.codex', '.cortexkit', '.sisyphus', '.spec-workflow',
         'docs/archive', 'docs/superpowers/archive', 'docs/superpowers/plans',
-        'docs/superpowers/specs', 'docs/import-tables',
-        'docs/asset-approvals.md', 'docs/private'
+        'docs/superpowers/specs', 'docs/import-tables', 'docs/release-notes',
+        'docs/asset-approvals.md', 'docs/private',
+        'scripts/migrate-to-public.ps1', 'scripts/migrate-allowlist.txt',
+        'scripts/migrate-allowlist-excluded.txt',
+        'tests/RayaTrainer.Tests/RepositoryValidationScriptTests.cs'
     )
     $forbiddenFiles = @('*.ct', '*.id0', '*.id1', '*.id2', '*.nam', '*.til', '*.i64')
     $forbiddenContent = @(

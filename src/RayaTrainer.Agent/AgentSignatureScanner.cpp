@@ -247,10 +247,22 @@ static constexpr auto kHook42ZoomClamp = MakeBuiltInPattern(
     "F3 0F 10 4C 24 08 F3 0F 10 44 24 04 0F 2F C8 76 05 D9 44 24 08 C3"); // 1.12 0x4FDBD0, 1.13 0x4D81E0, Uprising 1.0/1.1 0x4DB620/0x4E44D0
 static constexpr auto kHook43SelectedUnitAttackRangeScale = MakeBuiltInPattern(
     "_BackSelectedUnitAttackRangeScale",
-    "51 53 8B 5C 24 0C 85 DB 55 56 57 89 4C 24 10"); // 1.12 0x6F9460 GetEffectiveRange
+    "83 EC 08 F3 0F 10 15 ? ? ? ? F3 0F 10 4C 24 10 56 8B F1 8B 46 04"); // 1.12 0x713770 WeaponTemplate_GetWeaponActualRange
 static constexpr auto kHook44LogicTimeFreezeGate = MakeBuiltInPattern(
     "_BackLogicTimeFreezeGate",
     "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 0D ? ? ? ? 80 B9"); // 1.12 0x626625 game-update entry (sub_626620+5)
+static constexpr auto kHook45SelectedUnitAutoAcquireRange = MakeBuiltInPattern(
+    "_BackSelectedUnitAutoAcquireRange",
+    "D9 44 24 0C 57 8D 4C 24 14 51 6A 01 51 8B 0D ? ? ? ? D9 1C 24"); // 1.12 0x836ECB BaseAITargetChooser_FindEnemyTargetInternal
+static constexpr auto kHook46SelectedUnitIdleAutoAcquireRange = MakeBuiltInPattern(
+    "_BackSelectedUnitIdleAutoAcquireRange",
+    "8D 8C 24 9C 00 00 00 51 E9 ? ? ? ? 8D 94 24 40 01 00 00 52 E9 ? ? ? ? F3 0F 10 44 24 0C"); // 1.12 0x836E1B BaseAITargetChooser_FindEnemyTargetInternal idle filter branch
+static constexpr auto kHook47SelectedUnitTurretTargetAngle = MakeBuiltInPattern(
+    "_BackSelectedUnitTurretTargetAngle",
+    "8B 86 98 00 00 00 85 C0 8B 4E 5C 74 0F 8B 56 58 F3 0F 10 42 4C"); // 1.12 0x7F2944 TurretAI_IsInTurretAngle shared angle gate
+static constexpr auto kHook48SelectedUnitTurretAimDeflection = MakeBuiltInPattern(
+    "_BackSelectedUnitTurretAimDeflection",
+    "0F 86 ? ? ? ? 85 FF 74 0C F3 0F 10 47 64 F3 0F 58 43 4C EB 05"); // 1.12 0x80DF79 TurretAI turn max-deflection branch
 
 // Bootstrap and profile address catalog. Code entries resolve to their match address. Data
 // entries use a unique code reference as the anchor and read the wildcarded absolute operand.
@@ -420,6 +432,10 @@ static constexpr Signature kBuiltInSignatures[] = {
     kHook42ZoomClamp.ToSignature(),
     kHook43SelectedUnitAttackRangeScale.ToSignature(),
     kHook44LogicTimeFreezeGate.ToSignature(),
+    kHook45SelectedUnitAutoAcquireRange.ToSignature(),
+    kHook46SelectedUnitIdleAutoAcquireRange.ToSignature(),
+    kHook47SelectedUnitTurretTargetAngle.ToSignature(),
+    kHook48SelectedUnitTurretAimDeflection.ToSignature(),
     kRva1160.ToSignature(),
     kRva1437.ToSignature(),
     kRva143C.ToSignature(),
@@ -462,8 +478,8 @@ static constexpr Signature kBuiltInSignatures[] = {
     kRva88DFD0.ToSignature(SignatureAddressMode::Absolute32AtOffset, 4),
 };
 
-static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 84);
-constexpr size_t kBuiltInHookCount = 44;
+static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 88);
+constexpr size_t kBuiltInHookCount = 48;
 
 // Process-local memory read wrapped in SEH, matching the pattern used elsewhere in the DLL
 // (AgentMemoryAccess.cpp / AgentPatchManager.cpp). Returns true on success.

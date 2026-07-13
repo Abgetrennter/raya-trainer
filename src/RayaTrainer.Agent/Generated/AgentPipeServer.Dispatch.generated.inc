@@ -248,3 +248,19 @@ if (command == AgentCommand::ToggleSelectedAttackRange)
     WriteGameApiResponse(pipe, header, result);
     return;
 }
+
+if (command == AgentCommand::ClearSelectedAttackSpeedEffects)
+{
+    AgentGameApiClearSelectedAttackSpeedEffectsPayload result = {};
+    ClearSelectedAttackSpeedEffectsFromPayload(payload.data(), header.PayloadLength, result);
+    WriteGameApiResponse(pipe, header, result);
+    return;
+}
+
+if (command == AgentCommand::ClearSelectedAttackRangeEffects)
+{
+    AgentGameApiClearSelectedAttackRangeEffectsPayload result = {};
+    ClearSelectedAttackRangeEffectsFromPayload(payload.data(), header.PayloadLength, result);
+    WriteGameApiResponse(pipe, header, result);
+    return;
+}

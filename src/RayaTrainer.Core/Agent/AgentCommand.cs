@@ -44,5 +44,7 @@ public enum AgentCommand : ushort
     CaptureSelectedUnits = 40,
     SetSelectedUnitAmmo = 41,
     ToggleSelectedAttackSpeed = 42,
-    ToggleSelectedAttackRange = 43
+    ToggleSelectedAttackRange = 43,
+    ClearSelectedAttackSpeedEffects = 44,
+    ClearSelectedAttackRangeEffects = 45
 }

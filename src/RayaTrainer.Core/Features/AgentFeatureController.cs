@@ -306,6 +306,8 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
             "Reset Selected Unit Ammo" => SetSelectedUnitAmmo(1, timeout),
             "Toggle Selected Unit Attack Speed" => ToggleSelectedAttackSpeed(timeout),
             "Toggle Selected Unit Attack Range" => ToggleSelectedAttackRange(timeout),
+            TrainerFeatureIds.ClearSelectedAttackSpeedEffects => ClearSelectedAttackSpeedEffects(timeout),
+            TrainerFeatureIds.ClearSelectedAttackRangeEffects => ClearSelectedAttackRangeEffects(timeout),
             TrainerFeatureIds.Money or
             "Challenge Money" or
             "Danger Level MAX" or

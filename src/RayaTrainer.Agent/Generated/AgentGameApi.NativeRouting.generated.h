@@ -44,9 +44,11 @@ constexpr GeneratedGameApiRoute kGeneratedGameApiRoutes[] = {
     GeneratedGameApiRoute::Native, // SetSelectedUnitAmmo
     GeneratedGameApiRoute::Native, // ToggleSelectedAttackSpeed
     GeneratedGameApiRoute::Native, // ToggleSelectedAttackRange
+    GeneratedGameApiRoute::Native, // ClearSelectedAttackSpeedEffects
+    GeneratedGameApiRoute::Native, // ClearSelectedAttackRangeEffects
 };
 
 constexpr uint32_t kGeneratedGameApiRouteCount =
     static_cast<uint32_t>(sizeof(kGeneratedGameApiRoutes) / sizeof(kGeneratedGameApiRoutes[0]));
-constexpr uint64_t kGeneratedNativeGameApiBitmap = 0x000000007FFFFFFFull;
+constexpr uint64_t kGeneratedNativeGameApiBitmap = 0x00000001FFFFFFFFull;
 }

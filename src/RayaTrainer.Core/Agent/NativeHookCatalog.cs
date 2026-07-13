@@ -48,7 +48,11 @@ public static class NativeHookCatalog
             ["_BackFrameRateUnlockGameUpdate"] = 41,
             ["_BackZoomClamp"] = 42,
             ["_BackSelectedUnitAttackRangeScale"] = 43,
-            ["_BackLogicTimeFreezeGate"] = 44
+            ["_BackLogicTimeFreezeGate"] = 44,
+            ["_BackSelectedUnitAutoAcquireRange"] = 45,
+            ["_BackSelectedUnitIdleAutoAcquireRange"] = 46,
+            ["_BackSelectedUnitTurretTargetAngle"] = 47,
+            ["_BackSelectedUnitTurretAimDeflection"] = 48
         };
 
     public static uint GetHookId(string? returnLabel)

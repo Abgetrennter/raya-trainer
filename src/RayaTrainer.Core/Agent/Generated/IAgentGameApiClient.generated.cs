@@ -193,4 +193,16 @@ public interface IAgentGameApiClient
         AgentGameApiToggleSelectedAttackRangeRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
+
+    Task<AgentGameApiClearSelectedAttackSpeedEffectsPayload> ClearSelectedAttackSpeedEffectsAsync(
+        int processId,
+        AgentGameApiClearSelectedAttackSpeedEffectsRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
+
+    Task<AgentGameApiClearSelectedAttackRangeEffectsPayload> ClearSelectedAttackRangeEffectsAsync(
+        int processId,
+        AgentGameApiClearSelectedAttackRangeEffectsRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
 }

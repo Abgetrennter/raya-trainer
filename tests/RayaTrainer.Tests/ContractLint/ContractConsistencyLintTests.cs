@@ -54,7 +54,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer.Core.Agent;
             public static class AgentBuildIdentity
             {
-                public const ulong Fingerprint = 0x5241594100090001UL;
+                public const ulong Fingerprint = 0x5241594100090002UL;
             }
             """);
 
@@ -64,7 +64,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer::agent {
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
-            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
             inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
             }
             """);
@@ -91,7 +91,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer.Core.Agent;
             public static class AgentBuildIdentity
             {
-                public const ulong Fingerprint = 0x5241594100090001UL;
+                public const ulong Fingerprint = 0x5241594100090002UL;
             }
             """);
 
@@ -100,7 +100,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer::agent {
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
-            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
             }
             """);
 
@@ -127,7 +127,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer.Core.Agent;
             public static class AgentBuildIdentity
             {
-                public const ulong Fingerprint = 0x5241594100090001UL;
+                public const ulong Fingerprint = 0x5241594100090002UL;
             }
             """);
 
@@ -136,7 +136,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer::agent {
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
-            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
             }
             """);
 
@@ -172,7 +172,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer::agent {
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
-            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
             }
             """);
 
@@ -199,7 +199,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer.Core.Agent;
             public static class AgentBuildIdentity
             {
-                public const ulong Fingerprint = 0x5241594100090001UL;
+                public const ulong Fingerprint = 0x5241594100090002UL;
             }
             """);
 
@@ -208,7 +208,7 @@ public sealed class ContractConsistencyLintTests
             namespace RayaTrainer::agent {
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
-            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+            inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
             }
             """);
 
@@ -552,6 +552,102 @@ public sealed class ContractConsistencyLintTests
     // ====================================================================
     // 5. Program.Main integration — all 4 contracts consistent with repo
     // ====================================================================
+
+    // ====================================================================
+    // 6. Attack effect hooks — must not use undocumented raw offsets
+    // ====================================================================
+
+    [Fact]
+    public void AttackEffectHooksDoNotUseUndocumentedObjectFlagOffsets()
+    {
+        var repoRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        while (repoRoot is not null && !File.Exists(Path.Combine(repoRoot.FullName, "RayaTrainer.sln")))
+        {
+            repoRoot = repoRoot.Parent;
+        }
+
+        if (repoRoot is null)
+        {
+            return; // not running inside repo tree — skip gracefully
+        }
+
+        var sources = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Agent", "AgentGameApi.cpp"))
+            + File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Agent", "AgentNativeHooks.cpp"));
+        Assert.DoesNotContain("component + 0x7Bu", sources);
+        Assert.DoesNotContain("entry + 0x77u", sources);
+        Assert.DoesNotContain("c.Ecx + 0x7Bu", sources);
+        Assert.DoesNotContain("c.Ecx + 0x77u", sources);
+    }
+
+    [Fact]
+    public void AttackRangeHookUsesSelectedGameObjectAndActualRange()
+    {
+        var repoRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        while (repoRoot is not null && !File.Exists(Path.Combine(repoRoot.FullName, "RayaTrainer.sln")))
+        {
+            repoRoot = repoRoot.Parent;
+        }
+
+        if (repoRoot is null)
+        {
+            return;
+        }
+
+        var gameApi = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Agent", "AgentGameApi.cpp"));
+        var hooks = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Agent", "AgentNativeHooks.cpp"));
+        var signatures = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Agent", "AgentSignatureScanner.cpp"));
+        var hookCatalog = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Core", "Agent", "NativeHookCatalog.cs"));
+        var manifest = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Core", "Assets", "trainer_report.json"));
+
+        Assert.Contains("NativePointerSet<1024> g_attackRangeObjects", gameApi);
+        Assert.Contains("CollectRangeObjectsVisitor(uint32_t /*selectedDrawable*/, uint32_t gameObject", gameApi);
+        Assert.Contains("g_tempRangeObjectBuffer[g_tempRangeObjectCount++] = gameObject", gameApi);
+        Assert.Contains("TryRead(c.OriginalEsp + 4u, owner)", hooks);
+        Assert.Contains("IsAttackRangeObject(owner)", hooks);
+        Assert.Contains("mem[6] = 0xC2; mem[7] = 0x08", hooks);
+        Assert.Contains("WeaponTemplate_GetWeaponActualRange_713770", hooks);
+        Assert.Contains("0x461C4000u", hooks);
+        Assert.Contains("0x713770 WeaponTemplate_GetWeaponActualRange", signatures);
+        Assert.Contains("case 45:", hooks);
+        Assert.Contains("TryRead(c.Ebx + 0x80u, owner)", hooks);
+        Assert.Contains("TryWrite(c.OriginalEsp + 0x0Cu, kUnlimitedAttackRangeBits)", hooks);
+        Assert.Contains("TryWrite(c.OriginalEsp + 0x1Cu, kUnlimitedAttackRangeBits)", hooks);
+        Assert.Contains("0x836ECB BaseAITargetChooser_FindEnemyTargetInternal", signatures);
+        Assert.Contains("kHook45SelectedUnitAutoAcquireRange.ToSignature()", signatures);
+        Assert.Contains("[\"_BackSelectedUnitAutoAcquireRange\"] = 45", hookCatalog);
+        Assert.Contains("\"return_label\":\"_BackSelectedUnitAutoAcquireRange\"", manifest);
+        Assert.Contains("\"address\":\"ra3_1.12.game+436ECB\"", manifest);
+        Assert.Contains("case 46:", hooks);
+        Assert.Contains("ExtendSelectedUnitAutoAcquireLocals(c)", hooks);
+        Assert.Contains("g_hookAddresses[46] + 0x1Au", hooks);
+        Assert.Contains("0x836E1B BaseAITargetChooser_FindEnemyTargetInternal idle filter branch", signatures);
+        Assert.Contains("kHook46SelectedUnitIdleAutoAcquireRange.ToSignature()", signatures);
+        Assert.Contains("[\"_BackSelectedUnitIdleAutoAcquireRange\"] = 46", hookCatalog);
+        Assert.Contains("\"return_label\":\"_BackSelectedUnitIdleAutoAcquireRange\"", manifest);
+        Assert.Contains("\"address\":\"ra3_1.12.game+436E1B\"", manifest);
+        Assert.Contains("case 47:", hooks);
+        Assert.Contains("IsSelectedUnitTurretAI(c.Esi)", hooks);
+        Assert.Contains("g_hookAddresses[47] + 0xAAu", hooks);
+        Assert.Contains("0x7F2944 TurretAI_IsInTurretAngle shared angle gate", signatures);
+        Assert.Contains("kHook47SelectedUnitTurretTargetAngle.ToSignature()", signatures);
+        Assert.Contains("[\"_BackSelectedUnitTurretTargetAngle\"] = 47", hookCatalog);
+        Assert.Contains("\"return_label\":\"_BackSelectedUnitTurretTargetAngle\"", manifest);
+        Assert.Contains("\"address\":\"ra3_1.12.game+3F2944\"", manifest);
+        Assert.Contains("case 48:", hooks);
+        Assert.Contains("g_hookAddresses[48] + 0xE1u", hooks);
+        Assert.Contains("0x80DF79 TurretAI turn max-deflection branch", signatures);
+        Assert.Contains("kHook48SelectedUnitTurretAimDeflection.ToSignature()", signatures);
+        Assert.Contains("constexpr size_t kBuiltInHookCount = 48;", signatures);
+        Assert.Contains("[\"_BackSelectedUnitTurretAimDeflection\"] = 48", hookCatalog);
+        Assert.Contains("\"return_label\":\"_BackSelectedUnitTurretAimDeflection\"", manifest);
+        Assert.Contains("\"address\":\"ra3_1.12.game+40DF79\"", manifest);
+        Assert.DoesNotContain("kUnlimitedAttackRangeSquaredBits", hooks);
+        Assert.DoesNotContain("_BackSelectedUnitMaximumAttackRange", hookCatalog);
+        Assert.DoesNotContain("c.Eax = stub", hooks);
+        Assert.DoesNotContain("retn 18h", hooks);
+        Assert.DoesNotContain("Weapon_IsInRange_747220", hooks);
+        Assert.DoesNotContain("_BackWeaponIsInRangePreAimed", signatures);
+    }
 
     [Fact]
     public void ProgramMain_AllConsistent_ReturnsZero_WhenRunOnRepo()

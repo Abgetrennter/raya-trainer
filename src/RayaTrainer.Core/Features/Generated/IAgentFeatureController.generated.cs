@@ -188,4 +188,16 @@ public interface IAgentFeatureController : ITrainerFeatureController
     /// </summary>
     /// <returns>Native dispatch status.</returns>
     GameApiDispatchStatus ToggleSelectedAttackRange(TimeSpan? timeout = null);
+
+    /// <summary>
+    /// Clears native selected-unit attack speed registry.
+    /// </summary>
+    /// <returns>Native dispatch status.</returns>
+    GameApiDispatchStatus ClearSelectedAttackSpeedEffects(TimeSpan? timeout = null);
+
+    /// <summary>
+    /// Clears native selected-unit attack range entry registry.
+    /// </summary>
+    /// <returns>Native dispatch status.</returns>
+    GameApiDispatchStatus ClearSelectedAttackRangeEffects(TimeSpan? timeout = null);
 }

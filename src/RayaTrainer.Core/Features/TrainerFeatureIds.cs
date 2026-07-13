@@ -23,4 +23,6 @@ public static class TrainerFeatureIds
     public const string TeleportSelectedUnitsToMouse = "Teleport Selected Units To Mouse";
     public const string ExecuteReinforcementQueue = "ExecuteReinforcementQueue";
     public const string ReadSelectedUnitCode = "ReadSelectedUnitCode";
+    public const string ClearSelectedAttackSpeedEffects = "Clear Selected Attack Speed Effects";
+    public const string ClearSelectedAttackRangeEffects = "Clear Selected Attack Range Effects";
 }

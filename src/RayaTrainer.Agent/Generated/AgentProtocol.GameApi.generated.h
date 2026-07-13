@@ -550,6 +550,38 @@ struct AgentGameApiToggleSelectedAttackRangePayload
     uint32_t GameThreadTickAfter;
 };
 
+struct AgentGameApiClearSelectedAttackSpeedEffectsRequest
+{
+    uint32_t TimeoutMilliseconds;
+    uint32_t EnableDirectGameApi;
+};
+
+struct AgentGameApiClearSelectedAttackSpeedEffectsPayload
+{
+    uint16_t StatusCode;
+    uint16_t AgentVersion;
+    uint32_t DispatchStatus;
+    uint32_t RequestId;
+    uint32_t GameThreadTickBefore;
+    uint32_t GameThreadTickAfter;
+};
+
+struct AgentGameApiClearSelectedAttackRangeEffectsRequest
+{
+    uint32_t TimeoutMilliseconds;
+    uint32_t EnableDirectGameApi;
+};
+
+struct AgentGameApiClearSelectedAttackRangeEffectsPayload
+{
+    uint16_t StatusCode;
+    uint16_t AgentVersion;
+    uint32_t DispatchStatus;
+    uint32_t RequestId;
+    uint32_t GameThreadTickBefore;
+    uint32_t GameThreadTickAfter;
+};
+
 #pragma pack(pop)
 
 static_assert(sizeof(AgentGameApiGetThingClassRequest) == 12);
@@ -614,4 +646,8 @@ static_assert(sizeof(AgentGameApiToggleSelectedAttackSpeedRequest) == 8);
 static_assert(sizeof(AgentGameApiToggleSelectedAttackSpeedPayload) == 20);
 static_assert(sizeof(AgentGameApiToggleSelectedAttackRangeRequest) == 8);
 static_assert(sizeof(AgentGameApiToggleSelectedAttackRangePayload) == 20);
+static_assert(sizeof(AgentGameApiClearSelectedAttackSpeedEffectsRequest) == 8);
+static_assert(sizeof(AgentGameApiClearSelectedAttackSpeedEffectsPayload) == 20);
+static_assert(sizeof(AgentGameApiClearSelectedAttackRangeEffectsRequest) == 8);
+static_assert(sizeof(AgentGameApiClearSelectedAttackRangeEffectsPayload) == 20);
 }

@@ -1131,3 +1131,71 @@ AgentStatusCode ToggleSelectedAttackRangeFromPayload(
     }
     return DispatchNativeToggleSelectedAttackRange(request, result);
 }
+
+bool TryReadClearSelectedAttackSpeedEffectsRequest(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiClearSelectedAttackSpeedEffectsRequest& request)
+{
+    if (length != sizeof(AgentGameApiClearSelectedAttackSpeedEffectsRequest)) return false;
+    uint32_t offset = 0;
+    if (!(TryReadUInt32(payload, length, offset, request.TimeoutMilliseconds)
+        && TryReadUInt32(payload, length, offset, request.EnableDirectGameApi)
+        && offset == length))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+AgentStatusCode ClearSelectedAttackSpeedEffectsFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiClearSelectedAttackSpeedEffectsPayload& result)
+{
+    AgentGameApiClearSelectedAttackSpeedEffectsRequest request = {};
+    if (!TryReadClearSelectedAttackSpeedEffectsRequest(payload, length, request))
+    {
+        result = {};
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.AgentVersion = kAgentProtocolVersion;
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Failed);
+        return AgentStatusCode::InvalidCommand;
+    }
+    return DispatchNativeClearSelectedAttackSpeedEffects(request, result);
+}
+
+bool TryReadClearSelectedAttackRangeEffectsRequest(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiClearSelectedAttackRangeEffectsRequest& request)
+{
+    if (length != sizeof(AgentGameApiClearSelectedAttackRangeEffectsRequest)) return false;
+    uint32_t offset = 0;
+    if (!(TryReadUInt32(payload, length, offset, request.TimeoutMilliseconds)
+        && TryReadUInt32(payload, length, offset, request.EnableDirectGameApi)
+        && offset == length))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+AgentStatusCode ClearSelectedAttackRangeEffectsFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiClearSelectedAttackRangeEffectsPayload& result)
+{
+    AgentGameApiClearSelectedAttackRangeEffectsRequest request = {};
+    if (!TryReadClearSelectedAttackRangeEffectsRequest(payload, length, request))
+    {
+        result = {};
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.AgentVersion = kAgentProtocolVersion;
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Failed);
+        return AgentStatusCode::InvalidCommand;
+    }
+    return DispatchNativeClearSelectedAttackRangeEffects(request, result);
+}

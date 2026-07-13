@@ -756,6 +756,14 @@ public sealed class TrainerSessionManagerInjectedBackendTests
             int processId, AgentGameApiToggleSelectedAttackRangeRequest request, TimeSpan timeout,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<AgentGameApiClearSelectedAttackSpeedEffectsPayload> ClearSelectedAttackSpeedEffectsAsync(
+            int processId, AgentGameApiClearSelectedAttackSpeedEffectsRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<AgentGameApiClearSelectedAttackRangeEffectsPayload> ClearSelectedAttackRangeEffectsAsync(
+            int processId, AgentGameApiClearSelectedAttackRangeEffectsRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<AgentGameApiTeleportSelectedUnitsToMousePayload> TeleportSelectedUnitsToMouseAsync(
             int processId,
             AgentGameApiTeleportSelectedUnitsToMouseRequest request,

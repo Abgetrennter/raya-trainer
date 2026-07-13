@@ -123,6 +123,45 @@ public sealed class AgentFeatureControllerTests
     }
 
     [Theory]
+    [InlineData("Clear Selected Attack Speed Effects", "清空满攻速单位")]
+    [InlineData("Clear Selected Attack Range Effects", "清空无限射程单位")]
+    public async Task TriggerActionRoutesClearSelectedAttackEffectsToGameApi(
+        string rawName,
+        string displayName)
+    {
+        var client = new FakeAgentClient();
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        var feature = new TrainerFeature(
+            rawName,
+            displayName,
+            null,
+            [],
+            null,
+            null,
+            RequiresDirectGameApi: true,
+            SelectionMode: SelectionExecutionMode.Apply);
+
+        var result = await controller.TriggerActionAndWaitForConsumptionAsync(feature);
+
+        Assert.Equal(ActionDispatchResult.Consumed, result);
+        Assert.Null(client.LastWriteCommand);
+        if (rawName == "Clear Selected Attack Speed Effects")
+        {
+            Assert.NotNull(client.LastClearSelectedAttackSpeedEffectsRequest);
+            Assert.True(client.LastClearSelectedAttackSpeedEffectsRequest!.EnableDirectGameApi);
+            Assert.Equal(5000u, client.LastClearSelectedAttackSpeedEffectsRequest.TimeoutMilliseconds);
+            Assert.Equal(TimeSpan.FromSeconds(8), client.LastClearSelectedAttackSpeedEffectsPipeTimeout);
+        }
+        else
+        {
+            Assert.NotNull(client.LastClearSelectedAttackRangeEffectsRequest);
+            Assert.True(client.LastClearSelectedAttackRangeEffectsRequest!.EnableDirectGameApi);
+            Assert.Equal(5000u, client.LastClearSelectedAttackRangeEffectsRequest.TimeoutMilliseconds);
+            Assert.Equal(TimeSpan.FromSeconds(8), client.LastClearSelectedAttackRangeEffectsPipeTimeout);
+        }
+    }
+
+    [Theory]
     [InlineData("Select Unit HP MAX", "MustCode2+400", "0x05", 2u)]
     [InlineData("Select Unit HP MIN", "MustCode2+500", "0x06", 3u)]
     [InlineData("Restore Select Unit Normal HP", "MustCode2+600", "0x07", 4u)]
@@ -843,6 +882,31 @@ public sealed class AgentFeatureControllerTests
         public Task<AgentGameApiToggleSelectedAttackRangePayload> ToggleSelectedAttackRangeAsync(
             int processId, AgentGameApiToggleSelectedAttackRangeRequest request, TimeSpan timeout,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public AgentGameApiClearSelectedAttackSpeedEffectsRequest? LastClearSelectedAttackSpeedEffectsRequest { get; private set; }
+        public TimeSpan LastClearSelectedAttackSpeedEffectsPipeTimeout { get; private set; }
+        public AgentGameApiClearSelectedAttackRangeEffectsRequest? LastClearSelectedAttackRangeEffectsRequest { get; private set; }
+        public TimeSpan LastClearSelectedAttackRangeEffectsPipeTimeout { get; private set; }
+
+        public Task<AgentGameApiClearSelectedAttackSpeedEffectsPayload> ClearSelectedAttackSpeedEffectsAsync(
+            int processId, AgentGameApiClearSelectedAttackSpeedEffectsRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            LastClearSelectedAttackSpeedEffectsRequest = request;
+            LastClearSelectedAttackSpeedEffectsPipeTimeout = timeout;
+            return Task.FromResult(new AgentGameApiClearSelectedAttackSpeedEffectsPayload(
+                AgentStatusCode.Ok, AgentProtocol.Version, GameApiDispatchStatus.Completed, 1, 0, 0));
+        }
+
+        public Task<AgentGameApiClearSelectedAttackRangeEffectsPayload> ClearSelectedAttackRangeEffectsAsync(
+            int processId, AgentGameApiClearSelectedAttackRangeEffectsRequest request, TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            LastClearSelectedAttackRangeEffectsRequest = request;
+            LastClearSelectedAttackRangeEffectsPipeTimeout = timeout;
+            return Task.FromResult(new AgentGameApiClearSelectedAttackRangeEffectsPayload(
+                AgentStatusCode.Ok, AgentProtocol.Version, GameApiDispatchStatus.Completed, 1, 0, 0));
+        }
 
         public Task<AgentGameApiTeleportSelectedUnitsToMousePayload> TeleportSelectedUnitsToMouseAsync(
             int processId,

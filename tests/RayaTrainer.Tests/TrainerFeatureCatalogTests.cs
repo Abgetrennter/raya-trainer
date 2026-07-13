@@ -130,16 +130,13 @@ public sealed class TrainerFeatureCatalogTests
     }
 
     [Fact]
-    public void CreateUiFeaturesKeepsExpectedCountAfterAmmoToggleHiddenAndActionsAdded()
+    public void CreateUiFeaturesKeepsExpectedCountAfterInstanceEffectsAdded()
     {
         var manifest = TestAssets.LoadManifest();
 
         var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
 
-        // Current count = 47. Breakdown: ~45 visible features from the manifest (excluding
-        // two hidden weapon effects: Toggle Selected Unit Attack Speed, Toggle Selected
-        // Unit Attack Range) plus 2 panel-only actions (TemplateModelReplacement,
-        // TemplateWeaponReplacement).
+        // Lock the merged manifest and panel-action projection against accidental UI drift.
         Assert.Equal(TestAssets.CurrentUiFeatureCount, features.Count);
     }
 
@@ -309,7 +306,9 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Contains("选择的建筑物/单位无限生命值", names);
         Assert.Contains("摧毁选择的建筑物/单位", names);
         Assert.Contains("玩家全建筑/单位无敌", names);
-        Assert.Equal(17, names.Count);
+        Assert.Contains("清空满攻速单位", names);
+        Assert.Contains("清空无限射程单位", names);
+        Assert.Equal(21, names.Count);
     }
 
     [Fact]
@@ -343,7 +342,7 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Equal("K", hotkeys["Get Me Base"]);
         Assert.Equal("J", hotkeys["We Need Back"]);
         Assert.Equal("I", hotkeys["Select Unit Copy For Me"]);
-        Assert.DoesNotContain("Toggle Selected Unit Attack Speed", hotkeys.Keys);
+        Assert.Equal(";", hotkeys["Toggle Selected Unit Attack Speed"]);
         Assert.DoesNotContain("Toggle Selected Unit Attack Range", hotkeys.Keys);
         Assert.DoesNotContain("Fill Selected Unit Ammo", hotkeys.Keys);
         // 旧版以 DisplayName 作 key 的契约已废弃，确保不再混入。
@@ -441,6 +440,42 @@ public sealed class TrainerFeatureCatalogTests
     }
 
     [Fact]
+    public void SelectedUnitAttackSpeedToggleIsInstanceScopedAndVersionGated()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var toggle = Assert.Single(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
+
+        Assert.Contains("切换", toggle.DisplayName, StringComparison.Ordinal);
+        Assert.Equal(";", toggle.Hotkey);
+        Assert.Equal("0x19", toggle.ValueHint);
+        Assert.DoesNotContain(features, feature => feature.RawName == "Restore Selected Unit Attack Speed");
+        Assert.True(toggle.SupportsProfile("ra3_1.12"));
+        Assert.True(toggle.SupportsProfile("ra3_1.13"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.0"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.1"));
+    }
+
+    [Fact]
+    public void ToggleSelectedUnitAttackRangeHasNoDefaultHotkey()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+        var toggle = Assert.Single(features, feature => feature.RawName == "Toggle Selected Unit Attack Range");
+
+        Assert.Contains("无限射程", toggle.DisplayName, StringComparison.Ordinal);
+        Assert.Contains("索敌", toggle.DisplayName, StringComparison.Ordinal);
+        Assert.Null(toggle.Hotkey);
+        Assert.Equal("0x1B", toggle.ValueHint);
+        Assert.True(toggle.SupportsProfile("ra3_1.12"));
+        Assert.False(toggle.SupportsProfile("ra3_1.13"));
+        Assert.False(toggle.SupportsProfile("ra3_uprising_1.0"));
+        Assert.False(toggle.SupportsProfile("ra3_uprising_1.1"));
+        Assert.Equal(SelectionExecutionMode.Apply, toggle.SelectionMode);
+        // Prove no collision: Restore Select Ore Mine retains its apostrophe binding.
+        var oreMine = Assert.Single(features, feature => feature.RawName == "Restore Select Ore Mine");
+        Assert.Equal("'", oreMine.Hotkey);
+    }
+
+    [Fact]
     public void SecretProtocolCatalogContainsAllVanillaPurchasableTechsAndUpgradeBindings()
     {
         var protocols = SecretProtocolCatalog.LoadBuiltIn();
@@ -480,15 +515,16 @@ public sealed class TrainerFeatureCatalogTests
     }
 
     [Fact]
-    public void UnverifiedSelectedUnitWeaponEffectsAreNotExposedInUi()
+    public void SelectedUnitWeaponEffectsAreExposedInUi()
     {
         var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
-        Assert.DoesNotContain(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
-        Assert.DoesNotContain(features, feature => feature.RawName == "Toggle Selected Unit Attack Range");
+        Assert.Contains(features, feature => feature.RawName == "Toggle Selected Unit Attack Speed");
+        Assert.Contains(features, feature => feature.RawName == "Toggle Selected Unit Attack Range");
+        Assert.Contains(features, feature => feature.RawName == "Clear Selected Attack Speed Effects");
+        Assert.Contains(features, feature => feature.RawName == "Clear Selected Attack Range Effects");
 
-        // Group catalog regression: removed display names absent, known good name present.
-        Assert.DoesNotContain("选择的单位满攻速（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
-        Assert.DoesNotContain("选择的单位无限射程（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
+        Assert.Contains("选择的单位满攻速（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
+        Assert.Contains("选择的单位无限射程与索敌（切换，仅当前实例）", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
         Assert.Contains("选择的单位弹药填满", TrainerFeatureGroupCatalog.SelectedUnitGroupingNames);
     }
 
@@ -531,6 +567,10 @@ public sealed class TrainerFeatureCatalogTests
             "Select Unit Change ID",
             "Destory Select Unit",
             "Select Unit Copy For Me",
+            "Toggle Selected Unit Attack Speed",
+            "Toggle Selected Unit Attack Range",
+            "Clear Selected Attack Speed Effects",
+            "Clear Selected Attack Range Effects",
             "Teleport Selected Units To Mouse",
             "Expand Production Queue",
             "Restore Production Queue",
@@ -542,6 +582,40 @@ public sealed class TrainerFeatureCatalogTests
             var feature = Assert.Single(features, f => f.RawName == rawName);
             Assert.NotNull(feature.SelectionMode);
         }
+    }
+
+    [Fact]
+    public void ClearSelectedAttackSpeedEffectFeatureIsDirectGameApiAction()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+
+        var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Speed Effects");
+        Assert.Equal("清空满攻速单位", clear.DisplayName);
+        Assert.Null(clear.Hotkey);
+        Assert.True(clear.RequiresDirectGameApi);
+        Assert.Null(clear.DispatchTarget);
+        Assert.True(clear.SupportsProfile("ra3_1.12"));
+        Assert.True(clear.SupportsProfile("ra3_1.13"));
+        Assert.True(clear.SupportsProfile("ra3_uprising_1.0"));
+        Assert.True(clear.SupportsProfile("ra3_uprising_1.1"));
+        Assert.Equal(SelectionExecutionMode.Apply, clear.SelectionMode);
+    }
+
+    [Fact]
+    public void ClearSelectedAttackRangeEffectFeatureIsDirectGameApiAction()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+
+        var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Range Effects");
+        Assert.Equal("清空无限射程单位", clear.DisplayName);
+        Assert.Null(clear.Hotkey);
+        Assert.True(clear.RequiresDirectGameApi);
+        Assert.Null(clear.DispatchTarget);
+        Assert.True(clear.SupportsProfile("ra3_1.12"));
+        Assert.False(clear.SupportsProfile("ra3_1.13"));
+        Assert.False(clear.SupportsProfile("ra3_uprising_1.0"));
+        Assert.False(clear.SupportsProfile("ra3_uprising_1.1"));
+        Assert.Equal(SelectionExecutionMode.Apply, clear.SelectionMode);
     }
 
     private static void AssertBytePatch(

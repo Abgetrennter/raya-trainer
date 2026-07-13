@@ -15,6 +15,7 @@ namespace RayaTrainer::agent
 namespace
 {
 constexpr uint32_t kHookCapacity = 64;
+constexpr uint32_t kUnlimitedAttackRangeBits = 0x461C4000u; // 10000.0f
 uint32_t g_hookAddresses[kHookCapacity] = {};
 uint32_t g_hookContinuations[kHookCapacity] = {};
 volatile LONG g_playerObject = 0;
@@ -191,9 +192,10 @@ void ResetPowerChain(uint32_t node)
     }
 }
 
-// Lazy-allocated executable stub for the GetEffectiveRange short-circuit return.
-// Layout: D9 05 <abs addr> C2 04 00 | <4 bytes float const 0x461C4000 = 10000.0f>
-// Execution: fld dword ptr [const]; retn 4. Never freed; lives for the Agent DLL lifetime.
+// Lazy-allocated executable stub for WeaponTemplate_GetWeaponActualRange_713770.
+// Layout: D9 05 <abs addr> C2 08 00 | <4 bytes float const 0x461C4000 = 10000.0f>
+// Execution: fld dword ptr [const]; retn 8.
+// Never freed; lives for the Agent DLL lifetime.
 uint32_t GetAttackRangeReturnStub()
 {
     static uint32_t stub = 0;
@@ -201,7 +203,6 @@ uint32_t GetAttackRangeReturnStub()
     {
         return stub;
     }
-    constexpr uint32_t kFloatBits = 0x461C4000u; // 10000.0f
     auto* mem = static_cast<unsigned char*>(
         VirtualAlloc(nullptr, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
     if (mem == nullptr)
@@ -211,11 +212,30 @@ uint32_t GetAttackRangeReturnStub()
     const uint32_t floatAddress = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mem)) + 9u;
     mem[0] = 0xD9; mem[1] = 0x05;                         // fld dword ptr [imm32]
     std::memcpy(mem + 2, &floatAddress, sizeof(floatAddress));
-    mem[6] = 0xC2; mem[7] = 0x04; mem[8] = 0x00;          // retn 4
-    std::memcpy(mem + 9, &kFloatBits, sizeof(kFloatBits));
+    mem[6] = 0xC2; mem[7] = 0x08; mem[8] = 0x00;          // retn 8
+    std::memcpy(mem + 9, &kUnlimitedAttackRangeBits, sizeof(kUnlimitedAttackRangeBits));
     FlushInstructionCache(GetCurrentProcess(), mem, 13);
     stub = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mem));
     return stub;
+}
+
+bool ExtendSelectedUnitAutoAcquireLocals(const NativeHookContext& c)
+{
+    uint32_t owner = 0;
+    if (!TryRead(c.Ebx + 0x80u, owner) || !IsAttackRangeObject(owner))
+    {
+        return false;
+    }
+
+    TryWrite(c.OriginalEsp + 0x0Cu, kUnlimitedAttackRangeBits);
+    TryWrite(c.OriginalEsp + 0x1Cu, kUnlimitedAttackRangeBits);
+    return true;
+}
+
+bool IsSelectedUnitTurretAI(uint32_t turretAi)
+{
+    uint32_t owner = 0;
+    return TryRead(turretAi + 0x5Cu, owner) && IsAttackRangeObject(owner);
 }
 
 uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
@@ -624,7 +644,7 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
     {
         // WeaponStateMachine_ScaleDuration(this, RangeDuration* a2, RangeDuration* a3)
         // is __fastcall returning __int64 in EDX:EAX and callee-cleans 2 stack args (retn 8).
-        // The owner chain [this+0x18]=WeaponSlot -> [+0x24]=weapon module is consistent
+        // The owner chain [this+0x18]=WeaponSlot -> [+0x24]=GameObject is consistent
         // across all four profiles.
         //
         // Returning mode 5 (retn 8) short-circuits the whole function. EDX:EAX is set to
@@ -634,14 +654,13 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         // fire-rate bonuses (multiplier > 1.0). Callers treat result==0 as a
         // state-transition sentinel and leave the unit permanently stuck.
         //
-        // The on-object flag at WeaponStateMachine+0x7B is set by the SmartToggle
-        // visitor (replaces former g_attackSpeedComponents registry lookup).
-        uint32_t state = 0;
+        // Checks g_attackSpeedObjects set (populated by ToggleSelectedAttackSpeed)
+        // for the component (= [GameObject+0x138]) behind this WeaponSlot.
+        uint32_t weaponSlot = 0;
         uint32_t component = 0;
-        uint8_t flag = 0;
-        if (TryRead(c.Ecx + 0x18u, state) && state != 0 &&
-            TryRead(state + 0x24u, component) && component != 0 &&
-            TryRead(component + 0x7Bu, flag) && (flag & 1u) != 0)
+        if (TryRead(c.Ecx + 0x18u, weaponSlot) && weaponSlot != 0 &&
+            TryRead(weaponSlot + 0x24u, component) && component != 0 &&
+            IsAttackSpeedComponent(component))
         {
             c.Eax = 1u;
             c.Edx = 0u;
@@ -665,18 +684,17 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         break;
     case 43:
     {
-        // GetEffectiveRange is __thiscall returning float in ST0 with one callee-cleaned
-        // stack arg (retn 4). ECX = WeaponEntry* at entry. When the on-object flag at
-        // WeaponEntry+0x77 is set (XORed by the ToggleSelectedAttackRange visitor), the
-        // handler redirects execution to a pre-built stub that loads 10000.0f into ST0
-        // and returns via retn 4 — short-circuiting the entire function body. The stub
-        // avoids the need for an x87-aware trampoline mode.
-        uint8_t flag = 0;
+        // WeaponTemplate_GetWeaponActualRange_713770 is the common numeric range
+        // source used by the in-range predicate and range-planning helpers. It is
+        // __thiscall with two callee-cleaned stack args (retn 8):
+        //   ECX = WeaponTemplate*, [entry ESP+4] = owner GameObject*.
+        // Returning 10000.0f in ST0 extends maximum range while preserving the
+        // caller's minimum-range, contact geometry, status, LOS and target gates.
         const auto stub = GetAttackRangeReturnStub();
-        if (stub != 0 && TryRead(c.Ecx + 0x77u, flag) && (flag & 1u) != 0)
+        uint32_t owner = 0;
+        if (stub != 0 && TryRead(c.OriginalEsp + 4u, owner) && IsAttackRangeObject(owner))
         {
-            c.Eax = stub;
-            return 3;
+            return stub;
         }
         break;
     }
@@ -729,6 +747,55 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
             }
         }
         break;
+    case 45:
+    {
+        // BaseAITargetChooser_FindEnemyTargetInternal_836A80 computes two
+        // independent vision-limited values before querying the partition:
+        //   [entry ESP+0x0C] = partition search radius
+        //   [entry ESP+0x1C] = UnitAITargetChooser distance recheck
+        // EBX remains the chooser, whose owner GameObject* is at +0x80.
+        // Extend both values only for owners already enabled by the selected-unit
+        // attack-range registry. The existing shroud, stealth, relation, target,
+        // weapon and turret-arc filters continue to run unchanged.
+        ExtendSelectedUnitAutoAcquireLocals(c);
+        break;
+    }
+    case 46:
+    {
+        // This seam is the mode-2 branch taken when LargestWeaponRange exceeds
+        // the original vision-derived radius. For enabled owners, extend the
+        // locals and jump to the same distance-filter setup used by mode 1.
+        // Hooking after the x87 comparison avoids carrying ST0 across C++ code.
+        if (ExtendSelectedUnitAutoAcquireLocals(c) && g_hookAddresses[46] != 0)
+        {
+            return g_hookAddresses[46] + 0x1Au; // 0x836E1B -> 0x836E35
+        }
+        break;
+    }
+    case 47:
+    {
+        // TurretAI_IsInTurretAngle is shared by candidate selection, ordering and
+        // the final aim-state validation. Treat the selected owner's turret as
+        // unrestricted, then return through the function's original true epilogue.
+        // The entry prologue has already saved ECX/ESI, so the epilogue remains ABI-safe.
+        if (IsSelectedUnitTurretAI(c.Esi) && g_hookAddresses[47] != 0)
+        {
+            return g_hookAddresses[47] + 0xAAu; // 0x7F2944 -> 0x7F29EE
+        }
+        break;
+    }
+    case 48:
+    {
+        // TurretAI's turn routine has already normalized the requested target angle
+        // and stored it in its local before this native max-deflection branch. Reuse
+        // the game's full-circle path for selected owners so the turret still turns
+        // at its normal rate and must actually reach the target before firing.
+        if (IsSelectedUnitTurretAI(c.Esi) && g_hookAddresses[48] != 0)
+        {
+            return g_hookAddresses[48] + 0xE1u; // 0x80DF79 -> 0x80E05A
+        }
+        break;
+    }
     default:
         break;
     }

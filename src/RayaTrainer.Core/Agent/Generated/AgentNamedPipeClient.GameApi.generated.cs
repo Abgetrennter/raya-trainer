@@ -472,4 +472,34 @@ public sealed partial class AgentNamedPipeClient
             AgentGameApiToggleSelectedAttackRangePayload.ReadFrom,
             cancellationToken);
     }
+
+    public Task<AgentGameApiClearSelectedAttackSpeedEffectsPayload> ClearSelectedAttackSpeedEffectsAsync(
+        int processId,
+        AgentGameApiClearSelectedAttackSpeedEffectsRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        return SendCommandAsync(
+            processId,
+            AgentCommand.ClearSelectedAttackSpeedEffects,
+            request.Encode(),
+            timeout,
+            AgentGameApiClearSelectedAttackSpeedEffectsPayload.ReadFrom,
+            cancellationToken);
+    }
+
+    public Task<AgentGameApiClearSelectedAttackRangeEffectsPayload> ClearSelectedAttackRangeEffectsAsync(
+        int processId,
+        AgentGameApiClearSelectedAttackRangeEffectsRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        return SendCommandAsync(
+            processId,
+            AgentCommand.ClearSelectedAttackRangeEffects,
+            request.Encode(),
+            timeout,
+            AgentGameApiClearSelectedAttackRangeEffectsPayload.ReadFrom,
+            cancellationToken);
+    }
 }

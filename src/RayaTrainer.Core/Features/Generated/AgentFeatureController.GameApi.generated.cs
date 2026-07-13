@@ -640,4 +640,44 @@ public sealed partial class AgentFeatureController
 
         return result.DispatchStatus;
     }
+
+    public GameApiDispatchStatus ClearSelectedAttackSpeedEffects(TimeSpan? timeout = null)
+    {
+        EnsureDirectGameApiSupported();
+        var effectiveTimeout = timeout ?? GameApiCommandTimeout;
+        var gameApiTimeoutMilliseconds = Math.Clamp((uint)effectiveTimeout.TotalMilliseconds, 1u, 5000u);
+        var request = new AgentGameApiClearSelectedAttackSpeedEffectsRequest(
+            TimeoutMilliseconds: gameApiTimeoutMilliseconds,
+            EnableDirectGameApi: true);
+        var result = _client.ClearSelectedAttackSpeedEffectsAsync(_processId, request, effectiveTimeout)
+            .GetAwaiter().GetResult();
+        if (result.StatusCode != AgentStatusCode.Ok &&
+            result.StatusCode != AgentStatusCode.TimedOut)
+        {
+            throw new InvalidOperationException(
+                $"Agent ClearSelectedAttackSpeedEffects failed: status={result.StatusCode}, dispatch={result.DispatchStatus}.");
+        }
+
+        return result.DispatchStatus;
+    }
+
+    public GameApiDispatchStatus ClearSelectedAttackRangeEffects(TimeSpan? timeout = null)
+    {
+        EnsureDirectGameApiSupported();
+        var effectiveTimeout = timeout ?? GameApiCommandTimeout;
+        var gameApiTimeoutMilliseconds = Math.Clamp((uint)effectiveTimeout.TotalMilliseconds, 1u, 5000u);
+        var request = new AgentGameApiClearSelectedAttackRangeEffectsRequest(
+            TimeoutMilliseconds: gameApiTimeoutMilliseconds,
+            EnableDirectGameApi: true);
+        var result = _client.ClearSelectedAttackRangeEffectsAsync(_processId, request, effectiveTimeout)
+            .GetAwaiter().GetResult();
+        if (result.StatusCode != AgentStatusCode.Ok &&
+            result.StatusCode != AgentStatusCode.TimedOut)
+        {
+            throw new InvalidOperationException(
+                $"Agent ClearSelectedAttackRangeEffects failed: status={result.StatusCode}, dispatch={result.DispatchStatus}.");
+        }
+
+        return result.DispatchStatus;
+    }
 }

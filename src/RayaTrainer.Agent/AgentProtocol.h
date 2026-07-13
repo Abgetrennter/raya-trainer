@@ -23,8 +23,18 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // Bumped 8 -> 9 for the Ra3Trainer -> RayaTrainer rename. Magic changed from "RA3T"
 // (0x54334152) to "RAYA" (0x41594152); fingerprint rotated to match. Legacy Agent pipe
 // (Ra3Trainer.Agent.<pid>) is detected and refused at injection time.
+// Fingerprint low 16 bits bumped 1 -> 2 to force reconnect rejection after selected-weapon-effects
+// registry changes (no wire-protocol change). Host and DLL must agree exactly.
+// Fingerprint low 16 bits bumped 2 -> 3 for the selected-unit auto-acquire range hook;
+// an already injected range-only Agent must not be reused. Wire protocol remains v9.
+// Fingerprint low 16 bits bumped 3 -> 4 for idle acquisition and final maximum-range hooks;
+// an already injected Agent without these hooks must not be reused. Wire protocol remains v9.
+// Fingerprint low 16 bits bumped 4 -> 5 for the post-compare idle branch and turret target-angle hook;
+// an already injected Agent with the ineffective seams must not be reused. Wire protocol remains v9.
+// Fingerprint low 16 bits bumped 5 -> 6 for shared turret-angle and full-circle aim-deflection hooks;
+// an already injected chooser-only Agent must not be reused. Wire protocol remains v9.
 inline constexpr uint16_t kAgentProtocolVersion = 9;
-inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090001ull;
+inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090006ull;
 inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
 inline constexpr uint32_t kMaxPayloadLength = 64u * 1024u;
 
@@ -72,7 +82,9 @@ enum class AgentCommand : uint16_t
     CaptureSelectedUnits = 40,
     SetSelectedUnitAmmo = 41,
     ToggleSelectedAttackSpeed = 42,
-    ToggleSelectedAttackRange = 43
+    ToggleSelectedAttackRange = 43,
+    ClearSelectedAttackSpeedEffects = 44,
+    ClearSelectedAttackRangeEffects = 45
 };
 
 // Native agent catalog entry order. This is the host<->DLL contract: the C# host serializes
