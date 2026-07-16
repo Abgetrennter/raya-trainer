@@ -108,7 +108,6 @@ internal static class Ra3_1_13_Profile
             {
                 "_BackChallengeModeTime",
                 "_BackChallengeModeMoney",
-                "_BackFrameRateUnlockGameUpdate",
                 "Rva_88DFD0"
             }
         };
@@ -161,7 +160,20 @@ internal static class Ra3_1_13_Profile
             [0x1437] = 0x1427,
             // WeaponStateMachine_ScaleDuration. The entry shape is shared by
             // 1.12/1.13/Uprising; each profile supplies its own verified RVA and bytes.
-            [0x2F8FE0] = 0x322190
+            [0x2F8FE0] = 0x322190,
+            // GameLogic_RegisterObject. Clears the trainer-owned GameObject flag word
+            // before a freshly allocated or pool-reused object enters the world list.
+            [0x0EE040] = 0x118710,
+            // Frame/update and selected-unit range seams are instruction-for-instruction
+            // equivalents of the 1.12 sites. Verified as unique signature hits in the
+            // 1.13 IDB on 2026-07-17.
+            [0x226630] = 0x24FAF0,
+            [0x313770] = 0x33CA90,
+            [0x226625] = 0x24FAE5,
+            [0x436ECB] = 0x4600EB,
+            [0x436E1B] = 0x46003B,
+            [0x3F2944] = 0x41BD74,
+            [0x40DF79] = 0x437399
         };
     }
 
@@ -177,7 +189,9 @@ internal static class Ra3_1_13_Profile
             [0x6BB455] = [0xE8, 0x06, 0x7E, 0xAB, 0xFF],
             [0x14674D] = [0xE8, 0xEE, 0xBE, 0xF9, 0xFF],
             [0x38E511] = [0xE8, 0xBA, 0x63, 0xD5, 0xFF],
-            [0x2F8FE0] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x05, 0x50, 0xD2, 0xBE, 0x00]
+            [0x2F8FE0] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x05, 0x50, 0xD2, 0xBE, 0x00],
+            [0x313770] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x15, 0x58, 0x06, 0xBF, 0x00],
+            [0x226625] = [0xE8, 0xA6, 0xC1, 0xE8, 0xFF]
         };
     }
 

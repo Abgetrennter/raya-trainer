@@ -41,20 +41,7 @@ public sealed class TrainerProcessLocator
             return null;
         }
 
-        var recognizedProfile = Ra3VersionProfileRegistry.FindRecognizedProfile(candidate);
-        var installableProfile = recognizedProfile?.IsPatchInstallable == true
-            ? recognizedProfile
-            : null;
-
-        return new TrainerTarget(
-            candidate.ModuleName,
-            candidate.ModuleBase,
-            candidate.Is32Bit,
-            installableProfile is not null,
-            candidate.ProcessId,
-            candidate.ModulePath,
-            candidate.FileVersion,
-            recognizedProfile?.Id);
+        return Ra3VersionDetector.DetectAll([candidate]).SingleOrDefault()?.ToTrainerTarget();
     }
 
     private static bool Matches(TrainerProcessCandidate candidate, string processNameOrPath)

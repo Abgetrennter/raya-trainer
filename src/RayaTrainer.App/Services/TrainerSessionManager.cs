@@ -103,7 +103,7 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
         try
         {
             _diagnosticState.SetAgentStatus(_agentBackend
-                .AttachAsync(target, _agentDllPathProvider(), TimeSpan.FromSeconds(5))
+                .AttachAsync(target, manifest, _agentDllPathProvider(), TimeSpan.FromSeconds(5))
                 .GetAwaiter()
                 .GetResult());
         }
@@ -145,7 +145,9 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
             ? new AttachResult(
                 true,
                 $"已重新连接 {displayName} 中现有的 DLL Agent，已恢复 {_diagnosticState.AgentStatus!.Value.InstalledHookCount} 个 Hook 的控制。")
-            : new AttachResult(true, $"已连接 {displayName}（DLL Agent）。");
+            : target.SignatureCompatibilityMode
+                ? new AttachResult(true, $"已连接 {displayName}（签名兼容校验通过，尚未安装 Patch）。")
+                : new AttachResult(true, $"已连接 {displayName}（DLL Agent）。");
         _diagnosticState.RecordEvent(
             DiagnosticEventSeverity.Info,
             resumedInstalledAgent ? "agent.reconnected" : "agent.attached",

@@ -48,11 +48,11 @@ public class SignatureFirstCatalogTests
         // Scanner returns VAs; catalog stores RVAs (VA - module base).
         var scanned = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Rva_8D8CE4"] = 0x4ABCDEF  // GameClientPointer, VA with module base 0x400000
+            ["Rva_8D8CE4"] = 0xABCDEF  // GameClientPointer, VA with module base 0x400000
         };
         var rvas = profile.BuildNativeAgentCatalogRvas(scanned);
         var gameClientIdx = Array.IndexOf(NativeAgentCatalog.EntryNames.ToArray(), "GameClientPointer");
-        Assert.Equal(0x4ABCDEFu - (uint)profile.ModuleBaseVa, rvas[gameClientIdx]);
+        Assert.Equal(0xABCDEFu - (uint)profile.ModuleBaseVa, rvas[gameClientIdx]);
     }
 
     [Fact]
@@ -108,11 +108,38 @@ public class SignatureFirstCatalogTests
         var scanned = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase)
         {
             // GameClientPointer's Rva_8D8CE4 not in scan dict at all
-            ["Rva_205240"] = 0xDEAD
+            ["Rva_205240"] = 0x40DEAD
         };
         var rvas = profile.BuildNativeAgentCatalogRvas(scanned);
         var gameClientIdx = Array.IndexOf(NativeAgentCatalog.EntryNames.ToArray(), "GameClientPointer");
         Assert.Equal(0x10000u, rvas[gameClientIdx]);
+    }
+
+    [Fact]
+    public void Strict_scan_mode_rejects_missing_address_class_entry()
+    {
+        var profile = BuildTestProfile();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            profile.BuildNativeAgentCatalogRvas(
+                new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase),
+                requireScannedAddresses: true));
+
+        Assert.Contains("未唯一定位", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Scanned_address_outside_module_range_is_rejected()
+    {
+        var profile = BuildTestProfile();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            profile.BuildNativeAgentCatalogRvas(new Dictionary<string, uint>
+            {
+                ["Rva_8D8CE4"] = 0x300000
+            }));
+
+        Assert.Contains("超出目标模块", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

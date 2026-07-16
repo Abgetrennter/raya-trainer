@@ -119,7 +119,7 @@
                   Visibility="{Binding HasSelectableCandidates, Converter={StaticResource BooleanToVisibilityConverter}}"
                   Margin="0,0,0,6">
             <StackPanel>
-              <TextBlock Text="检测到多个可安装 RA3 目标，请选择：" FontSize="11"
+              <TextBlock Text="检测到多个可尝试连接的 RA3 目标，请选择：" FontSize="11"
                          Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6" />
               <ItemsControl ItemsSource="{Binding SelectableCandidates}">
                 <ItemsControl.ItemTemplate>
@@ -131,7 +131,7 @@
                             Margin="0,2" Padding="8,4">
                       <StackPanel>
                         <TextBlock FontSize="12" FontWeight="SemiBold">
-                          <Run Text="{Binding Profile.DisplayName, Mode=OneWay, TargetNullValue=未知版本}" />
+                          <Run Text="{Binding DisplayName, Mode=OneWay}" />
                           <Run Text="  PID=" /><Run Text="{Binding ProcessId, Mode=OneWay}" />
                         </TextBlock>
                         <TextBlock Text="{Binding ModulePath}" FontSize="10"

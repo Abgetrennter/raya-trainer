@@ -84,7 +84,18 @@ internal static class Ra3_Uprising_Profile
             [0x6E3DAA] = 0x678D4A,
             [0x6E3EF7] = 0x678E97,
             [0x2F8FE0] = 0x349550,
-            [0x1437] = 0x001457
+            [0x0EE040] = 0x137C00,
+            [0x1437] = 0x001457,
+            // Shared frame/update and selected-unit range seams. Uprising grows a
+            // nearby target-chooser array and turret-data fields, but the replayed
+            // hook bytes and native handler ABI remain unchanged.
+            [0x226630] = 0x270CF0,
+            [0x313770] = 0x365090,
+            [0x226625] = 0x270CE5,
+            [0x436ECB] = 0x484429,
+            [0x436E1B] = 0x484379,
+            [0x3F2944] = 0x43EBE4,
+            [0x40DF79] = 0x45AC89
         };
     }
 
@@ -132,9 +143,17 @@ internal static class Ra3_Uprising_Profile
             [0x6E3DAA] = 0x660E5A, // _BackChallengeModeTime @ 0xA60E5A
             [0x6E3EF7] = 0x660FA7, // _BackChallengeModeMoney @ 0xA60FA7
             [0x2F8FE0] = 0x331670, // _BackSelectedUnitAttackSpeedScale @ 0x731670
+            [0x0EE040] = 0x11D9B0, // _BackGameObjectWeaponFlagsInitialize @ 0x51D9B0
             // Run In Background: WM_ACTIVATEAPP DoPause call site. Verified 0x401447 in Uprising 1.1
             // (signature kHook37BackgroundRunPauseGate unique hit).
-            [0x1437] = 0x001447
+            [0x1437] = 0x001447,
+            [0x226630] = 0x2583F0, // _BackFrameRateUnlockGameUpdate @ 0x6583F0
+            [0x313770] = 0x34D0C0, // _BackSelectedUnitAttackRangeScale @ 0x74D0C0
+            [0x226625] = 0x2583E5, // _BackLogicTimeFreezeGate @ 0x6583E5
+            [0x436ECB] = 0x46BFA9, // _BackSelectedUnitAutoAcquireRange @ 0x86BFA9
+            [0x436E1B] = 0x46BEF9, // _BackSelectedUnitIdleAutoAcquireRange @ 0x86BEF9
+            [0x3F2944] = 0x426804, // _BackSelectedUnitTurretTargetAngle @ 0x826804
+            [0x40DF79] = 0x442899 // _BackSelectedUnitTurretAimDeflection @ 0x842899
             // Not mapped (NeedsReanalysis):
             //   _BackPlayerOneKillItModeData/Data2 (superseded by damage-delta gate),
             //   _BackPlayerOneKillItModeCaller/Caller2 (superseded by damage-delta gate).
@@ -183,7 +202,6 @@ internal static class Ra3_Uprising_Profile
                 "_BackPlayerOneKillItModeData2",
                 "_BackPlayerOneKillItModeCaller",
                 "_BackPlayerOneKillItModeCaller2",
-                "_BackFrameRateUnlockGameUpdate",
                 "Rva_38E651",
                 "Rva_3AD79E",
                 "Rva_3ADEE2"
@@ -208,6 +226,8 @@ internal static class Ra3_Uprising_Profile
         result[0x38E511] = [0xE8, 0xCA, 0x96, 0xD4, 0xFF];
         result[0x6E3EF7] = [0x8B, 0x78, 0x08, 0x68, 0x48, 0xD0, 0xC8, 0x00];
         result[0x2F8FE0] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x05, 0xA4, 0x1D, 0xBF, 0x00];
+        result[0x313770] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x15, 0x00, 0x4A, 0xBF, 0x00];
+        result[0x226625] = [0xE8, 0xB6, 0xE3, 0xE6, 0xFF];
         return result;
     }
 
@@ -228,7 +248,9 @@ internal static class Ra3_Uprising_Profile
             [0x2D4933] = [0x8B, 0x41, 0x28, 0x2B, 0x41, 0x14],
             [0x6E3DAA] = [0xF3, 0x0F, 0x2C, 0x58, 0x38],
             [0x6E3EF7] = [0x8B, 0x78, 0x08, 0x68, 0xD0, 0xDF, 0xC8, 0x00],
-            [0x2F8FE0] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x05, 0x5C, 0x7E, 0xBF, 0x00]
+            [0x2F8FE0] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x05, 0x5C, 0x7E, 0xBF, 0x00],
+            [0x313770] = [0x83, 0xEC, 0x08, 0xF3, 0x0F, 0x10, 0x15, 0xD8, 0xC4, 0xBF, 0x00],
+            [0x226625] = [0xE8, 0x46, 0xFB, 0xE8, 0xFF]
         };
     }
 

@@ -307,8 +307,8 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Contains("选择的建筑物/单位无限生命值", names);
         Assert.Contains("摧毁选择的建筑物/单位", names);
         Assert.Contains("玩家全建筑/单位无敌", names);
-        Assert.Contains("清空满攻速单位", names);
-        Assert.Contains("清空无限射程单位", names);
+        Assert.Contains("清除所有单位的满攻速效果", names);
+        Assert.Contains("清除所有单位的无限射程效果", names);
         Assert.Equal(21, names.Count);
     }
 
@@ -470,9 +470,9 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Null(toggle.Hotkey);
         Assert.Equal("0x1B", toggle.ValueHint);
         Assert.True(toggle.SupportsProfile("ra3_1.12"));
-        Assert.False(toggle.SupportsProfile("ra3_1.13"));
-        Assert.False(toggle.SupportsProfile("ra3_uprising_1.0"));
-        Assert.False(toggle.SupportsProfile("ra3_uprising_1.1"));
+        Assert.True(toggle.SupportsProfile("ra3_1.13"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.0"));
+        Assert.True(toggle.SupportsProfile("ra3_uprising_1.1"));
         Assert.Equal(SelectionExecutionMode.Apply, toggle.SelectionMode);
     }
 
@@ -591,7 +591,7 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
 
         var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Speed Effects");
-        Assert.Equal("清空满攻速单位", clear.DisplayName);
+        Assert.Equal("清除所有单位的满攻速效果", clear.DisplayName);
         Assert.Null(clear.Hotkey);
         Assert.True(clear.RequiresDirectGameApi);
         Assert.Null(clear.DispatchTarget);
@@ -608,14 +608,14 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
 
         var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Range Effects");
-        Assert.Equal("清空无限射程单位", clear.DisplayName);
+        Assert.Equal("清除所有单位的无限射程效果", clear.DisplayName);
         Assert.Null(clear.Hotkey);
         Assert.True(clear.RequiresDirectGameApi);
         Assert.Null(clear.DispatchTarget);
         Assert.True(clear.SupportsProfile("ra3_1.12"));
-        Assert.False(clear.SupportsProfile("ra3_1.13"));
-        Assert.False(clear.SupportsProfile("ra3_uprising_1.0"));
-        Assert.False(clear.SupportsProfile("ra3_uprising_1.1"));
+        Assert.True(clear.SupportsProfile("ra3_1.13"));
+        Assert.True(clear.SupportsProfile("ra3_uprising_1.0"));
+        Assert.True(clear.SupportsProfile("ra3_uprising_1.1"));
         Assert.Equal(SelectionExecutionMode.Apply, clear.SelectionMode);
     }
 

@@ -57,6 +57,25 @@ public sealed class ManifestRepositoryTests
     }
 
     [Fact]
+    public void EveryNonChallengeHookIsAdvertisedForAllKnownProfiles()
+    {
+        var hooks = TestAssets.LoadManifest().PatchManifest.Hooks;
+        var knownProfiles = new[]
+        {
+            "ra3_1.12",
+            "ra3_1.13",
+            "ra3_uprising_1.0",
+            "ra3_uprising_1.1"
+        };
+
+        Assert.All(
+            hooks.Where(hook => !hook.SectionTitle.StartsWith("Uprising Challenge", StringComparison.Ordinal)),
+            hook => Assert.All(knownProfiles, profileId => Assert.True(
+                hook.SupportsProfile(profileId),
+                $"{hook.ReturnLabel ?? hook.Address} should support {profileId}.")));
+    }
+
+    [Fact]
     public void AllPatchRestoreAssemblyEncodesToConcreteBytes()
     {
         var manifest = TestAssets.LoadManifest();

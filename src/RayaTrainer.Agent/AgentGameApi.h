@@ -90,8 +90,9 @@ AgentStatusCode SetNativeCatalogFromPayload(const unsigned char* payload, uint32
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry);
 uint32_t ResolveCurrentPlayerPointer();
 void ResetNativeGameApiRuntimeState();
-bool IsAttackSpeedComponent(uint32_t component);
+bool IsAttackSpeedObject(uint32_t gameObject);
 bool IsAttackRangeObject(uint32_t gameObject);
+void ClearWeaponObjectFlagsForRegisteredObject(uint32_t gameObject);
 
 // Reads the current GameClient game-mode field using the runtime native catalog.
 bool TryGetGameMode(int32_t& gameMode);

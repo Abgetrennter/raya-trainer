@@ -117,7 +117,9 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
 
     public string TargetDetails => Snapshot.Target is null
         ? "未连接目标"
-        : $"{Snapshot.Target.ProfileName} · PID={Snapshot.Target.ProcessId} · {Snapshot.Target.Runtime}\n{Snapshot.Target.ModulePath}";
+        : $"{Snapshot.Target.ProfileName}" +
+          (Snapshot.Target.SignatureCompatibilityMode ? " · 签名兼容" : string.Empty) +
+          $" · PID={Snapshot.Target.ProcessId} · {Snapshot.Target.Runtime}\n{Snapshot.Target.ModulePath}";
 
     public string AgentDetails => Snapshot.Agent.Summary;
 
@@ -168,6 +170,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
             {
                 $"target.module={target?.ModulePath ?? "-"}",
                 $"target.base={target?.ModuleBase ?? "-"}",
+                $"target.signatureCompatibility={target?.SignatureCompatibilityMode ?? false}",
                 $"agent.module={agent.ModuleBase}",
                 $"agent.nativeCapabilities=0x{agent.NativeRuntimeCapabilities:X8}",
                 $"signature.required_unresolved={string.Join(", ", signatures.RequiredUnresolved)}",

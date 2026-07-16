@@ -24,6 +24,7 @@ public sealed class AgentCompatibilityException : InvalidOperationException
 public sealed class InjectedAgentBackend
 {
     private static readonly TimeSpan ExistingAgentProbeTimeout = TimeSpan.FromMilliseconds(50);
+    private const ulong MaximumModuleSpan = 0x02000000;
     private readonly IAgentInjector _injector;
     private readonly IAgentClient _client;
 
@@ -56,12 +57,16 @@ public sealed class InjectedAgentBackend
 
     public IReadOnlyList<string> LastOptionalSignatureSymbols { get; private set; } = [];
 
+    public bool SignatureCompatibilityValidated { get; private set; }
+
     private AgentStatusPayload? _lastStatus;
     private bool _supportsDirectGameApi;
     private IReadOnlyDictionary<string, uint>? _scannedAddresses;
+    private IReadOnlyDictionary<string, byte[]>? _attestedHookBytes;
 
     public async Task<AgentStatusPayload> AttachAsync(
         TrainerTarget target,
+        TrainerManifest manifest,
         string agentDllPath,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
@@ -79,7 +84,18 @@ public sealed class InjectedAgentBackend
                 $"已识别 {profile.DisplayName}，但该版本尚未启用 DLL Agent。");
         }
 
+        if (target.SignatureCompatibilityMode &&
+            (!target.Is32Bit ||
+             !profile.SupportsSignatureScanning ||
+             !profile.MatchesProcessName(target.ProcessName) ||
+             !profile.MatchesFileVersionFamily(target.FileVersion)))
+        {
+            throw new AgentCompatibilityException(
+                "签名兼容候选不满足同版本族、同模块名、x86 和签名扫描门禁，已拒绝注入。");
+        }
+
         _supportsDirectGameApi = profile.SupportsDirectGameApi;
+        SignatureCompatibilityValidated = false;
 
         ReusedExistingAgent = false;
         var ping = await TryPingExistingAgentAsync(processId, cancellationToken).ConfigureAwait(false);
@@ -116,13 +132,33 @@ public sealed class InjectedAgentBackend
 
         _lastStatus = status;
 
+        if (target.SignatureCompatibilityMode && ReusedExistingAgent && status.InstalledHookCount > 0)
+        {
+            throw new AgentCompatibilityException(
+                "签名兼容候选中检测到已经安装的 Hook，无法校验原始指令。请重启游戏后再连接。");
+        }
+
         _scannedAddresses = null;
+        _attestedHookBytes = null;
         if (profile.SupportsSignatureScanning && !(ReusedExistingAgent && status.InstalledHookCount > 0))
         {
             var signatureScan = await _client.ScanSignaturesAsync(processId, timeout, cancellationToken)
                 .ConfigureAwait(false);
             LastSignatureScan = signatureScan;
-            _scannedAddresses = ValidateSignatureCatalog(profile, signatureScan);
+            _scannedAddresses = ValidateSignatureCatalog(profile, signatureScan, target.SignatureCompatibilityMode);
+            if (target.SignatureCompatibilityMode)
+            {
+                _attestedHookBytes = await ValidateSignatureCompatibilityLayoutAsync(
+                        manifest,
+                        profile,
+                        target,
+                        processId,
+                        _scannedAddresses,
+                        timeout,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                SignatureCompatibilityValidated = true;
+            }
         }
         else if (ReusedExistingAgent)
         {
@@ -216,7 +252,8 @@ public sealed class InjectedAgentBackend
             manifest,
             target,
             status,
-            _scannedAddresses);
+            _scannedAddresses,
+            _attestedHookBytes);
         LastSkippedHookPlans = buildResult.SkippedHooks;
         var result = await _client.InstallPatchesAsync(processId, buildResult.Request, timeout, cancellationToken)
             .ConfigureAwait(false);
@@ -270,7 +307,10 @@ public sealed class InjectedAgentBackend
         }
 
         var rvas = _scannedAddresses is not null
-            ? profile.BuildNativeAgentCatalogRvas(_scannedAddresses)
+            ? profile.BuildNativeAgentCatalogRvas(
+                _scannedAddresses,
+                requireScannedAddresses: target.SignatureCompatibilityMode,
+                actualModuleBaseVa: checked((uint)target.ModuleBase.ToInt64()))
             : profile.BuildNativeAgentCatalogRvas();
 
         var catalogResult = await _client.SetNativeCatalogAsync(processId, rvas, timeout, cancellationToken)
@@ -283,7 +323,8 @@ public sealed class InjectedAgentBackend
 
     private IReadOnlyDictionary<string, uint> ValidateSignatureCatalog(
         Ra3VersionProfile profile,
-        AgentSignatureScanPayload payload)
+        AgentSignatureScanPayload payload,
+        bool requireAllActiveSymbols)
     {
         if (payload.StatusCode != AgentStatusCode.Ok || payload.EntryCount == 0)
         {
@@ -318,22 +359,36 @@ public sealed class InjectedAgentBackend
             .Where(entry => entry.Value == 0 && !optionalSymbols.Contains(entry.Key))
             .Select(entry => entry.Key)
             .ToArray();
-        // Record required scan entries that resolved to zero. These will fall back to the
-        // profile's fixed RVA in ResolveHookAddress; the install-stage byte check
-        // (PatchMismatch) rejects any fixed RVA whose bytes don't match.
+        // Exact profiles may fall back to a fixed RVA and rely on the install-stage byte
+        // check. Signature-compatibility candidates reject this list below.
         LastRequiredUnresolvedSignatures = unresolved;
 
-        // Check that all Verified hooks and bootstrap refs have non-zero scanned addresses.
-        var requiredSymbols = profile.Hooks
+        // Verified hooks are always required. Compatibility candidates additionally require
+        // every active address-class native ref so no fixed RVA can enter their catalog.
+        IEnumerable<string> requiredSymbols = profile.Hooks
             .Where(kv => kv.Value.Status == AddressSupportStatus.Verified)
-            .Select(kv => kv.Key)
-            ;
-        var missing = requiredSymbols
+            .Select(kv => kv.Key);
+        if (requireAllActiveSymbols)
+        {
+            requiredSymbols = requiredSymbols.Concat(profile.NativeAgentRefs
+                .Where(kv => kv.Value.Status == AddressSupportStatus.Verified && kv.Value.Rva is not null)
+                .Select(kv => kv.Key)
+                .SelectMany(name => NativeAgentRefSignatureMapping.TryGetSignatureKey(name, out var signatureKey)
+                    ? [signatureKey]
+                    : Array.Empty<string>()));
+        }
+
+        var requiredSymbolSet = requiredSymbols
+            .Where(symbol => !optionalSymbols.Contains(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var missing = requiredSymbolSet
             .Where(symbol => !addresses.TryGetValue(symbol, out var address) || address == 0)
             .ToArray();
         if (missing.Length > 0)
         {
-            // Record Verified hooks/refs whose scan missed. Same fallback applies.
+            // Record verified hooks/refs whose scan missed. Exact profiles may fall back;
+            // compatibility candidates reject them below.
             LastRequiredUnresolvedSignatures = LastRequiredUnresolvedSignatures
                 .Concat(missing)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -341,7 +396,89 @@ public sealed class InjectedAgentBackend
                 .ToArray();
         }
 
+        if (requireAllActiveSymbols && LastRequiredUnresolvedSignatures.Count > 0)
+        {
+            throw new AgentCompatibilityException(
+                "签名兼容校验未通过：以下必需地址未能唯一定位，未安装任何 Patch：" +
+                string.Join(", ", LastRequiredUnresolvedSignatures) + "。");
+        }
+
         return addresses;
+    }
+
+    private async Task<IReadOnlyDictionary<string, byte[]>> ValidateSignatureCompatibilityLayoutAsync(
+        TrainerManifest manifest,
+        Ra3VersionProfile profile,
+        TrainerTarget target,
+        int processId,
+        IReadOnlyDictionary<string, uint> scannedAddresses,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var plans = PatchHookPlanner.CreateSupportedPlans(
+            manifest.PatchManifest,
+            profile,
+            includeUnlistedHooks: false).Plans;
+        if (plans.Count == 0)
+        {
+            throw new AgentCompatibilityException("签名兼容校验没有可验证的 Hook，已停止安装。");
+        }
+
+        var actualModuleBase = checked((ulong)target.ModuleBase.ToInt64());
+        var attestedBytes = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var plan in plans)
+        {
+            var key = string.IsNullOrWhiteSpace(plan.ReturnLabel) ? plan.Address : plan.ReturnLabel;
+            if (!scannedAddresses.TryGetValue(key, out var scannedAddress) || scannedAddress == 0)
+            {
+                throw new AgentCompatibilityException(
+                    $"签名兼容校验未通过：Hook {key} 未能唯一定位，未安装任何 Patch。");
+            }
+
+            if (scannedAddress < actualModuleBase || scannedAddress - actualModuleBase >= MaximumModuleSpan)
+            {
+                throw new AgentCompatibilityException(
+                    $"签名兼容校验未通过：Hook {key} 的扫描地址超出目标模块，未安装任何 Patch。");
+            }
+
+            if (!profile.Hooks.TryGetValue(key, out var profileHook) || profileHook.Rva is not int expectedRva)
+            {
+                throw new AgentCompatibilityException(
+                    $"签名兼容校验未通过：Hook {key} 缺少已知版本指令基线，未安装任何 Patch。");
+            }
+
+            var read = await _client.ReadMemoryAsync(
+                    processId,
+                    new AgentMemoryReadRequest(scannedAddress, checked((uint)plan.OriginalBytes.Length)),
+                    timeout,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (read.StatusCode != AgentStatusCode.Ok ||
+                read.AgentVersion != AgentProtocol.Version ||
+                read.Address != scannedAddress ||
+                read.Bytes.Length != plan.OriginalBytes.Length)
+            {
+                throw new AgentCompatibilityException(
+                    $"签名兼容校验未通过：无法读取 Hook {key} 的完整原始指令，未安装任何 Patch。");
+            }
+
+            var verification = SignatureCompatibilityVerifier.Verify(
+                plan.OriginalBytes,
+                checked((ulong)(profile.ModuleBaseVa + expectedRva)),
+                read.Bytes,
+                scannedAddress,
+                checked((ulong)profile.ModuleBaseVa),
+                actualModuleBase);
+            if (!verification.Compatible)
+            {
+                throw new AgentCompatibilityException(
+                    $"签名兼容校验未通过：Hook {key} 的代码布局已变化（{verification.Reason}），未安装任何 Patch。");
+            }
+
+            attestedBytes[key] = read.Bytes.ToArray();
+        }
+
+        return attestedBytes;
     }
 
     public async Task<AgentStatusPayload> GetStatusAsync(

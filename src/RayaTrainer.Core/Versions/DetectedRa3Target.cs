@@ -14,16 +14,27 @@ public sealed record DetectedRa3Target(
     TargetSupportStatus SupportStatus,
     IReadOnlyList<VersionEvidence> Evidence)
 {
+    public bool IsSignatureCompatibilityCandidate =>
+        SupportStatus == TargetSupportStatus.SignatureCompatibilityCandidate;
+
+    public string DisplayName =>
+        $"{Profile?.DisplayName ?? (string.IsNullOrWhiteSpace(FileVersion) ? "未知版本" : FileVersion)}" +
+        (IsSignatureCompatibilityCandidate ? " · 签名兼容候选" : string.Empty);
+
+    public bool CanAttemptInstallation =>
+        SupportStatus is TargetSupportStatus.Installable or TargetSupportStatus.SignatureCompatibilityCandidate;
+
     public TrainerTarget ToTrainerTarget()
     {
         return new TrainerTarget(
             ModuleName,
             ModuleBase,
             Is32Bit,
-            VersionSupported: SupportStatus == TargetSupportStatus.Installable,
+            VersionSupported: CanAttemptInstallation,
             ProcessId,
             ModulePath,
             FileVersion,
-            Profile?.Id);
+            Profile?.Id,
+            SignatureCompatibilityMode: SupportStatus == TargetSupportStatus.SignatureCompatibilityCandidate);
     }
 }

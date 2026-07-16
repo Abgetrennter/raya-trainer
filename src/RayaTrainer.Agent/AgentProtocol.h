@@ -39,8 +39,12 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // from 8 to 24 slots. An already-injected v9 Agent must not be reused: the catalog count,
 // command set, and result layout are incompatible. Fingerprint low 32 bits reset to
 // (Version=10 << 16) | 1 = 0x000A0001.
+// v10 fingerprint low 16 bits bumped 1 -> 2 for per-GameObject weapon flags and the
+// GameLogic_RegisterObject initializer hook. The wire protocol remains v10.
+// v10 fingerprint low 16 bits bumped 2 -> 3 for the profile-aware StructureUnpackUpdate
+// fast-build field. An older Agent writes the wrong Uprising module field.
 inline constexpr uint16_t kAgentProtocolVersion = 10;
-inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000A0001ull;
+inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000A0003ull;
 inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
 inline constexpr uint32_t kMaxPayloadLength = 64u * 1024u;
 

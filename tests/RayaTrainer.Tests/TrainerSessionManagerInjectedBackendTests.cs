@@ -3,6 +3,7 @@ using RayaTrainer.Core.Agent;
 using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
+using RayaTrainer.Core.Patching;
 using RayaTrainer.Core.Runtime;
 using RayaTrainer.Core.Versions;
 using Xunit;
@@ -231,6 +232,178 @@ public sealed class TrainerSessionManagerInjectedBackendTests
         Assert.Contains(snapshot.RecentEvents, diagnosticEvent =>
             diagnosticEvent.Code == "agent.signature_scan" &&
             diagnosticEvent.Severity == DiagnosticEventSeverity.Error);
+    }
+
+    [Theory]
+    [InlineData("ra3_1.12", "1.12.9999.0")]
+    [InlineData("ra3_1.13", "1.13.9999.0")]
+    [InlineData("ra3_uprising_1.0", "1.0.9999.0")]
+    [InlineData("ra3_uprising_1.1", "1.1.9999.0")]
+    public void SignatureCompatibilityCandidateAttestsRelocatedLayoutBeforeInstalling(
+        string profileId,
+        string candidateVersion)
+    {
+        var profile = Ra3VersionProfileRegistry.FindById(profileId)!;
+        var manifest = TestAssets.LoadManifest();
+        var signatureScan = TestAgentSignatureCatalog.CreateForProfile(
+            profile,
+            includeNativeRefs: true,
+            addressShift: 0x1000);
+        var client = new FakeAgentClient { SignatureScanPayload = signatureScan };
+        foreach (var plan in PatchHookPlanner.CreateSupportedPlans(
+                     manifest.PatchManifest,
+                     profile,
+                     includeUnlistedHooks: false).Plans)
+        {
+            var key = string.IsNullOrWhiteSpace(plan.ReturnLabel) ? plan.Address : plan.ReturnLabel;
+            client.MemoryByAddress[signatureScan.Addresses[key]] = plan.OriginalBytes;
+        }
+
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), client),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+        var target = CompatibilityTarget(profile, candidateVersion);
+
+        var attach = manager.AttachTarget(manifest, target);
+        var install = manager.InstallPatches(manifest, "diagnostics");
+
+        Assert.True(attach.Success);
+        Assert.Contains("签名兼容校验通过", attach.Message, StringComparison.Ordinal);
+        Assert.NotNull(client.InstallRequest);
+        Assert.All(client.InstallRequest.Hooks, hook =>
+            Assert.Contains(hook.Address, signatureScan.Addresses.Values));
+        Assert.Equal(client.InstallRequest.Hooks.Count, install.PatchResult.InstallResult.InstalledHookCount);
+    }
+
+    [Fact]
+    public void SignatureCompatibilityCandidateRejectsMissingRequiredSignatureBeforePatchInstall()
+    {
+        var profile = Ra3VersionProfileRegistry.Ra3112;
+        var addresses = new Dictionary<string, uint>(
+            TestAgentSignatureCatalog.CreateForProfile(profile, includeNativeRefs: true).Addresses,
+            StringComparer.OrdinalIgnoreCase);
+        var requiredHook = profile.Hooks.First(entry => entry.Value.Status == AddressSupportStatus.Verified).Key;
+        addresses[requiredHook] = 0;
+        var client = new FakeAgentClient
+        {
+            SignatureScanPayload = new AgentSignatureScanPayload(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                checked((uint)addresses.Count),
+                checked((uint)addresses.Count(entry => entry.Value != 0)),
+                addresses)
+        };
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), client),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            manager.AttachTarget(TestAssets.LoadManifest(), CompatibilityTarget(profile)));
+
+        Assert.Contains(requiredHook, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("未安装任何 Patch", exception.Message, StringComparison.Ordinal);
+        Assert.Null(client.InstallRequest);
+    }
+
+    [Fact]
+    public void SignatureCompatibilityCandidateRejectsLayoutDriftBeforePatchInstall()
+    {
+        var profile = Ra3VersionProfileRegistry.Ra3112;
+        var manifest = TestAssets.LoadManifest();
+        var signatureScan = TestAgentSignatureCatalog.CreateForProfile(profile, includeNativeRefs: true);
+        var client = new FakeAgentClient { SignatureScanPayload = signatureScan };
+        var plans = PatchHookPlanner.CreateSupportedPlans(
+            manifest.PatchManifest,
+            profile,
+            includeUnlistedHooks: false).Plans;
+        foreach (var plan in plans)
+        {
+            var key = string.IsNullOrWhiteSpace(plan.ReturnLabel) ? plan.Address : plan.ReturnLabel;
+            client.MemoryByAddress[signatureScan.Addresses[key]] = plan.OriginalBytes.ToArray();
+        }
+        var changedPlan = plans[0];
+        var changedKey = string.IsNullOrWhiteSpace(changedPlan.ReturnLabel)
+            ? changedPlan.Address
+            : changedPlan.ReturnLabel;
+        client.MemoryByAddress[signatureScan.Addresses[changedKey]][0] = 0xCC;
+
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), client),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            manager.AttachTarget(manifest, CompatibilityTarget(profile)));
+
+        Assert.Contains("代码布局已变化", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("未安装任何 Patch", exception.Message, StringComparison.Ordinal);
+        Assert.Null(client.InstallRequest);
+    }
+
+    [Fact]
+    public void SignatureCompatibilityCandidateRejectsHookAddressOutsideTargetModule()
+    {
+        var profile = Ra3VersionProfileRegistry.Ra3112;
+        var addresses = new Dictionary<string, uint>(
+            TestAgentSignatureCatalog.CreateForProfile(profile, includeNativeRefs: true).Addresses,
+            StringComparer.OrdinalIgnoreCase);
+        var requiredHook = profile.Hooks.First(entry => entry.Value.Status == AddressSupportStatus.Verified).Key;
+        addresses[requiredHook] = 0x300000;
+        var client = new FakeAgentClient
+        {
+            SignatureScanPayload = new AgentSignatureScanPayload(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                checked((uint)addresses.Count),
+                checked((uint)addresses.Count(entry => entry.Value != 0)),
+                addresses)
+        };
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), client),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            manager.AttachTarget(TestAssets.LoadManifest(), CompatibilityTarget(profile)));
+
+        Assert.Contains("超出目标模块", exception.Message, StringComparison.Ordinal);
+        Assert.Null(client.InstallRequest);
+    }
+
+    [Fact]
+    public void SignatureCompatibilityCandidateRejectsReusedInstalledAgentBecauseBytesAreNotPristine()
+    {
+        var profile = Ra3VersionProfileRegistry.Ra3112;
+        var client = new FakeAgentClient
+        {
+            PingFailuresRemaining = 0,
+            StatusInstalledHookCount = 1
+        };
+        var injector = new FakeAgentInjector();
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(injector, client),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            manager.AttachTarget(TestAssets.LoadManifest(), CompatibilityTarget(profile)));
+
+        Assert.Contains("原始指令", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("重启游戏", exception.Message, StringComparison.Ordinal);
+        Assert.False(injector.InjectCalled);
+        Assert.Null(client.InstallRequest);
+    }
+
+    private static TrainerTarget CompatibilityTarget(
+        Ra3VersionProfile profile,
+        string candidateVersion = "1.12.9999.99999")
+    {
+        return new TrainerTarget(
+            profile.ProcessName,
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            ProcessId: 1234,
+            FileVersion: candidateVersion,
+            VersionProfileId: profile.Id,
+            SignatureCompatibilityMode: true);
     }
 
     [Fact]
@@ -620,6 +793,7 @@ public sealed class TrainerSessionManagerInjectedBackendTests
         public ulong PingFingerprint { get; set; } = AgentBuildIdentity.Fingerprint;
         public bool RejectInjectedAgentProtocol { get; set; }
         public uint StatusInstalledHookCount { get; set; }
+        public Dictionary<uint, byte[]> MemoryByAddress { get; } = [];
 
         public Task<AgentPingPayload> PingAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
@@ -688,7 +862,10 @@ public sealed class TrainerSessionManagerInjectedBackendTests
                 throw new InvalidOperationException("runtime read failed");
             }
 
-            return Task.FromResult(new AgentMemoryReadPayload(AgentStatusCode.Ok, AgentProtocol.Version, request.Address, new byte[request.ByteCount]));
+            var bytes = MemoryByAddress.TryGetValue(request.Address, out var configured)
+                ? configured.ToArray()
+                : new byte[request.ByteCount];
+            return Task.FromResult(new AgentMemoryReadPayload(AgentStatusCode.Ok, AgentProtocol.Version, request.Address, bytes));
         }
 
         public Task<AgentCommandResultPayload> SetNativeCatalogAsync(int processId, IReadOnlyList<uint> rvas, TimeSpan timeout, CancellationToken cancellationToken = default)

@@ -164,19 +164,19 @@ public sealed partial class MainViewModel
     {
         SelectableCandidates = selection.Status == TargetSelectionStatus.AmbiguousRequiresUserChoice
             ? selection.Candidates
-                .Where(candidate => candidate.SupportStatus == TargetSupportStatus.Installable)
+                .Where(candidate => candidate.CanAttemptInstallation)
                 .ToArray()
             : Array.Empty<DetectedRa3Target>();
 
         var notice = selection.Status switch
         {
             TargetSelectionStatus.SingleSupportedAmongMany =>
-                $"检测到多个 RA3 进程，已选择唯一可安装目标：{FormatTarget(selection.SelectedTarget)}。",
+                $"检测到多个 RA3 进程，已选择唯一可尝试连接目标：{FormatTarget(selection.SelectedTarget)}。",
             TargetSelectionStatus.AmbiguousRequiresUserChoice => HasSelectableCandidates
-                ? "检测到多个可安装 RA3 目标，请在下方列表中选择一个再连接。"
+                ? "检测到多个可尝试连接的 RA3 目标，请在下方列表中选择一个再连接。"
                 : $"检测到多个可安装 RA3 目标，请手动选择后再连接：{FormatCandidateSummary(selection.Candidates)}。",
             TargetSelectionStatus.NoInstallableCandidate =>
-                $"检测到 RA3 进程，但没有可安装的已验证版本：{FormatCandidateSummary(selection.Candidates)}。",
+                $"检测到 RA3 进程，但没有可安装或可签名验证的版本：{FormatCandidateSummary(selection.Candidates)}。",
             TargetSelectionStatus.NoCandidate => "未找到 RA3 进程。",
             _ => null
         };
@@ -254,7 +254,7 @@ public sealed partial class MainViewModel
 
     private void SelectCandidate(DetectedRa3Target? candidate)
     {
-        if (candidate is null || candidate.SupportStatus != TargetSupportStatus.Installable)
+        if (candidate is null || !candidate.CanAttemptInstallation)
         {
             return;
         }
@@ -273,6 +273,7 @@ public sealed partial class MainViewModel
             : target.FileVersion;
         var pid = target.ProcessId?.ToString(CultureInfo.InvariantCulture) ?? "?";
         var path = string.IsNullOrWhiteSpace(target.ModulePath) ? string.Empty : $"  {target.ModulePath}";
-        return $"{version}  PID={pid}  {profileId}  [DLL Agent]{path}";
+        var compatibility = target.SignatureCompatibilityMode ? " · 签名兼容" : string.Empty;
+        return $"{version}  PID={pid}  {profileId}  [DLL Agent{compatibility}]{path}";
     }
 }

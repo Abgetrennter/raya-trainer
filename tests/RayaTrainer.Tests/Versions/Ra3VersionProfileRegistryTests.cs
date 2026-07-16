@@ -22,6 +22,21 @@ public sealed class Ra3VersionProfileRegistryTests
         Assert.Null(Ra3VersionProfileRegistry.FindByFileVersion("1.12.9999.99999"));
     }
 
+    [Fact]
+    public void FindSignatureCompatibilityProfileRequiresKnownFamilyModuleAndX86()
+    {
+        var compatible = Candidate("ra3_1.12.game", "1.12.9999.99999", is32Bit: true);
+        var wrongFamily = Candidate("ra3_1.12.game", "2.0.0.0", is32Bit: true);
+        var wrongModule = Candidate("custom.game", "1.12.9999.99999", is32Bit: true);
+        var wrongArchitecture = Candidate("ra3_1.12.game", "1.12.9999.99999", is32Bit: false);
+
+        Assert.Same(Ra3VersionProfileRegistry.Ra3112,
+            Ra3VersionProfileRegistry.FindSignatureCompatibilityProfile(compatible));
+        Assert.Null(Ra3VersionProfileRegistry.FindSignatureCompatibilityProfile(wrongFamily));
+        Assert.Null(Ra3VersionProfileRegistry.FindSignatureCompatibilityProfile(wrongModule));
+        Assert.Null(Ra3VersionProfileRegistry.FindSignatureCompatibilityProfile(wrongArchitecture));
+    }
+
     [Theory]
     [InlineData("1.13.0.0", "ra3_1.13", "RA3 1.13")]
     [InlineData("1.13.3444.25830", "ra3_1.13", "RA3 1.13")]
@@ -94,5 +109,17 @@ public sealed class Ra3VersionProfileRegistryTests
             VersionProfileId: "ra3_unknown");
 
         Assert.Null(Ra3VersionProfileRegistry.ResolveTargetProfile(target));
+    }
+
+    private static TrainerProcessCandidate Candidate(string moduleName, string version, bool is32Bit)
+    {
+        return new TrainerProcessCandidate(
+            1234,
+            Path.GetFileNameWithoutExtension(moduleName),
+            moduleName,
+            @$"D:\Games\RA3\Data\{moduleName}",
+            0x400000,
+            is32Bit,
+            version);
     }
 }

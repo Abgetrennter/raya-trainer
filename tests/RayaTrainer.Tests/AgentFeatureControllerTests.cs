@@ -151,8 +151,8 @@ public sealed class AgentFeatureControllerTests
     }
 
     [Theory]
-    [InlineData("Clear Selected Attack Speed Effects", "清空满攻速单位")]
-    [InlineData("Clear Selected Attack Range Effects", "清空无限射程单位")]
+    [InlineData("Clear Selected Attack Speed Effects", "清除所有单位的满攻速效果")]
+    [InlineData("Clear Selected Attack Range Effects", "清除所有单位的无限射程效果")]
     public async Task TriggerActionRoutesClearSelectedAttackEffectsToGameApi(
         string rawName,
         string displayName)

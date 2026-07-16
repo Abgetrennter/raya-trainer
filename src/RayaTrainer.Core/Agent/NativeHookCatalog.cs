@@ -52,7 +52,8 @@ public static class NativeHookCatalog
             ["_BackSelectedUnitAutoAcquireRange"] = 45,
             ["_BackSelectedUnitIdleAutoAcquireRange"] = 46,
             ["_BackSelectedUnitTurretTargetAngle"] = 47,
-            ["_BackSelectedUnitTurretAimDeflection"] = 48
+            ["_BackSelectedUnitTurretAimDeflection"] = 48,
+            ["_BackGameObjectWeaponFlagsInitialize"] = 49
         };
 
     public static uint GetHookId(string? returnLabel)

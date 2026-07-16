@@ -8,4 +8,5 @@ public sealed record TrainerTarget(
     int? ProcessId = null,
     string ModulePath = "",
     string FileVersion = "",
-    string? VersionProfileId = null);
+    string? VersionProfileId = null,
+    bool SignatureCompatibilityMode = false);

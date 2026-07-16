@@ -241,28 +241,31 @@ static constexpr auto kHook40UprisingChallengeMoney = MakeBuiltInPattern(
     "8B 78 08 68 ? ? ? ? 8D 4C 24 38 E8 ? ? ? ? 57 8D 4C 24 20"); // Uprising 1.1 0xA60FA7
 static constexpr auto kHook41FrameRateUnlockGameUpdate = MakeBuiltInPattern(
     "_BackFrameRateUnlockGameUpdate",
-    "8B 01 8B 90 0C 01 00 00 FF D2 8B 0D ? ? ? ? 80 B9 C4 00 00 00 00"); // RA3 1.12 0x626630
+    "8B 01 8B 90 0C 01 00 00 FF D2 8B 0D ? ? ? ? 80 B9 C4 00 00 00 00"); // 1.12/1.13/Uprising 1.0/1.1: 0x626630/0x64FAF0/0x670CF0/0x6583F0
 static constexpr auto kHook42ZoomClamp = MakeBuiltInPattern(
     "_BackZoomClamp",
     "F3 0F 10 4C 24 08 F3 0F 10 44 24 04 0F 2F C8 76 05 D9 44 24 08 C3"); // 1.12 0x4FDBD0, 1.13 0x4D81E0, Uprising 1.0/1.1 0x4DB620/0x4E44D0
 static constexpr auto kHook43SelectedUnitAttackRangeScale = MakeBuiltInPattern(
     "_BackSelectedUnitAttackRangeScale",
-    "83 EC 08 F3 0F 10 15 ? ? ? ? F3 0F 10 4C 24 10 56 8B F1 8B 46 04"); // 1.12 0x713770 WeaponTemplate_GetWeaponActualRange
+    "83 EC 08 F3 0F 10 15 ? ? ? ? F3 0F 10 4C 24 10 56 8B F1 8B 46 04"); // 0x713770 WeaponTemplate_GetWeaponActualRange; 1.13/Uprising 1.0/1.1: 0x73CA90/0x765090/0x74D0C0
 static constexpr auto kHook44LogicTimeFreezeGate = MakeBuiltInPattern(
     "_BackLogicTimeFreezeGate",
-    "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 0D ? ? ? ? 80 B9"); // 1.12 0x626625 game-update entry (sub_626620+5)
+    "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 0D ? ? ? ? 80 B9"); // 1.12/1.13/Uprising 1.0/1.1: 0x626625/0x64FAE5/0x670CE5/0x6583E5
 static constexpr auto kHook45SelectedUnitAutoAcquireRange = MakeBuiltInPattern(
     "_BackSelectedUnitAutoAcquireRange",
-    "D9 44 24 0C 57 8D 4C 24 14 51 6A 01 51 8B 0D ? ? ? ? D9 1C 24"); // 1.12 0x836ECB BaseAITargetChooser_FindEnemyTargetInternal
+    "D9 44 24 0C 57 8D 4C 24 14 51 6A 01 51 8B 0D ? ? ? ? D9 1C 24"); // 0x836ECB BaseAITargetChooser_FindEnemyTargetInternal; 1.13/Uprising 1.0/1.1: 0x8600EB/0x884429/0x86BFA9
 static constexpr auto kHook46SelectedUnitIdleAutoAcquireRange = MakeBuiltInPattern(
     "_BackSelectedUnitIdleAutoAcquireRange",
-    "8D 8C 24 9C 00 00 00 51 E9 ? ? ? ? 8D 94 24 40 01 00 00 52 E9 ? ? ? ? F3 0F 10 44 24 0C"); // 1.12 0x836E1B BaseAITargetChooser_FindEnemyTargetInternal idle filter branch
+    "8D 8C 24 ? ? ? ? 51 E9 ? ? ? ? 8D 94 24 ? ? ? ? 52 E9 ? ? ? ? F3 0F 10 44 24 0C"); // 0x836E1B BaseAITargetChooser_FindEnemyTargetInternal idle filter branch; 1.13/Uprising 1.0/1.1: 0x86003B/0x884379/0x86BEF9
 static constexpr auto kHook47SelectedUnitTurretTargetAngle = MakeBuiltInPattern(
     "_BackSelectedUnitTurretTargetAngle",
-    "8B 86 98 00 00 00 85 C0 8B 4E 5C 74 0F 8B 56 58 F3 0F 10 42 4C"); // 1.12 0x7F2944 TurretAI_IsInTurretAngle shared angle gate
+    "8B 86 98 00 00 00 85 C0 8B 4E 5C 74 0F 8B 56 58 F3 0F 10 42 ?"); // 0x7F2944 TurretAI_IsInTurretAngle shared angle gate; 1.13/Uprising 1.0/1.1: 0x81BD74/0x83EBE4/0x826804
 static constexpr auto kHook48SelectedUnitTurretAimDeflection = MakeBuiltInPattern(
     "_BackSelectedUnitTurretAimDeflection",
-    "0F 86 ? ? ? ? 85 FF 74 0C F3 0F 10 47 64 F3 0F 58 43 4C EB 05"); // 1.12 0x80DF79 TurretAI turn max-deflection branch
+    "0F 86 ? ? ? ? 85 FF 74 0C F3 0F 10 47 64 F3 0F 58 43 ? EB 05"); // 0x80DF79 TurretAI turn max-deflection branch; 1.13/Uprising 1.0/1.1: 0x837399/0x85AC89/0x842899
+static constexpr auto kHook49GameObjectWeaponFlagsInitialize = MakeBuiltInPattern(
+    "_BackGameObjectWeaponFlagsInitialize",
+    "53 55 56 8B 74 24 10 57 8B F9 8D 87 B8 00 00 00"); // GameLogic_RegisterObject: 1.12/1.13/Uprising 1.0/1.1 0x4EE040/0x518710/0x537C00/0x51D9B0
 
 // Bootstrap and profile address catalog. Code entries resolve to their match address. Data
 // entries use a unique code reference as the anchor and read the wildcarded absolute operand.
@@ -439,6 +442,7 @@ static constexpr Signature kBuiltInSignatures[] = {
     kHook46SelectedUnitIdleAutoAcquireRange.ToSignature(),
     kHook47SelectedUnitTurretTargetAngle.ToSignature(),
     kHook48SelectedUnitTurretAimDeflection.ToSignature(),
+    kHook49GameObjectWeaponFlagsInitialize.ToSignature(),
     kRva1160.ToSignature(),
     kRva1437.ToSignature(),
     kRva143C.ToSignature(),
@@ -482,8 +486,8 @@ static constexpr Signature kBuiltInSignatures[] = {
     kRva88DFD0.ToSignature(SignatureAddressMode::Absolute32AtOffset, 4),
 };
 
-static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 89);
-constexpr size_t kBuiltInHookCount = 48;
+static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 90);
+constexpr size_t kBuiltInHookCount = 49;
 
 // Process-local memory read wrapped in SEH, matching the pattern used elsewhere in the DLL
 // (AgentMemoryAccess.cpp / AgentPatchManager.cpp). Returns true on success.

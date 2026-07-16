@@ -24,7 +24,7 @@ public static class Ra3VersionDetector
         }
 
         var installable = candidates
-            .Where(candidate => candidate.SupportStatus == TargetSupportStatus.Installable)
+            .Where(candidate => candidate.CanAttemptInstallation)
             .ToArray();
 
         return installable.Length switch
@@ -33,7 +33,7 @@ public static class Ra3VersionDetector
                 TargetSelectionStatus.NoInstallableCandidate,
                 null,
                 candidates,
-                "RA3 process candidates were detected, but none are installable."),
+                "RA3 process candidates were detected, but none can be installed or signature-validated."),
             1 when candidates.Count == 1 => new TargetSelectionResult(
                 TargetSelectionStatus.SingleAutoSelected,
                 installable[0],
@@ -43,12 +43,12 @@ public static class Ra3VersionDetector
                 TargetSelectionStatus.SingleSupportedAmongMany,
                 installable[0],
                 candidates,
-                $"Detected multiple RA3 process candidates; selected the only installable target {installable[0].Profile?.DisplayName} PID {installable[0].ProcessId}."),
+                $"Detected multiple RA3 process candidates; selected the only attemptable target {installable[0].Profile?.DisplayName} PID {installable[0].ProcessId}."),
             _ => new TargetSelectionResult(
                 TargetSelectionStatus.AmbiguousRequiresUserChoice,
                 null,
                 candidates,
-                "Multiple installable RA3 targets were detected. User selection is required.")
+                "Multiple installable or signature-compatible RA3 targets were detected. User selection is required.")
         };
     }
 
@@ -63,11 +63,24 @@ public static class Ra3VersionDetector
         };
         var recognizedProfile = Ra3VersionProfileRegistry.FindRecognizedProfile(candidate);
         var installableProfile = Ra3VersionProfileRegistry.FindInstallableProfile(candidate);
+        var compatibilityProfile = installableProfile is null
+            ? Ra3VersionProfileRegistry.FindSignatureCompatibilityProfile(candidate)
+            : null;
         var supportStatus = installableProfile is not null
             ? TargetSupportStatus.Installable
-            : recognizedProfile is not null || IsKnownRa3Name(candidate)
-                ? TargetSupportStatus.Unsupported
-                : TargetSupportStatus.Unknown;
+            : compatibilityProfile is not null
+                ? TargetSupportStatus.SignatureCompatibilityCandidate
+                : recognizedProfile is not null || IsKnownRa3Name(candidate)
+                    ? TargetSupportStatus.Unsupported
+                    : TargetSupportStatus.Unknown;
+
+        if (compatibilityProfile is not null)
+        {
+            evidence.Add(new VersionEvidence(
+                "CompatibilityMode",
+                compatibilityProfile.Id,
+                "Exact build is unknown; module name and version family match a signature-enabled profile."));
+        }
 
         return new DetectedRa3Target(
             candidate.ProcessId,
@@ -77,7 +90,7 @@ public static class Ra3VersionDetector
             candidate.ModuleBase,
             candidate.Is32Bit,
             candidate.FileVersion,
-            installableProfile ?? recognizedProfile,
+            installableProfile ?? compatibilityProfile ?? recognizedProfile,
             supportStatus,
             evidence);
     }

@@ -50,7 +50,7 @@ public sealed class TrainerProcessLocatorTests
     }
 
     [Fact]
-    public void FindMarksMatchedTargetUnsupportedWhenFileVersionDoesNotMatchRa3112()
+    public void FindMarksKnownVersionFamilyAsSignatureCompatibilityCandidate()
     {
         var locator = new TrainerProcessLocator(() => [
             new TrainerProcessCandidate(
@@ -66,7 +66,9 @@ public sealed class TrainerProcessLocatorTests
         var target = locator.Find("ra3_1.12.game");
 
         Assert.NotNull(target);
-        Assert.False(target.VersionSupported);
+        Assert.True(target.VersionSupported);
+        Assert.True(target.SignatureCompatibilityMode);
+        Assert.Equal("ra3_1.12", target.VersionProfileId);
     }
 
     [Fact]

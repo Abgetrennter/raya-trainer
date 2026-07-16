@@ -73,4 +73,18 @@ public static class Ra3VersionProfileRegistry
 
         return profile;
     }
+
+    public static Ra3VersionProfile? FindSignatureCompatibilityProfile(TrainerProcessCandidate candidate)
+    {
+        if (!candidate.Is32Bit || string.IsNullOrWhiteSpace(candidate.FileVersion))
+        {
+            return null;
+        }
+
+        return InstallableProfiles.FirstOrDefault(profile =>
+            profile.SupportsAgentBackend &&
+            profile.SupportsSignatureScanning &&
+            profile.MatchesFileVersionFamily(candidate.FileVersion) &&
+            (profile.MatchesProcessName(candidate.ModuleName) || profile.MatchesProcessName(candidate.ProcessName)));
+    }
 }

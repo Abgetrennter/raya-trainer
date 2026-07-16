@@ -16,16 +16,23 @@ public static class AgentPatchPayloadBuilder
         TrainerManifest manifest,
         TrainerTarget target,
         AgentStatusPayload status,
-        IReadOnlyDictionary<string, uint>? scannedAddresses = null)
+        IReadOnlyDictionary<string, uint>? scannedAddresses = null,
+        IReadOnlyDictionary<string, byte[]>? attestedOriginalBytes = null)
     {
-        return BuildWithDiagnostics(manifest, target, status, scannedAddresses).Request;
+        return BuildWithDiagnostics(
+            manifest,
+            target,
+            status,
+            scannedAddresses,
+            attestedOriginalBytes).Request;
     }
 
     public static AgentPatchPayloadBuildResult BuildWithDiagnostics(
         TrainerManifest manifest,
         TrainerTarget target,
         AgentStatusPayload status,
-        IReadOnlyDictionary<string, uint>? scannedAddresses = null)
+        IReadOnlyDictionary<string, uint>? scannedAddresses = null,
+        IReadOnlyDictionary<string, byte[]>? attestedOriginalBytes = null)
     {
         if (status.StatusCode != AgentStatusCode.Ok)
         {
@@ -41,6 +48,11 @@ public static class AgentPatchPayloadBuilder
                     : $"已识别 {profile.DisplayName}，但该版本尚未完成 DLL Agent 地址验证，当前不会生成 Agent Patch payload。");
         }
 
+        if (target.SignatureCompatibilityMode && scannedAddresses is null)
+        {
+            throw new InvalidOperationException("签名兼容候选缺少扫描结果，禁止回退到固定 RVA。");
+        }
+
         var resolver = new AddressResolver(
             target.ModuleBase,
             new Dictionary<string, nint>(StringComparer.OrdinalIgnoreCase),
@@ -54,15 +66,29 @@ public static class AgentPatchPayloadBuilder
         var planResult = PatchHookPlanner.CreateSupportedPlans(
             manifest.PatchManifest,
             profile,
-            includeUnlistedHooks: scannedAddresses is not null);
+            includeUnlistedHooks: scannedAddresses is not null && !target.SignatureCompatibilityMode);
 
         var plans = planResult.Plans;
         var hooks = plans
-            .Select(plan => new AgentPatchHook(
-                ToUInt32(ResolveHookAddress(resolver, plan, scannedAddresses)),
-                NativeHookCatalog.GetHookId(plan.ReturnLabel),
-                checked((uint)plan.PatchLength),
-                plan.OriginalBytes.ToArray()))
+            .Select(plan =>
+            {
+                var key = HookKey(plan);
+                var address = ResolveHookAddress(
+                    resolver,
+                    plan,
+                    scannedAddresses,
+                    allowFixedRvaFallback: !target.SignatureCompatibilityMode);
+                var originalBytes = ResolveOriginalBytes(
+                    plan,
+                    key,
+                    target.SignatureCompatibilityMode,
+                    attestedOriginalBytes);
+                return new AgentPatchHook(
+                    ToUInt32(address),
+                    NativeHookCatalog.GetHookId(plan.ReturnLabel),
+                    checked((uint)plan.PatchLength),
+                    originalBytes);
+            })
             .ToArray();
 
         return new AgentPatchPayloadBuildResult(
@@ -73,24 +99,54 @@ public static class AgentPatchPayloadBuilder
     private static nint ResolveHookAddress(
         AddressResolver resolver,
         PatchHookPlan plan,
-        IReadOnlyDictionary<string, uint>? scannedAddresses)
+        IReadOnlyDictionary<string, uint>? scannedAddresses,
+        bool allowFixedRvaFallback)
     {
         if (scannedAddresses is null)
         {
             return resolver.Resolve(plan.Address);
         }
 
-        var key = string.IsNullOrWhiteSpace(plan.ReturnLabel)
-            ? plan.Address
-            : plan.ReturnLabel;
+        var key = HookKey(plan);
         if (scannedAddresses.TryGetValue(key, out var scanned) && scanned != 0)
         {
             return ToAddress(scanned);
         }
 
+        if (!allowFixedRvaFallback)
+        {
+            throw new InvalidOperationException($"签名兼容候选的必需 Hook 未唯一定位：{key}。");
+        }
+
         // 签名未命中：fallback 到 profile/manifest 固定 RVA。Agent 安装阶段的
         // original_assembly 字节校验（PatchMismatch）会区分 TW（地址正确）和 EN（地址错误）。
         return resolver.Resolve(plan.Address);
+    }
+
+    private static byte[] ResolveOriginalBytes(
+        PatchHookPlan plan,
+        string key,
+        bool requireAttestedBytes,
+        IReadOnlyDictionary<string, byte[]>? attestedOriginalBytes)
+    {
+        if (!requireAttestedBytes)
+        {
+            return plan.OriginalBytes.ToArray();
+        }
+
+        if (attestedOriginalBytes is null ||
+            !attestedOriginalBytes.TryGetValue(key, out var attested) ||
+            attested.Length != plan.OriginalBytes.Length)
+        {
+            throw new InvalidOperationException($"签名兼容候选缺少 Hook {key} 的实时指令证明，禁止安装。");
+        }
+
+        return attested.ToArray();
+    }
+
+    private static string HookKey(PatchHookPlan plan)
+    {
+        return string.IsNullOrWhiteSpace(plan.ReturnLabel) ? plan.Address : plan.ReturnLabel;
     }
 
     private static nint ToAddress(uint address)

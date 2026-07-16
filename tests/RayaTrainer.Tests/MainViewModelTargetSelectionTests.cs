@@ -100,8 +100,8 @@ public sealed class MainViewModelTargetSelectionTests
         var locator = new TrainerProcessLocator(() =>
         [
             Candidate(1111, "ra3_1.12", "ra3_1.12.game", GameTarget.ExpectedVersion),
-            // An unknown Uprising file version keeps the single-installable auto-select branch.
-            Candidate(3333, "ra3ep1_1.0", "ra3ep1_1.0.game", "1.0.0.0")
+            // A different version family remains unsupported and keeps the single-target branch.
+            Candidate(3333, "ra3ep1_1.0", "ra3ep1_1.0.game", "2.0.0.0")
         ]);
         var viewModel = LoadViewModel(session, locator);
 
@@ -111,6 +111,23 @@ public sealed class MainViewModelTargetSelectionTests
         Assert.Contains("1111", viewModel.CurrentTargetInfo);
         Assert.Contains("ra3_1.12", viewModel.CurrentTargetInfo);
         Assert.Contains("DLL Agent", viewModel.CurrentTargetInfo);
+    }
+
+    [Fact]
+    public void SingleSignatureCompatibilityCandidateAutoAttachesWithVisibleModeLabel()
+    {
+        var session = new FakeTrainerSessionService();
+        var locator = new TrainerProcessLocator(() =>
+        [
+            Candidate(1111, "ra3_1.12", "ra3_1.12.game", "1.12.9999.99999")
+        ]);
+        var viewModel = LoadViewModel(session, locator);
+
+        viewModel.RefreshProcess();
+
+        Assert.Equal(1, session.AttachCount);
+        Assert.Contains("签名兼容", viewModel.CurrentTargetInfo, StringComparison.Ordinal);
+        Assert.False(viewModel.HasSelectableCandidates);
     }
 
     // Regression: after a reload/restore the per-feature toggle rows used to keep

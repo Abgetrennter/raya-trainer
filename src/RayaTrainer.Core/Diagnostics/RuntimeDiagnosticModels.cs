@@ -47,7 +47,8 @@ public sealed record DiagnosticTargetSnapshot(
     string ProfileName,
     TrainerRuntimeKind Runtime,
     string ModulePath,
-    string ModuleBase);
+    string ModuleBase,
+    bool SignatureCompatibilityMode = false);
 
 public sealed record AgentDiagnosticSnapshot(
     bool Applicable,

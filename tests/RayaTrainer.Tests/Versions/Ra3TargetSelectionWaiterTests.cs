@@ -12,7 +12,7 @@ public sealed class Ra3TargetSelectionWaiterTests
         var calls = 0;
         var now = DateTimeOffset.Parse("2026-06-22T00:00:00Z");
         var first = Select([
-            Candidate(100, "ra3_1.13.game", "1.13.9999.0")
+            Candidate(100, "ra3_1.13.game", "2.0.9999.0")
         ]);
         var second = Select([
             Candidate(101, GameTarget.ProcessName, GameTarget.ExpectedVersion)

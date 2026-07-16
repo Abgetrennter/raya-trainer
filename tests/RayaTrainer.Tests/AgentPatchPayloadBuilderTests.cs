@@ -72,6 +72,53 @@ public sealed class AgentPatchPayloadBuilderTests
         Assert.Contains(result.Request.Hooks, h => h.Address == 0xACFDFEu);
     }
 
+    [Fact]
+    public void Signature_compatibility_candidate_never_falls_back_to_fixed_rva()
+    {
+        var target = new TrainerTarget(
+            GameTarget.ProcessName,
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            VersionProfileId: "ra3_1.12",
+            SignatureCompatibilityMode: true);
+        var scanned = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["_BackPlayerMoney"] = 0
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            AgentPatchPayloadBuilder.BuildWithDiagnostics(
+                BuildManifest(),
+                target,
+                new AgentStatusPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0, 0, 0),
+                scanned));
+
+        Assert.Contains("未唯一定位", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Signature_compatibility_candidate_uses_attested_live_bytes()
+    {
+        var target = new TrainerTarget(
+            GameTarget.ProcessName,
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            VersionProfileId: "ra3_1.12",
+            SignatureCompatibilityMode: true);
+        var liveBytes = new byte[] { 0x03, 0x78, 0x04, 0x8B, 0x11 };
+
+        var result = AgentPatchPayloadBuilder.BuildWithDiagnostics(
+            BuildManifest(),
+            target,
+            new AgentStatusPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0, 0, 0),
+            new Dictionary<string, uint> { ["_BackPlayerMoney"] = 0xA65E9E },
+            new Dictionary<string, byte[]> { ["_BackPlayerMoney"] = liveBytes });
+
+        Assert.Equal(liveBytes, Assert.Single(result.Request.Hooks).OriginalBytes);
+    }
+
     private static TrainerManifest BuildManifest()
     {
         // A single hook matching _BackPlayerMoney from the real embedded manifest at RVA 0x6CFDFE

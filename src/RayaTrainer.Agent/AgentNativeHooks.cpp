@@ -85,6 +85,28 @@ uint32_t BodyOffset()
     return value == 0 ? 0x33Cu : value;
 }
 
+uint32_t StructureUnpackCompletionTickOffset()
+{
+    if (!HasNativeCatalog())
+    {
+        return 0;
+    }
+
+    // The equivalent StructureUnpackUpdate field is +0x3C in RA3 and +0x34
+    // in Uprising. ObjectOwnerOffset already distinguishes the two layouts
+    // across all four supported profiles; reject unknown layouts instead of
+    // writing an unrelated module field.
+    switch (ResolveNativeCatalogRva(NativeCatalogEntry::ObjectOwnerOffset))
+    {
+    case 0x418u:
+        return 0x3Cu;
+    case 0x428u:
+        return 0x34u;
+    default:
+        return 0;
+    }
+}
+
 // RA3 KindOf BitWord lives at ThingTemplate+0xC0 (9 DWORDs, 288 bits).
 // Verified via PartitionFilter_IsKindOf_6FE370:
 //   bit set  ==  (1 << (index & 31)) & template->kindOf[index >> 5]
@@ -121,6 +143,14 @@ uint32_t GameModuleAddress(NativeCatalogEntry entry)
         reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)));
     const auto rva = ResolveNativeCatalogRva(entry);
     return moduleBase != 0 && rva != 0 ? moduleBase + rva : 0;
+}
+
+bool TryWriteLogicPauseGate(uint32_t value)
+{
+    uint32_t gameLogic = 0;
+    const auto gameLogicPointer = GameModuleAddress(NativeCatalogEntry::GameClientPointer);
+    return TryRead(gameLogicPointer, gameLogic) && gameLogic != 0 &&
+        TryWrite(gameLogic + 0x15Cu, value);
 }
 
 bool IsLocalContext(uint32_t candidate)
@@ -300,13 +330,15 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
     case 9:
         if (IsEnabled(NativeFeatureStateId::FastBuild))
         {
+            const auto completionTickOffset = StructureUnpackCompletionTickOffset();
             uint32_t object = 0;
             uint32_t owner = 0;
             uint32_t value = 0;
-            if (TryRead(c.Edi + 8u, object) && object != 0 &&
+            if (completionTickOffset != 0 &&
+                TryRead(c.Edi + 8u, object) && object != 0 &&
                 TryRead(object + OwnerOffset(), owner) &&
                 owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)) &&
-                TryRead(c.Edi + 0x3C, value))
+                TryRead(c.Edi + completionTickOffset, value))
             {
                 TryWrite(c.Edi + 0x14, value + 1);
             }
@@ -677,8 +709,9 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
     {
         // WeaponStateMachine_ScaleDuration(this, RangeDuration* a2, RangeDuration* a3)
         // is __fastcall returning __int64 in EDX:EAX and callee-cleans 2 stack args (retn 8).
-        // The owner chain [this+0x18]=WeaponSlot -> [+0x24]=GameObject is consistent
-        // across all four profiles.
+        // The owner chain [this+0x18]=StateMachine -> [+0x24]=GameObject is consistent
+        // across all four profiles. Earlier notes misidentified these two objects as a
+        // WeaponSlot and weapon component; the four current IDBs correct that model.
         //
         // Returning mode 5 (retn 8) short-circuits the whole function. EDX:EAX is set to
         // {0, 1} = 1 tick. This avoids the RATE_OF_FIRE modifier division inside the
@@ -687,13 +720,12 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         // fire-rate bonuses (multiplier > 1.0). Callers treat result==0 as a
         // state-transition sentinel and leave the unit permanently stuck.
         //
-        // Checks g_attackSpeedObjects set (populated by ToggleSelectedAttackSpeed)
-        // for the component (= [GameObject+0x138]) behind this WeaponSlot.
-        uint32_t weaponSlot = 0;
-        uint32_t component = 0;
-        if (TryRead(c.Ecx + 0x18u, weaponSlot) && weaponSlot != 0 &&
-            TryRead(weaponSlot + 0x24u, component) && component != 0 &&
-            IsAttackSpeedComponent(component))
+        // The hot path tests bit 0 in the owner GameObject's verified padding word.
+        uint32_t stateMachine = 0;
+        uint32_t gameObject = 0;
+        if (TryRead(c.Ecx + 0x18u, stateMachine) && stateMachine != 0 &&
+            TryRead(stateMachine + 0x24u, gameObject) && gameObject != 0 &&
+            IsAttackSpeedObject(gameObject))
         {
             c.Eax = 1u;
             c.Edx = 0u;
@@ -745,11 +777,7 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         //   once; when both inactive we touch nothing (respect game's own pause).
         if (IsEnabled(NativeFeatureStateId::LogicTimeFreeze))
         {
-            uint32_t gameLogic = 0;
-            if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
-            {
-                TryWrite(gameLogic + 0x15Cu, 1u);
-            }
+            TryWriteLogicPauseGate(1u);
             g_logicFreezeActive = true;
             g_slowMotionActive = false;
         }
@@ -757,11 +785,7 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         {
             g_slowMotionFrameCounter++;
             uint32_t gateValue = (g_slowMotionFrameCounter & 1u) ? 1u : 0u;
-            uint32_t gameLogic = 0;
-            if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
-            {
-                TryWrite(gameLogic + 0x15Cu, gateValue);
-            }
+            TryWriteLogicPauseGate(gateValue);
             g_slowMotionActive = true;
             g_logicFreezeActive = false;
         }
@@ -769,11 +793,7 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         {
             if (g_logicFreezeActive || g_slowMotionActive)
             {
-                uint32_t gameLogic = 0;
-                if (TryRead(0xCD8CE4u, gameLogic) && gameLogic != 0)
-                {
-                    TryWrite(gameLogic + 0x15Cu, 0u);
-                }
+                TryWriteLogicPauseGate(0u);
                 g_logicFreezeActive = false;
                 g_slowMotionActive = false;
                 g_slowMotionFrameCounter = 0;
@@ -826,6 +846,17 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
         if (IsSelectedUnitTurretAI(c.Esi) && g_hookAddresses[48] != 0)
         {
             return g_hookAddresses[48] + 0xE1u; // 0x80DF79 -> 0x80E05A
+        }
+        break;
+    }
+    case 49:
+    {
+        // GameLogic_RegisterObject(this, GameObject*) entry. Object-pool allocation
+        // does not zero memory, so clear both trainer bits before list insertion.
+        uint32_t gameObject = 0;
+        if (TryRead(c.OriginalEsp + 4u, gameObject) && gameObject != 0)
+        {
+            ClearWeaponObjectFlagsForRegisteredObject(gameObject);
         }
         break;
     }

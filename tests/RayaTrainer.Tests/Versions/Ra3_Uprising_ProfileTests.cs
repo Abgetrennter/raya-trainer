@@ -21,6 +21,9 @@ public sealed class Ra3_Uprising_ProfileTests
 
         Assert.True(profile.SupportsAgentBackend);
         Assert.True(profile.SupportsDirectGameApi);
+        Assert.Equal(
+            TestAssets.CurrentUprisingHookCount,
+            profile.Hooks.Count(entry => entry.Value.Status == AddressSupportStatus.Verified));
         Assert.Equal(expectedHooks, profile.Hooks.Keys.Order(StringComparer.OrdinalIgnoreCase));
         Assert.Equal(NativeAgentCatalog.ExpectedEntryCount, profile.BuildNativeAgentCatalogRvas().Count);
     }

@@ -6,7 +6,6 @@
 #include "AgentGameApi.h"
 #include "AgentGameThreadDispatcher.h"
 #include "AgentNativeHooks.h"
-#include "NativePointerSet.h"
 
 namespace RayaTrainer::agent
 {
@@ -19,7 +18,13 @@ constexpr uint32_t kGameClientPointerRva = 0x8D8CE4u;
 constexpr uint32_t kGameModeFieldOffset = 0x148u;
 constexpr int32_t kGameModeShell = 9;
 constexpr uint32_t kMaxGameApiSmokeTimeoutMilliseconds = 5000u;
+constexpr uint32_t kGameLogicFirstObjectOffset = 0xB4u;
+constexpr uint32_t kGameObjectNextOffset = 0x7Cu;
+constexpr uint32_t kMaximumGameObjectWalkCount = 65536u;
+constexpr uint16_t kAttackSpeedObjectFlag = 1u << 0;
+constexpr uint16_t kAttackRangeObjectFlag = 1u << 1;
 LONG g_nextGameApiRequestId = 0;
+volatile LONG g_weaponObjectFlagsInitialized = 0;
 
 constexpr GameApiFunctionSpec kGameApiCatalog[] = {
     {
@@ -162,11 +167,37 @@ bool SafeReadU8(uint32_t address, uint8_t& value)
     }
 }
 
+bool SafeReadU16(uint32_t address, uint16_t& value)
+{
+    __try
+    {
+        std::memcpy(&value, reinterpret_cast<const void*>(static_cast<uintptr_t>(address)), sizeof(value));
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
 bool SafeWriteU8(uint32_t address, uint8_t value)
 {
     __try
     {
         *reinterpret_cast<uint8_t*>(static_cast<uintptr_t>(address)) = value;
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+bool SafeWriteU16(uint32_t address, uint16_t value)
+{
+    __try
+    {
+        std::memcpy(reinterpret_cast<void*>(static_cast<uintptr_t>(address)), &value, sizeof(value));
         return true;
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
@@ -479,60 +510,128 @@ bool VisitSelectedObjects(
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// SmartToggle: 两阶段智能统一 flag 状态
-//
-// 行为：
-//   1. 第一阶段遍历读取每个选中单位的 flag 字节
-//   2. 判断：全 OFF → targetValue=1（统一开启）
-//          全 ON  → targetValue=0（统一关闭）
-//          混合   → targetValue=1（统一至 ON）
-//   3. 第二阶段遍历写入 targetValue
-//
-// Attack Speed 专用版本。reader/writer 通过 adapter visitor 适配
-// VisitSelectedObjects 的签名。
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Registry sets for selected weapon effects
-// ---------------------------------------------------------------------------
-
-// Tracks which GameObjects have attack speed override enabled.
-static NativePointerSet<256> g_attackSpeedObjects;
-
-// Tracks which selected GameObjects have attack range override enabled.
-// Selection nodes contain Drawable*, while weapon range functions receive the
-// associated GameObject* (= Drawable+0x138) as their first stack argument.
-static NativePointerSet<1024> g_attackRangeObjects;
-
-// Thread-local temp buffers for collection during traversal.
-static thread_local uint32_t g_tempObjectBuffer[4096];
-static thread_local uint32_t g_tempObjectCount;
-
-static thread_local uint32_t g_tempRangeObjectBuffer[1024];
-static thread_local uint32_t g_tempRangeObjectCount;
-
-// Collector: gather valid component pointer (= [GameObject+0x138]) for speed set.
-// Must match what Hook 40 reads from [WeaponSlot+0x24].
-static uint32_t CollectSpeedObjectsVisitor(uint32_t /*gameObject*/, uint32_t component, const uint32_t*)
+// RA3 GameObject leaves an aligned two-byte padding word unused at +0x4DE;
+// Uprising moves the same word to +0x4EE as the object grows by 0x10 bytes.
+// ObjectOwnerOffset is already profile-versioned, so accept only the two layouts
+// proven in all four supported IDBs and fail closed for any future layout.
+uint32_t WeaponObjectFlagsOffset()
 {
-    if (component != 0 && g_tempObjectCount < 4096)
-    {
-        g_tempObjectBuffer[g_tempObjectCount++] = component;
-    }
-    return 1;
-}
-
-// Collector: gather the GameObject* used by WeaponTemplate range functions.
-static uint32_t CollectRangeObjectsVisitor(uint32_t /*selectedDrawable*/, uint32_t gameObject, const uint32_t*)
-{
-    if (gameObject == 0 || g_tempRangeObjectCount >= 1024)
+    if (!HasNativeCatalog())
     {
         return 0;
     }
 
-    g_tempRangeObjectBuffer[g_tempRangeObjectCount++] = gameObject;
-    return 1;
+    switch (ResolveNativeCatalogRva(NativeCatalogEntry::ObjectOwnerOffset))
+    {
+    case 0x418u:
+        return 0x4DEu;
+    case 0x428u:
+        return 0x4EEu;
+    default:
+        return 0;
+    }
+}
+
+bool AreWeaponObjectFlagsInitialized()
+{
+    return InterlockedCompareExchange(&g_weaponObjectFlagsInitialized, 0, 0) != 0;
+}
+
+bool ReadWeaponObjectFlags(uint32_t gameObject, uint16_t& flags)
+{
+    const auto offset = WeaponObjectFlagsOffset();
+    return gameObject != 0 && offset != 0 && SafeReadU16(gameObject + offset, flags);
+}
+
+bool WriteWeaponObjectFlags(uint32_t gameObject, uint16_t flags)
+{
+    const auto offset = WeaponObjectFlagsOffset();
+    return gameObject != 0 && offset != 0 && SafeWriteU16(gameObject + offset, flags);
+}
+
+// Walks GameLogic::firstObject (+0xB4) through GameObject::nextObject (+0x7C).
+// GameLogic_RegisterObject appends to this null-terminated intrusive list. The
+// hard cap prevents corrupted list state from turning a toggle into an infinite loop.
+bool UpdateAllWeaponObjectFlags(bool initialize, uint16_t clearMask, uint32_t& visitedCount)
+{
+    visitedCount = 0;
+    const auto gameLogic = ResolveProfileGlobal(NativeCatalogEntry::GameClientPointer);
+    if (gameLogic == 0 || WeaponObjectFlagsOffset() == 0)
+    {
+        return false;
+    }
+
+    uint32_t gameObject = 0;
+    if (!SafeReadU32(gameLogic + kGameLogicFirstObjectOffset, gameObject))
+    {
+        return false;
+    }
+
+    while (gameObject != 0 && visitedCount < kMaximumGameObjectWalkCount)
+    {
+        uint32_t nextObject = 0;
+        uint16_t flags = 0;
+        if (!SafeReadU32(gameObject + kGameObjectNextOffset, nextObject) ||
+            (!initialize && !ReadWeaponObjectFlags(gameObject, flags)) ||
+            !WriteWeaponObjectFlags(
+                gameObject,
+                initialize ? 0u : static_cast<uint16_t>(flags & ~clearMask)))
+        {
+            return false;
+        }
+
+        gameObject = nextObject;
+        ++visitedCount;
+    }
+
+    return gameObject == 0;
+}
+
+bool EnsureWeaponObjectFlagsInitialized()
+{
+    if (AreWeaponObjectFlagsInitialized())
+    {
+        return true;
+    }
+
+    uint32_t visitedCount = 0;
+    if (!UpdateAllWeaponObjectFlags(true, 0, visitedCount))
+    {
+        return false;
+    }
+
+    InterlockedExchange(&g_weaponObjectFlagsInitialized, 1);
+    return true;
+}
+
+bool ClearWeaponObjectFlagFromAllObjects(uint16_t clearMask, uint32_t& visitedCount)
+{
+    if (!EnsureWeaponObjectFlagsInitialized())
+    {
+        visitedCount = 0;
+        return false;
+    }
+
+    return UpdateAllWeaponObjectFlags(false, clearMask, visitedCount);
+}
+
+// Thread-local selection buffers keep the two-pass smart-toggle decision atomic
+// with respect to the chosen object set. They are scratch storage, not ownership state.
+static thread_local uint32_t g_tempObjectBuffer[4096];
+static thread_local uint32_t g_tempObjectCount;
+static thread_local uint16_t g_tempObjectFlags[4096];
+
+static uint32_t CollectWeaponObjectsVisitor(
+    uint32_t /*selectedDrawable*/,
+    uint32_t gameObject,
+    const uint32_t*)
+{
+    if (gameObject != 0 && g_tempObjectCount < 4096)
+    {
+        g_tempObjectBuffer[g_tempObjectCount++] = gameObject;
+        return 1;
+    }
+    return 0;
 }
 
 uint32_t SetSelectedStatusBitVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
@@ -1509,43 +1608,57 @@ void SetSelectedUnitAmmoOnGameThread(const uint32_t* arguments, uint32_t* result
     results[1] = VisitSelectedObjects(SetSelectedAmmoVisitor, arguments, results[0]) ? 1u : 0u;
 }
 
-// ToggleSelectedAttackSpeed: smart toggle via g_attackSpeedObjects set.
-// All off → enable all; all on → disable all; mixed → enable all.
-void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
+// Smart-toggle one per-GameObject weapon flag. All off -> enable all; all on ->
+// disable all; mixed -> enable all. Original flag words are retained so a rare
+// write fault can roll back objects already updated in this pass.
+void ToggleSelectedWeaponObjectFlagOnGameThread(uint16_t flagMask, uint32_t* results)
 {
+    results[0] = 0;
+    results[1] = 0;
+    if (!EnsureWeaponObjectFlagsInitialized())
+    {
+        return;
+    }
+
     g_tempObjectCount = 0;
     uint32_t visitedCount = 0;
-    VisitSelectedObjects(CollectSpeedObjectsVisitor, nullptr, visitedCount);
-
-    if (g_tempObjectCount == 0)
+    if (!VisitSelectedObjects(CollectWeaponObjectsVisitor, nullptr, visitedCount) ||
+        g_tempObjectCount == 0)
     {
-        results[0] = 0;
-        results[1] = 0;
         return;
     }
 
     bool hasDisabled = false;
     for (uint32_t i = 0; i < g_tempObjectCount; ++i)
     {
-        if (!g_attackSpeedObjects.Contains(g_tempObjectBuffer[i]))
+        if (!ReadWeaponObjectFlags(g_tempObjectBuffer[i], g_tempObjectFlags[i]))
+        {
+            return;
+        }
+        if ((g_tempObjectFlags[i] & flagMask) == 0)
         {
             hasDisabled = true;
-            break;
         }
     }
     const bool enable = hasDisabled;
 
-    if (!g_attackSpeedObjects.CanApply(g_tempObjectBuffer, g_tempObjectCount, enable))
+    uint32_t writtenCount = 0;
+    for (; writtenCount < g_tempObjectCount; ++writtenCount)
     {
-        results[0] = 0;
-        results[1] = 0;
-        return;
-    }
+        const auto original = g_tempObjectFlags[writtenCount];
+        const auto updated = enable
+            ? static_cast<uint16_t>(original | flagMask)
+            : static_cast<uint16_t>(original & ~flagMask);
+        if (WriteWeaponObjectFlags(g_tempObjectBuffer[writtenCount], updated))
+        {
+            continue;
+        }
 
-    if (!g_attackSpeedObjects.Apply(g_tempObjectBuffer, g_tempObjectCount, enable))
-    {
-        results[0] = 0;
-        results[1] = 0;
+        while (writtenCount != 0)
+        {
+            --writtenCount;
+            WriteWeaponObjectFlags(g_tempObjectBuffer[writtenCount], g_tempObjectFlags[writtenCount]);
+        }
         return;
     }
 
@@ -1553,47 +1666,14 @@ void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
     results[1] = 1;
 }
 
-// ToggleSelectedAttackRange: smart toggle via the owner GameObject set.
+void ToggleSelectedAttackSpeedOnGameThread(const uint32_t*, uint32_t* results)
+{
+    ToggleSelectedWeaponObjectFlagOnGameThread(kAttackSpeedObjectFlag, results);
+}
+
 void ToggleSelectedAttackRangeOnGameThread(const uint32_t*, uint32_t* results)
 {
-    g_tempRangeObjectCount = 0;
-    uint32_t visitedCount = 0;
-    VisitSelectedObjects(CollectRangeObjectsVisitor, nullptr, visitedCount);
-
-    if (g_tempRangeObjectCount == 0)
-    {
-        results[0] = 0;
-        results[1] = 0;
-        return;
-    }
-
-    bool hasDisabled = false;
-    for (uint32_t i = 0; i < g_tempRangeObjectCount; ++i)
-    {
-        if (!g_attackRangeObjects.Contains(g_tempRangeObjectBuffer[i]))
-        {
-            hasDisabled = true;
-            break;
-        }
-    }
-    const bool enable = hasDisabled;
-
-    if (!g_attackRangeObjects.CanApply(g_tempRangeObjectBuffer, g_tempRangeObjectCount, enable))
-    {
-        results[0] = 0;
-        results[1] = 0;
-        return;
-    }
-
-    if (!g_attackRangeObjects.Apply(g_tempRangeObjectBuffer, g_tempRangeObjectCount, enable))
-    {
-        results[0] = 0;
-        results[1] = 0;
-        return;
-    }
-
-    results[0] = g_tempRangeObjectCount;
-    results[1] = 1;
+    ToggleSelectedWeaponObjectFlagOnGameThread(kAttackRangeObjectFlag, results);
 }
 
 uint32_t TeleportSelectedUnitVisitor(uint32_t /*gameObject*/, uint32_t weaponStoreUser, const uint32_t* arguments)
@@ -1775,22 +1855,35 @@ bool HasNativeCatalog()
     return g_nativeCatalogReady;
 }
 
-// Clears weapon-effect sets on reset.
-// Called from ResetNativeHookRuntime in AgentNativeHooks.cpp.
+// Disables hook-side reads immediately. A later toggle reinitializes every live
+// GameObject before re-enabling the fast path; the registration hook clears future objects.
 void ResetNativeGameApiRuntimeState()
 {
-    g_attackSpeedObjects.Clear();
-    g_attackRangeObjects.Clear();
+    InterlockedExchange(&g_weaponObjectFlagsInitialized, 0);
 }
 
-bool IsAttackSpeedComponent(uint32_t component)
+bool IsAttackSpeedObject(uint32_t gameObject)
 {
-    return g_attackSpeedObjects.Contains(component);
+    uint16_t flags = 0;
+    return AreWeaponObjectFlagsInitialized() &&
+        ReadWeaponObjectFlags(gameObject, flags) &&
+        (flags & kAttackSpeedObjectFlag) != 0;
 }
 
 bool IsAttackRangeObject(uint32_t gameObject)
 {
-    return g_attackRangeObjects.Contains(gameObject);
+    uint16_t flags = 0;
+    return AreWeaponObjectFlagsInitialized() &&
+        ReadWeaponObjectFlags(gameObject, flags) &&
+        (flags & kAttackRangeObjectFlag) != 0;
+}
+
+void ClearWeaponObjectFlagsForRegisteredObject(uint32_t gameObject)
+{
+    // Hook 49 runs at GameLogic_RegisterObject entry, before the object is appended
+    // to GameLogic::firstObject. Clearing the full word prevents pool-reused objects
+    // from inheriting either effect.
+    WriteWeaponObjectFlags(gameObject, 0);
 }
 
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry)
@@ -2647,16 +2740,16 @@ AgentStatusCode DispatchNativeToggleSelectedAttackRange(
 
 void ClearSelectedAttackSpeedEffectsOnGameThread(const uint32_t*, uint32_t* results)
 {
-    g_attackSpeedObjects.Clear();
-    results[0] = 1u;
-    results[1] = 1u;
+    results[1] = ClearWeaponObjectFlagFromAllObjects(
+        kAttackSpeedObjectFlag,
+        results[0]) ? 1u : 0u;
 }
 
 void ClearSelectedAttackRangeEffectsOnGameThread(const uint32_t*, uint32_t* results)
 {
-    g_attackRangeObjects.Clear();
-    results[0] = 1u;
-    results[1] = 1u;
+    results[1] = ClearWeaponObjectFlagFromAllObjects(
+        kAttackRangeObjectFlag,
+        results[0]) ? 1u : 0u;
 }
 
 AgentStatusCode DispatchNativeClearSelectedAttackSpeedEffects(

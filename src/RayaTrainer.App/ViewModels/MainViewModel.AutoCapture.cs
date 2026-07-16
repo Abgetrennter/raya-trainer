@@ -46,7 +46,7 @@ public sealed partial class MainViewModel
     private void PresentAmbiguousCandidates(IReadOnlyList<DetectedRa3Target> candidates)
     {
         SelectableCandidates = candidates
-            .Where(c => c.SupportStatus == TargetSupportStatus.Installable)
+            .Where(c => c.CanAttemptInstallation)
             .ToArray();
         StatusMessage = "自动捕获发现多个红色警戒3，请在下方列表中选择一个再连接。";
         RaiseCommandStates();

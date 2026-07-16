@@ -599,9 +599,16 @@ public sealed class ContractConsistencyLintTests
         var hookCatalog = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Core", "Agent", "NativeHookCatalog.cs"));
         var manifest = File.ReadAllText(Path.Combine(repoRoot.FullName, "src", "RayaTrainer.Core", "Assets", "trainer_report.json"));
 
-        Assert.Contains("NativePointerSet<1024> g_attackRangeObjects", gameApi);
-        Assert.Contains("CollectRangeObjectsVisitor(uint32_t /*selectedDrawable*/, uint32_t gameObject", gameApi);
-        Assert.Contains("g_tempRangeObjectBuffer[g_tempRangeObjectCount++] = gameObject", gameApi);
+        Assert.Contains("constexpr uint16_t kAttackRangeObjectFlag = 1u << 1", gameApi);
+        Assert.Contains("CollectWeaponObjectsVisitor(", gameApi);
+        Assert.Contains("g_tempObjectBuffer[g_tempObjectCount++] = gameObject", gameApi);
+        Assert.Contains("case 0x418u:", gameApi);
+        Assert.Contains("return 0x4DEu;", gameApi);
+        Assert.Contains("case 0x428u:", gameApi);
+        Assert.Contains("return 0x4EEu;", gameApi);
+        Assert.Contains("GameLogicFirstObjectOffset = 0xB4u", gameApi);
+        Assert.Contains("GameObjectNextOffset = 0x7Cu", gameApi);
+        Assert.DoesNotContain("NativePointerSet<", gameApi);
         Assert.Contains("TryRead(c.OriginalEsp + 4u, owner)", hooks);
         Assert.Contains("IsAttackRangeObject(owner)", hooks);
         Assert.Contains("mem[6] = 0xC2; mem[7] = 0x08", hooks);
@@ -637,10 +644,16 @@ public sealed class ContractConsistencyLintTests
         Assert.Contains("g_hookAddresses[48] + 0xE1u", hooks);
         Assert.Contains("0x80DF79 TurretAI turn max-deflection branch", signatures);
         Assert.Contains("kHook48SelectedUnitTurretAimDeflection.ToSignature()", signatures);
-        Assert.Contains("constexpr size_t kBuiltInHookCount = 48;", signatures);
+        Assert.Contains("kHook49GameObjectWeaponFlagsInitialize.ToSignature()", signatures);
+        Assert.Contains("constexpr size_t kBuiltInHookCount = 49;", signatures);
         Assert.Contains("[\"_BackSelectedUnitTurretAimDeflection\"] = 48", hookCatalog);
+        Assert.Contains("[\"_BackGameObjectWeaponFlagsInitialize\"] = 49", hookCatalog);
         Assert.Contains("\"return_label\":\"_BackSelectedUnitTurretAimDeflection\"", manifest);
         Assert.Contains("\"address\":\"ra3_1.12.game+40DF79\"", manifest);
+        Assert.Contains("\"return_label\":\"_BackGameObjectWeaponFlagsInitialize\"", manifest);
+        Assert.Contains("\"address\":\"ra3_1.12.game+EE040\"", manifest);
+        Assert.Contains("case 49:", hooks);
+        Assert.Contains("ClearWeaponObjectFlagsForRegisteredObject(gameObject)", hooks);
         Assert.DoesNotContain("kUnlimitedAttackRangeSquaredBits", hooks);
         Assert.DoesNotContain("_BackSelectedUnitMaximumAttackRange", hookCatalog);
         Assert.DoesNotContain("c.Eax = stub", hooks);

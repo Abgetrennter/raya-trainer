@@ -227,7 +227,8 @@ internal sealed class TrainerDiagnosticState
                 profile?.DisplayName ?? "未知版本",
                 TrainerRuntimeKind.Agent,
                 currentTarget.ModulePath,
-                FormatAddress(currentTarget.ModuleBase));
+                FormatAddress(currentTarget.ModuleBase),
+                currentTarget.SignatureCompatibilityMode);
 
         var agentApplicable = currentTarget is not null;
         var agentStatus = _agentStatus;

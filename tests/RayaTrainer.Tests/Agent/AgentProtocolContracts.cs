@@ -21,8 +21,8 @@ public static class AgentProtocolContracts
     public static void Contract_Fingerprint_EncodesV10AndMagic()
     {
         // High 32 bits = ASCII "RAYA" (LE) = 0x52415941.
-        // Low 32 bits encode (Version=10 << 16 | 1) = 0x000A0001. Sub-counter reset to 1
-        // because the wire protocol changed (commands 46/47, catalog 41, Values[24]).
-        Assert.Equal(0x52415941000A0001UL, AgentBuildIdentity.Fingerprint);
+        // Low 32 bits encode (Version=10 << 16 | 3) = 0x000A0003. Sub-counter 3 marks
+        // the profile-aware StructureUnpackUpdate fast-build field fix.
+        Assert.Equal(0x52415941000A0003UL, AgentBuildIdentity.Fingerprint);
     }
 }

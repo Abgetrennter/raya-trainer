@@ -7,14 +7,30 @@ internal static class TestAgentSignatureCatalog
 {
     public static AgentSignatureScanPayload CreateForProfile(
         Ra3VersionProfile profile,
-        uint moduleBase = 0x400000)
+        uint moduleBase = 0x400000,
+        bool includeNativeRefs = false,
+        uint addressShift = 0)
     {
         var addresses = profile.Hooks.ToDictionary(
                 entry => entry.Key,
                 entry => entry.Value.Status == AddressSupportStatus.Verified && entry.Value.Rva is not null
-                    ? moduleBase + checked((uint)entry.Value.Rva.Value)
+                    ? moduleBase + checked((uint)entry.Value.Rva.Value) + addressShift
                     : 0u,
                 StringComparer.OrdinalIgnoreCase);
+
+        if (includeNativeRefs)
+        {
+            foreach (var entry in profile.NativeAgentRefs.Where(entry =>
+                         entry.Value.Status == AddressSupportStatus.Verified && entry.Value.Rva is not null))
+            {
+                if (NativeAgentRefSignatureMapping.TryGetSignatureKey(entry.Key, out var signatureKey))
+                {
+                    addresses[signatureKey] = entry.Value.Rva!.Value == 0
+                        ? 0
+                        : moduleBase + checked((uint)entry.Value.Rva.Value) + addressShift;
+                }
+            }
+        }
 
         return new AgentSignatureScanPayload(
             AgentStatusCode.Ok,
