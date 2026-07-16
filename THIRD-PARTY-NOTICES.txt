@@ -18,9 +18,9 @@ License: MIT — see src/RayaTrainer.Agent/vendor/zydis/LICENSE
 Copyright (c) 2014-2024 Florian Bernd and Joel Höner
 
 ================================================================================
-Zycore — https://github.com/zyantific/zycore
+Zycore — https://github.com/zyantific/zycore-c
 License: MIT — see src/RayaTrainer.Agent/vendor/zycore/LICENSE
-Copyright (c) 2014-2024 Florian Bernd and Joel Höner
+Copyright (c) 2018-2024 Florian Bernd and Joel Höner
 
 ================================================================================
 zasm — https://github.com/Zeex/zasm

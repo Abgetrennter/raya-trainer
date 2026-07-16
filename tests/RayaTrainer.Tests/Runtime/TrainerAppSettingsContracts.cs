@@ -26,11 +26,11 @@ public sealed class TrainerAppSettingsContracts : IDisposable
     }
 
     [Fact]
-    public void Contract_Load_WhenNoFile_ReturnsDefaultsWithSchemaVersion1()
+    public void Contract_Load_WhenNoFile_ReturnsDefaultsWithSchemaVersion2()
     {
         var store = new TrainerAppSettingsStore(NewPath);
         var settings = store.Load();
-        Assert.Equal(1, settings.SchemaVersion);
+        Assert.Equal(2, settings.SchemaVersion);
         Assert.NotNull(settings.Hotkeys);
         Assert.Empty(settings.Hotkeys);
     }

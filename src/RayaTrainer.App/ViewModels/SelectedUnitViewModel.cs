@@ -1,24 +1,57 @@
 using System.Collections.ObjectModel;
+using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
+using RayaTrainer.Core.Runtime;
 
 namespace RayaTrainer.App.ViewModels;
 
 /// <summary>
 /// 选中单位独立选项卡的 ViewModel。
-/// 只包含 4 个分组（伤害与无敌、选中单位·生命值、选中单位·速度、选中单位·其他）的 FeatureItemViewModel。
+/// 包含 4 个分组（伤害与无敌、选中单位·生命值、选中单位·速度、选中单位·其他）的 FeatureItemViewModel
+/// 以及一个「单位升级」子面板。
 /// 布局沿用 FeaturesPage 的 ActionCard 网格，但不含搜索框和资源值输入框。
 /// </summary>
 public sealed class SelectedUnitViewModel : ViewModelBase
 {
     private readonly IFeatureHost _host;
     private readonly ObservableCollection<FeatureGroupViewModel> _groups;
+    private readonly Func<ITrainerFeatureController?> _getController;
+    private const string SetTargetHealthRawName = TrainerFeatureIds.SetSelectedUnitTargetHealth;
+    private string _selectedUnitTargetHealthText = string.Empty;
+    private string _selectedUnitTargetMaxHealthText = string.Empty;
 
-    public SelectedUnitViewModel(IFeatureHost host, IReadOnlyList<TrainerFeature> features)
+    public SelectedUnitViewModel(
+        IFeatureHost host,
+        IReadOnlyList<TrainerFeature> features,
+        Func<ITrainerFeatureController?> getController,
+        Func<TrainerFeature, FeatureCapabilitySnapshot> getCapability)
     {
         _host = host;
+        _getController = getController;
         _groups = new(CreateGroups(features));
+        UnitUpgrade = new UnitUpgradeViewModel(getController, getCapability);
     }
+
+    public UnitUpgradeViewModel UnitUpgrade { get; }
+
+    public string SelectedUnitTargetHealthText
+    {
+        get => _selectedUnitTargetHealthText;
+        set { _selectedUnitTargetHealthText = value; OnPropertyChanged(); }
+    }
+
+    public string SelectedUnitTargetMaxHealthText
+    {
+        get => _selectedUnitTargetMaxHealthText;
+        set { _selectedUnitTargetMaxHealthText = value; OnPropertyChanged(); }
+    }
+
+    public string SelectedUnitTargetHealthHelpText =>
+        "设置选中建筑物/单位的当前生命值为指定浮点数值；不修改最大生命值上限。";
+
+    public string SelectedUnitMaxHealthHelpText =>
+        "无限生命值开启后写入的最大生命值；默认 9999999。";
 
     public ObservableCollection<FeatureGroupViewModel> Groups => _groups;
 
@@ -47,6 +80,28 @@ public sealed class SelectedUnitViewModel : ViewModelBase
     {
         foreach (var item in AllFeatureItems())
             item.RaiseCommandState();
+        UnitUpgrade.RaiseCommands();
+    }
+
+    public void WriteTargetHealthIfNeeded(TrainerFeature feature)
+    {
+        if (!feature.RawName.Equals(SetTargetHealthRawName, StringComparison.Ordinal) ||
+            _host.FeatureController is null)
+        {
+            return;
+        }
+
+        var text = _selectedUnitTargetHealthText.Trim();
+        if (!float.TryParse(text, out var targetHealth) || targetHealth <= 0)
+        {
+            return;
+        }
+
+        var maxHealthText = _selectedUnitTargetMaxHealthText.Trim();
+        var targetMaxHealth = float.TryParse(maxHealthText, out var maxHealth) && maxHealth > 0
+            ? maxHealth
+            : 0f;
+        _host.FeatureController.WriteTargetHealthValue(targetHealth, targetMaxHealth);
     }
 
     private IReadOnlyList<FeatureGroupViewModel> CreateGroups(IReadOnlyList<TrainerFeature> features)
@@ -58,13 +113,13 @@ public sealed class SelectedUnitViewModel : ViewModelBase
 
         var groups = new List<FeatureGroupViewModel>();
 
-        AddGroup(groups, "伤害与无敌",
+        AddGroup(groups, GroupIds.SelectedUnitDamage, "伤害与无敌",
         [
             "玩家全建筑/单位无敌",
             "一击必杀敌方建筑物/单位",
         ], selectedFeatures, isExpanded: true);
 
-        AddGroup(groups, "选中单位 · 生命值",
+        AddGroup(groups, GroupIds.SelectedUnitHealth, "选中单位 · 生命值",
         [
             "选择的建筑物/单位无限生命值",
             "选择的建筑物/单位生命值变为1",
@@ -72,7 +127,7 @@ public sealed class SelectedUnitViewModel : ViewModelBase
             "设置选中建筑物/单位生命值为指定值",
         ], selectedFeatures, isExpanded: true);
 
-        AddGroup(groups, "选中单位 · 速度",
+        AddGroup(groups, GroupIds.SelectedUnitSpeed, "选中单位 · 速度",
         [
             "选择的单位高速移动",
             "选择的单位缓慢移动",
@@ -80,12 +135,14 @@ public sealed class SelectedUnitViewModel : ViewModelBase
             "选择的单位恢复速度",
         ], selectedFeatures, isExpanded: true);
 
-        AddGroup(groups, "选中单位 · 其他",
+        AddGroup(groups, GroupIds.SelectedUnitOther, "选中单位 · 其他",
         [
             "选择的单位快速升级",
             "移动选中单位到鼠标位置",
             "选择的单位满攻速（切换，仅当前实例）",
+            "清空满攻速单位",
             "选择的单位无限射程与索敌（切换，仅当前实例）",
+            "清空无限射程单位",
             "选择的单位弹药填满",
             "选择的单位弹药归1",
             "俘虏选择的建筑物/单位",
@@ -98,6 +155,7 @@ public sealed class SelectedUnitViewModel : ViewModelBase
 
     private void AddGroup(
         List<FeatureGroupViewModel> groups,
+        string groupId,
         string groupName,
         string[] displayNames,
         Dictionary<string, TrainerFeature> selectedFeatures,
@@ -112,6 +170,6 @@ public sealed class SelectedUnitViewModel : ViewModelBase
             }
         }
         if (items.Count > 0)
-            groups.Add(new FeatureGroupViewModel(groupName, items, isExpanded));
+            groups.Add(new FeatureGroupViewModel(groupId, groupName, items, isExpanded));
     }
 }

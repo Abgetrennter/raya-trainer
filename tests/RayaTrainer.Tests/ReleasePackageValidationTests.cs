@@ -127,11 +127,18 @@ public sealed class ReleasePackageValidationTests
     {
         var repoRoot = FindRepoRoot();
         var readme = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
-        var claude = File.ReadAllText(Path.Combine(repoRoot, "CLAUDE.md"));
 
         Assert.Contains("绝对不支持联机 / 多人模式。", readme, StringComparison.Ordinal);
-        Assert.Contains("Desktop Runtime", claude, StringComparison.Ordinal);
-        Assert.Contains("ASP.NET Core Runtime", claude, StringComparison.Ordinal);
+
+        // CLAUDE.md is private agent configuration and is excluded from the public projection;
+        // only assert its runtime contract when the file is actually present.
+        var claudePath = Path.Combine(repoRoot, "CLAUDE.md");
+        if (File.Exists(claudePath))
+        {
+            var claude = File.ReadAllText(claudePath);
+            Assert.Contains("Desktop Runtime", claude, StringComparison.Ordinal);
+            Assert.Contains("ASP.NET Core Runtime", claude, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -200,8 +207,13 @@ public sealed class ReleasePackageValidationTests
         Assert.Contains("Assets\\Catalogs\\ReferenceNotes\\model-state-notes.json", project, StringComparison.Ordinal);
         Assert.Contains("Assets\\Catalogs\\ReferenceNotes\\object-status-notes.json", project, StringComparison.Ordinal);
         // The raw vendor MD files are no longer embedded resources but still tracked in the repo.
-        AssertTracked(repoRoot, "vendor/RA3_Engine_Reference/01_ModelState.md");
-        AssertTracked(repoRoot, "vendor/RA3_Engine_Reference/02_ObjectStatus.md");
+        // vendor/ is excluded from the public projection and the export tree has no .git index,
+        // so only assert git-tracking when an actual repository index is present.
+        if (Directory.Exists(Path.Combine(repoRoot, ".git")) || File.Exists(Path.Combine(repoRoot, ".git")))
+        {
+            AssertTracked(repoRoot, "vendor/RA3_Engine_Reference/01_ModelState.md");
+            AssertTracked(repoRoot, "vendor/RA3_Engine_Reference/02_ObjectStatus.md");
+        }
     }
 
     [Fact]

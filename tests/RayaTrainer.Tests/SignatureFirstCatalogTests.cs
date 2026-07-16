@@ -72,6 +72,23 @@ public class SignatureFirstCatalogTests
     }
 
     [Fact]
+    public void Scanned_GameObjectAddUpgrade_VA_converts_to_catalog_RVA()
+    {
+        // Regression for the object-level upgrade grant VA/RVA bug: the signature scanner
+        // matches GameObject_AddUpgrade at TW VA 0x779650 and returns it keyed by the
+        // renamed "Rva_379650" symbol. BuildNativeAgentCatalogRvas must subtract the module
+        // base (0x400000) so the catalog stores RVA 0x379650; the DLL adds the base back.
+        var profile = BuildTestProfile();
+        var scanned = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Rva_379650"] = 0x779650  // GameObject_AddUpgrade TW VA
+        };
+        var rvas = profile.BuildNativeAgentCatalogRvas(scanned);
+        var idx = Array.IndexOf(NativeAgentCatalog.EntryNames.ToArray(), "GameObjectAddUpgrade");
+        Assert.Equal(0x379650u, rvas[idx]);  // VA 0x779650 - base 0x400000 = RVA 0x379650
+    }
+
+    [Fact]
     public void Zero_scan_value_falls_back_to_profile_rva()
     {
         var profile = BuildTestProfile();

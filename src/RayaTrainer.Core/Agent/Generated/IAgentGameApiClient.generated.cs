@@ -205,4 +205,16 @@ public interface IAgentGameApiClient
         AgentGameApiClearSelectedAttackRangeEffectsRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
+
+    Task<AgentGameApiSelectedUnitUpgradesPayload> GetSelectedUnitUpgradesAsync(
+        int processId,
+        AgentGameApiGetSelectedUnitUpgradesRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
+
+    Task<AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload> GrantObjectUpgradeOnSelectedSameTypeAsync(
+        int processId,
+        AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
 }

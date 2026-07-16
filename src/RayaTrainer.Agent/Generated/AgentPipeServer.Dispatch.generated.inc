@@ -264,3 +264,19 @@ if (command == AgentCommand::ClearSelectedAttackRangeEffects)
     WriteGameApiResponse(pipe, header, result);
     return;
 }
+
+if (command == AgentCommand::GetSelectedUnitUpgrades)
+{
+    AgentGameApiSelectedUnitUpgradesPayload result = {};
+    GetSelectedUnitUpgradesFromPayload(payload.data(), header.PayloadLength, result);
+    WriteGameApiResponse(pipe, header, result);
+    return;
+}
+
+if (command == AgentCommand::GrantObjectUpgradeOnSelectedSameType)
+{
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload result = {};
+    GrantObjectUpgradeOnSelectedSameTypeFromPayload(payload.data(), header.PayloadLength, result);
+    WriteGameApiResponse(pipe, header, result);
+    return;
+}

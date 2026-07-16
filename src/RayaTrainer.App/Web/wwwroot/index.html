@@ -199,6 +199,11 @@
       </div>
     </section>
 
+    <section class="panel">
+      <h2>单位升级</h2>
+      <button type="button" @click="openUnitUpgradePicker" :disabled="busy || isOffline">打开单位升级</button>
+    </section>
+
     <footer class="status">{{ message }}</footer>
 
     <!-- sticky 底部主操作栏 -->
@@ -218,32 +223,49 @@
           </div>
           <button type="button" class="close-btn" @click="closePicker">×</button>
         </div>
-        <div class="chips">
-          <div v-for="f in ['全部', '盟军', '苏联', '升阳']" :key="f"
-               class="chip" :class="{ active: picker.faction === f }"
-               @click="picker.faction = f">{{ f }}</div>
-        </div>
-        <div class="mod-filter" v-if="availableMods.length > 1">
-          模组：
-          <select v-model="picker.mod">
-            <option value="全部">全部模组</option>
-            <option v-for="m in availableMods" :key="m" :value="m">{{ m }}</option>
-          </select>
-        </div>
-      </div>
-      <div class="picker-list">
-        <div v-for="(item, i) in filteredCatalog" :key="i"
-             class="picker-item" @click="selectItem(item)">
-          <div class="faction-dot" :class="dotClass(item.faction)"></div>
-          <div class="item-main">
-            <div class="item-name">{{ item.displayName }}</div>
-            <div class="item-sub">{{ item.subText }}</div>
+        <template v-if="picker.type !== 'unitUpgrade'">
+          <div class="chips">
+            <div v-for="f in ['全部', '盟军', '苏联', '升阳']" :key="f"
+                 class="chip" :class="{ active: picker.faction === f }"
+                 @click="picker.faction = f">{{ f }}</div>
           </div>
-          <div class="item-mod-tag" v-if="picker.mod === '全部'">{{ item.mod }}</div>
-        </div>
-        <div v-if="filteredCatalog.length === 0" class="picker-empty">没有匹配项</div>
+          <div class="mod-filter" v-if="availableMods.length > 1">
+            模组：
+            <select v-model="picker.mod">
+              <option value="全部">全部模组</option>
+              <option v-for="m in availableMods" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+        </template>
       </div>
-      <div class="picker-count">{{ filteredCatalog.length }} 条匹配 · 共 {{ currentCatalog.length }} 条</div>
+      <template v-if="picker.type === 'unitUpgrade'">
+        <div class="picker-list">
+          <div v-if="picker.loading" class="picker-loading">加载中...</div>
+          <div v-for="(item, i) in picker.items" :key="i" class="picker-item picker-item-upgrade">
+            <div class="item-main">
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-sub">{{ item.description }}</div>
+            </div>
+            <button type="button" @click.stop="grantUnitUpgrade(item)" :disabled="busy">授予</button>
+          </div>
+          <div v-if="!picker.loading && picker.items.length === 0" class="picker-empty">{{ picker.emptyMessage || '没有可用的升级' }}</div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="picker-list">
+          <div v-for="(item, i) in filteredCatalog" :key="i"
+               class="picker-item" @click="selectItem(item)">
+            <div class="faction-dot" :class="dotClass(item.faction)"></div>
+            <div class="item-main">
+              <div class="item-name">{{ item.displayName }}</div>
+              <div class="item-sub">{{ item.subText }}</div>
+            </div>
+            <div class="item-mod-tag" v-if="picker.mod === '全部'">{{ item.mod }}</div>
+          </div>
+          <div v-if="filteredCatalog.length === 0" class="picker-empty">没有匹配项</div>
+        </div>
+        <div class="picker-count">{{ filteredCatalog.length }} 条匹配 · 共 {{ currentCatalog.length }} 条</div>
+      </template>
     </div>
   </main>
 

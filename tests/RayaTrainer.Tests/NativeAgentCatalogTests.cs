@@ -97,4 +97,48 @@ public sealed class NativeAgentCatalogTests
         Assert.Equal(0x205240u, rvas[3]); // CreateUnit
         Assert.Equal(0x39EA50u, rvas[4]); // KillUnit
     }
+
+    [Fact]
+    public void Entry39And40AreUpgradeGrantEntries()
+    {
+        // Index 39 = GameObjectAddUpgrade, 40 = UpgradeTemplateTypeOffset (object-level
+        // upgrade grant). The DLL handler resolves GameObjectAddUpgrade to GameObject_AddUpgrade
+        // (ra3_1.12 IDA VA 0x779650 = catalog RVA 0x379650) and reads the Type field at the
+        // UpgradeTemplateTypeOffset within UpgradeTemplateDefinition.
+        Assert.Equal("GameObjectAddUpgrade", NativeAgentCatalog.EntryNames[39]);
+        Assert.Equal("UpgradeTemplateTypeOffset", NativeAgentCatalog.EntryNames[40]);
+        Assert.Equal(41, NativeAgentCatalog.ExpectedEntryCount);
+    }
+
+    [Fact]
+    public void Ra3112GameObjectAddUpgradeRvaIsVerified()
+    {
+        var rvas = Ra3VersionProfileRegistry.Ra3112.BuildNativeAgentCatalogRvas();
+
+        // Index 39 = GameObjectAddUpgrade. RVA 0x379650 = IDA VA 0x779650 - module base 0x400000.
+        // The no-scan catalog path reads the profile value verbatim, so it must be the RVA.
+        Assert.Equal(0x379650u, rvas[39]);
+    }
+
+    [Fact]
+    public void Ra3112UpgradeTemplateTypeOffsetIsVerified()
+    {
+        var rvas = Ra3VersionProfileRegistry.Ra3112.BuildNativeAgentCatalogRvas();
+
+        // Index 40 = UpgradeTemplateTypeOffset. 1.12 value 0x24 = offset of UpgradeTemplate.Type
+        // within UpgradeTemplateDefinition (reached via [UpgradeTemplate+0xC]). OBJECT == 1.
+        Assert.Equal(0x24u, rvas[40]);
+    }
+
+    [Fact]
+    public void EveryProfileResolvesAllNativeAgentRefEntries()
+    {
+        // Adding a new EntryName requires every profile to provide a value (Verified RVA,
+        // even if 0 for "unavailable") so BuildNativeAgentCatalogRvas does not throw.
+        foreach (var profile in Ra3VersionProfileRegistry.Profiles)
+        {
+            var rvas = profile.BuildNativeAgentCatalogRvas();
+            Assert.Equal(NativeAgentCatalog.ExpectedEntryCount, rvas.Count);
+        }
+    }
 }

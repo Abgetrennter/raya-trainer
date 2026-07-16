@@ -52,6 +52,10 @@ Push-Location $repoRoot
 try {
     Assert-RepositoryLayout
 
+    Invoke-Checked "Validate active documentation drift" {
+        powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "validate-active-doc-drift.ps1") -RepoRoot $repoRoot
+    }
+
     if (-not $NoRestore) {
         Invoke-Checked "Restore managed projects" {
             dotnet restore $solution

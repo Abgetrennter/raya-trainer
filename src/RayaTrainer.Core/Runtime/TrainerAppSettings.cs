@@ -73,7 +73,16 @@ public sealed record TrainerAppSettings
         string ModsRootPath = "",
         string SelectedModSkudefPath = "",
         IReadOnlyList<SecretProtocolQueuePreset>? SecretProtocolPresets = null,
-        bool HidePrimaryActionCard = false)
+        bool HidePrimaryActionCard = false,
+        bool AutoCaptureEnabled = false,
+        bool IsDarkTheme = true,
+        WindowBounds? WindowBounds = null,
+        string SelectedPageId = PageIds.Features,
+        IReadOnlyDictionary<string, bool>? GroupExpandedStates = null,
+        IReadOnlyDictionary<string, bool>? DesiredToggleStates = null,
+        IReadOnlyDictionary<string, string>? FeatureParameterValues = null,
+        IReadOnlyList<FeaturePreset>? FeaturePresets = null,
+        string? LastAppliedFeaturePresetName = null)
     {
         this.LauncherPath = LauncherPath;
         this.LauncherArguments = LauncherArguments;
@@ -85,6 +94,15 @@ public sealed record TrainerAppSettings
         this.SelectedModSkudefPath = SelectedModSkudefPath;
         this.SecretProtocolPresets = (SecretProtocolPresets ?? Array.Empty<SecretProtocolQueuePreset>()).ToArray();
         this.HidePrimaryActionCard = HidePrimaryActionCard;
+        this.AutoCaptureEnabled = AutoCaptureEnabled;
+        this.IsDarkTheme = IsDarkTheme;
+        this.WindowBounds = WindowBounds;
+        this.SelectedPageId = SelectedPageId;
+        this.GroupExpandedStates = (GroupExpandedStates ?? new Dictionary<string, bool>()).ToDictionary();
+        this.DesiredToggleStates = (DesiredToggleStates ?? new Dictionary<string, bool>()).ToDictionary();
+        this.FeatureParameterValues = (FeatureParameterValues ?? new Dictionary<string, string>()).ToDictionary();
+        this.FeaturePresets = (FeaturePresets ?? Array.Empty<FeaturePreset>()).ToArray();
+        this.LastAppliedFeaturePresetName = LastAppliedFeaturePresetName;
     }
 
     public static TrainerAppSettings Default { get; } =
@@ -111,13 +129,31 @@ public sealed record TrainerAppSettings
     public IReadOnlyList<SecretProtocolQueuePreset> SecretProtocolPresets { get; }
 
     public bool HidePrimaryActionCard { get; }
+
+    public bool AutoCaptureEnabled { get; }
+
+    public bool IsDarkTheme { get; init; }
+
+    public WindowBounds? WindowBounds { get; init; }
+
+    public string SelectedPageId { get; init; }
+
+    public IReadOnlyDictionary<string, bool> GroupExpandedStates { get; init; }
+
+    public IReadOnlyDictionary<string, bool> DesiredToggleStates { get; init; }
+
+    public IReadOnlyDictionary<string, string> FeatureParameterValues { get; init; }
+
+    public IReadOnlyList<FeaturePreset> FeaturePresets { get; init; }
+
+    public string? LastAppliedFeaturePresetName { get; init; }
 }
 
 public sealed class TrainerAppSettingsStore
 {
     public const string SettingsFileName = "RayaTrainer.settings.json";
     public const string LegacySettingsFileName = "Ra3Trainer.settings.json";
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -148,11 +184,19 @@ public sealed class TrainerAppSettingsStore
             {
                 // One-time upgrade: parse legacy, save as new, keep legacy file.
                 // refactor.md §19 — legacy file intentionally NOT deleted.
-                if (TryLoadInternal(legacy, defaults, out var migrated))
+                // Use direct parse+Normalize (not TryLoadInternal) to avoid
+                // v1→v2 file-move which would destroy the legacy file.
+                try
                 {
+                    using var stream = File.OpenRead(legacy);
+                    using var document = JsonDocument.Parse(stream);
+                    var root = document.RootElement.Clone();
+                    var migrated = Normalize(root, defaults);
                     TrySave(migrated);
                     return migrated;
                 }
+                catch (JsonException) { }
+                catch (IOException) { }
                 // Legacy unreadable → fall through to defaults
             }
             TrySave(defaults);
@@ -213,8 +257,14 @@ public sealed class TrainerAppSettingsStore
             Directory.CreateDirectory(directory);
         }
 
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, settings, JsonOptions);
+        // 写入同目录临时文件，flush 后原子替换正式文件；失败保留旧文件。
+        var tmpPath = path + ".tmp";
+        using (var stream = File.Create(tmpPath))
+        {
+            JsonSerializer.Serialize(stream, settings, JsonOptions);
+            stream.Flush();
+        }
+        File.Move(tmpPath, path, overwrite: true);
     }
 
     private bool TryLoadInternal(string path, TrainerAppSettings defaults, out TrainerAppSettings result)
@@ -228,19 +278,28 @@ public sealed class TrainerAppSettingsStore
                 root = document.RootElement.Clone();
             }
 
-            if (ReadInt32(root, nameof(TrainerAppSettings.SchemaVersion)) != CurrentSchemaVersion)
+            var version = ReadInt32(root, nameof(TrainerAppSettings.SchemaVersion));
+            if (version == CurrentSchemaVersion)
             {
-                result = ResetUnsupportedSettings(defaults);
+                result = Normalize(root, defaults);
                 return true;
             }
 
-            result = Normalize(root, defaults);
+            if (version == 1)
+            {
+                // v1 → v2 迁移：读 v1 字段，补 v2 默认，备份原文件
+                result = MigrateV1ToV2(root, path, defaults);
+                return true;
+            }
+
+            // 缺失/未知版本
+            result = BackupAndReset(path, defaults, "legacy");
             return true;
         }
         catch (JsonException)
         {
-            result = defaults;
-            return false;
+            result = BackupAndReset(path, defaults, "corrupt");
+            return true;
         }
         catch (IOException)
         {
@@ -280,6 +339,8 @@ public sealed class TrainerAppSettingsStore
         var hotkeys = ReadHotkeys(root, defaults.Hotkeys);
         var hidePrimaryActionCard = ReadBool(root, nameof(TrainerAppSettings.HidePrimaryActionCard))
             ?? defaults.HidePrimaryActionCard;
+        var autoCaptureEnabled = ReadBool(root, nameof(TrainerAppSettings.AutoCaptureEnabled))
+            ?? defaults.AutoCaptureEnabled;
 
         if (string.IsNullOrWhiteSpace(launcherArguments))
         {
@@ -291,6 +352,15 @@ public sealed class TrainerAppSettingsStore
             attachTimeoutSeconds = defaults.AttachTimeoutSeconds;
         }
 
+        var isDarkTheme = ReadBool(root, nameof(TrainerAppSettings.IsDarkTheme)) ?? true;
+        var windowBounds = ReadWindowBounds(root);
+        var selectedPageId = ReadString(root, nameof(TrainerAppSettings.SelectedPageId)) ?? PageIds.Features;
+        var groupExpandedStates = ReadBoolDict(root, nameof(TrainerAppSettings.GroupExpandedStates));
+        var desiredToggleStates = ReadBoolDict(root, nameof(TrainerAppSettings.DesiredToggleStates));
+        var featureParameterValues = ReadStringDict(root, nameof(TrainerAppSettings.FeatureParameterValues));
+        var featurePresets = ReadFeaturePresets(root);
+        var lastAppliedPreset = ReadString(root, nameof(TrainerAppSettings.LastAppliedFeaturePresetName));
+
         return new TrainerAppSettings(
             launcherPath,
             launcherArguments,
@@ -301,7 +371,16 @@ public sealed class TrainerAppSettingsStore
             modsRootPath,
             selectedModSkudefPath,
             secretProtocolPresets,
-            hidePrimaryActionCard);
+            hidePrimaryActionCard,
+            autoCaptureEnabled,
+            isDarkTheme,
+            windowBounds,
+            selectedPageId,
+            groupExpandedStates,
+            desiredToggleStates,
+            featureParameterValues,
+            featurePresets,
+            lastAppliedPreset);
     }
 
     private static string? ReadString(JsonElement root, string propertyName)
@@ -325,24 +404,41 @@ public sealed class TrainerAppSettingsStore
             : null;
     }
 
-    private TrainerAppSettings ResetUnsupportedSettings(TrainerAppSettings defaults)
+    private TrainerAppSettings BackupAndReset(string path, TrainerAppSettings defaults, string suffix)
     {
         try
         {
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
             var backupPath = Path.Combine(
-                Path.GetDirectoryName(_path) ?? string.Empty,
-                "RayaTrainer.settings.legacy.json");
-            File.Move(_path, backupPath, overwrite: true);
+                Path.GetDirectoryName(path) ?? string.Empty,
+                $"RayaTrainer.settings.{suffix}.{timestamp}.json");
+            File.Move(path, backupPath, overwrite: false);
             Save(defaults);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
         return defaults;
+    }
+
+    private TrainerAppSettings MigrateV1ToV2(JsonElement root, string path, TrainerAppSettings defaults)
+    {
+        // 先备份 v1 原文件
+        try
+        {
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var backupPath = Path.Combine(
+                Path.GetDirectoryName(path) ?? string.Empty,
+                $"RayaTrainer.settings.v1.{timestamp}.json");
+            File.Move(path, backupPath, overwrite: false);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+
+        // 用 v1 Normalize 读全部旧字段（复用现有 Normalize 逻辑读 v1 字段）
+        // 现有 Normalize 不读 v2 字段，直接复用即可
+        var migrated = Normalize(root, defaults);
+        Save(migrated);
+        return migrated;
     }
 
     private static ResourceValueSettings? ReadResourceValues(JsonElement root)
@@ -520,4 +616,89 @@ public sealed class TrainerAppSettingsStore
             : null;
     }
 
+    private static WindowBounds? ReadWindowBounds(JsonElement root)
+    {
+        if (!root.TryGetProperty(nameof(TrainerAppSettings.WindowBounds), out var value) ||
+            value.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+        var x = ReadDouble(value, "X") ?? 0;
+        var y = ReadDouble(value, "Y") ?? 0;
+        var w = ReadDouble(value, "Width") ?? 0;
+        var h = ReadDouble(value, "Height") ?? 0;
+        var max = ReadBool(value, "IsMaximized") ?? false;
+        return new WindowBounds(x, y, w, h, max);
+    }
+
+    private static IReadOnlyDictionary<string, bool> ReadBoolDict(JsonElement root, string propertyName)
+    {
+        var dict = new Dictionary<string, bool>();
+        if (!root.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Object)
+        {
+            return dict;
+        }
+        foreach (var item in value.EnumerateObject())
+        {
+            if (item.Value.ValueKind == JsonValueKind.True) dict[item.Name] = true;
+            else if (item.Value.ValueKind == JsonValueKind.False) dict[item.Name] = false;
+        }
+        return dict;
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadStringDict(JsonElement root, string propertyName)
+    {
+        var dict = new Dictionary<string, string>();
+        if (!root.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Object)
+        {
+            return dict;
+        }
+        foreach (var item in value.EnumerateObject())
+        {
+            if (item.Value.ValueKind == JsonValueKind.String)
+            {
+                dict[item.Name] = item.Value.GetString() ?? string.Empty;
+            }
+        }
+        return dict;
+    }
+
+    private static IReadOnlyList<FeaturePreset> ReadFeaturePresets(JsonElement root)
+    {
+        if (!root.TryGetProperty(nameof(TrainerAppSettings.FeaturePresets), out var value) ||
+            value.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<FeaturePreset>();
+        }
+
+        var presets = new List<FeaturePreset>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+            var name = ReadString(item, nameof(FeaturePreset.Name)) ?? string.Empty;
+            var createdAt = ReadDateTimeOffset(item, nameof(FeaturePreset.CreatedAtUtc)) ?? DateTimeOffset.UtcNow;
+            var updatedAt = ReadDateTimeOffset(item, nameof(FeaturePreset.UpdatedAtUtc)) ?? DateTimeOffset.UtcNow;
+            var toggles = item.TryGetProperty(nameof(FeaturePreset.Snapshot), out var snap)
+                ? ReadBoolDict(snap, nameof(FeatureStateSnapshot.ToggleStates))
+                : new Dictionary<string, bool>();
+            var params_ = item.TryGetProperty(nameof(FeaturePreset.Snapshot), out snap)
+                ? ReadStringDict(snap, nameof(FeatureStateSnapshot.ParameterValues))
+                : new Dictionary<string, string>();
+            presets.Add(new FeaturePreset(name,
+                new FeatureStateSnapshot(toggles, params_), createdAt, updatedAt));
+        }
+        return presets;
+    }
+
+    private static double? ReadDouble(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var result)
+            ? result : null;
+    }
+
+    private static DateTimeOffset? ReadDateTimeOffset(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            && DateTimeOffset.TryParse(value.GetString(), out var result) ? result : null;
+    }
 }

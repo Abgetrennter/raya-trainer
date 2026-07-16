@@ -1,3 +1,4 @@
+using RayaTrainer.Core.Agent;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
 using Xunit;
@@ -291,6 +292,8 @@ public sealed class QueueRunnerPauseTests
         public void ClearAutoRepairPulse() => throw new NotImplementedException();
         public void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f) => throw new NotImplementedException();
         public uint ReadSelectedUnitCode() => throw new NotImplementedException();
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() => SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null) => GameApiDispatchStatus.Disabled;
         public byte ReadActionDispatch() => throw new NotImplementedException();
         public uint ReadGameThreadTick() => throw new NotImplementedException();
         public int ReadGameMode() => throw new NotImplementedException();
@@ -340,6 +343,8 @@ public sealed class QueueRunnerPauseTests
         public void ClearAutoRepairPulse() => throw new NotImplementedException();
         public void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f) => throw new NotImplementedException();
         public uint ReadSelectedUnitCode() => throw new NotImplementedException();
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() => SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null) => GameApiDispatchStatus.Disabled;
         public byte ReadActionDispatch() => throw new NotImplementedException();
         public uint ReadGameThreadTick() => throw new NotImplementedException();
         public int ReadGameMode() => throw new NotImplementedException();

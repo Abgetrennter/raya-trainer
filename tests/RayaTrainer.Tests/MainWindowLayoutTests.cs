@@ -121,8 +121,8 @@ public sealed class MainWindowLayoutTests
         var window = LoadXaml("MainWindow.xaml");
         var page = LoadXaml("Pages/HotkeySettingsPage.xaml");
 
-        // 侧边栏导航项存在。
-        Assert.NotNull(FindByAttribute(window, "Text", "设置"));
+        // 侧边栏导航项存在（显示文本为"设置快捷键"）。
+        Assert.NotNull(FindByAttribute(window, "Text", "设置快捷键"));
         // 内容区按 ConverterParameter=7 切换可见性。
         Assert.NotNull(FindByAttribute(window, "Visibility", "{Binding DataContext.SelectedPageIndex, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVis}, ConverterParameter=7}"));
         // 设置页绑定到 MainViewModel.HotkeySettings。
@@ -281,7 +281,42 @@ public sealed class MainWindowLayoutTests
 
         Assert.NotNull(FindByAttribute(document, "Text", "{Binding GameLaunch.LauncherArguments, UpdateSourceTrigger=PropertyChanged}"));
         Assert.NotNull(FindByAttribute(document, "Command", "{Binding GameLaunch.GenerateLauncherArgumentsCommand}"));
-        Assert.NotNull(FindByAttribute(document, "Content", "装载并启动"));
+        // 装载并启动按钮 Content 绑定到 MainViewModel.LaunchAndLoadButtonText，
+        // 该属性会动态附加已配置的全局热键（如「装载并启动 (Ctrl+Alt+L)」）。
+        Assert.NotNull(FindByAttribute(document, "Content", "{Binding LaunchAndLoadButtonText}"));
+        // 立刻检测按钮同理。
+        Assert.NotNull(FindByAttribute(document, "Content", "{Binding RefreshProcessButtonText}"));
+    }
+
+    [Fact]
+    public void SelectedUnitPageExposesUnitUpgradeSubpanel()
+    {
+        var document = LoadXaml("Pages/SelectedUnitPage.xaml");
+
+        Assert.NotNull(FindByAttribute(document, "Text", "单位升级"));
+        Assert.NotNull(FindByAttribute(document, "Content", "刷新可用升级"));
+        Assert.NotNull(FindByAttribute(document, "Command", "{Binding UnitUpgrade.RefreshCommand}"));
+        Assert.NotNull(FindByAttribute(document, "ItemsSource", "{Binding UnitUpgrade.AvailableUpgrades}"));
+        Assert.NotNull(FindByAttribute(document, "Text", "{Binding UnitUpgrade.StatusMessage}"));
+        Assert.NotNull(FindByAttribute(document, "Visibility", "{Binding UnitUpgrade.IsListVisible, Converter={StaticResource BoolVis}}"));
+        Assert.True(HasAttribute(document, "Content", "授予"));
+        Assert.True(HasAttribute(document, "CommandParameter", "{Binding}"));
+    }
+
+    [Fact]
+    public void MainWindowWiresWindowGeometryPersistenceAndExitFlush()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory,
+            "..", "..", "..", "..", "..",
+            ProjectRoot,
+            "MainWindow.xaml.cs"));
+
+        Assert.Contains("OnSourceInitializedRestoreBounds", source, StringComparison.Ordinal);
+        Assert.Contains("OnWindowGeometryChanged", source, StringComparison.Ordinal);
+        Assert.Contains("OnClosingFlush", source, StringComparison.Ordinal);
+        Assert.Contains("UpdateWindowBounds", source, StringComparison.Ordinal);
+        Assert.Contains("LastWindowBounds", source, StringComparison.Ordinal);
     }
 
     private static XDocument LoadXaml(string relativePath)

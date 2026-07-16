@@ -25,4 +25,10 @@ public static class TrainerFeatureIds
     public const string ReadSelectedUnitCode = "ReadSelectedUnitCode";
     public const string ClearSelectedAttackSpeedEffects = "Clear Selected Attack Speed Effects";
     public const string ClearSelectedAttackRangeEffects = "Clear Selected Attack Range Effects";
+    public const string SelectedUnitObjectUpgrade = "Selected Unit Object Upgrade";
+
+    // 主控操作（非游戏内动作）：通过 Win32 RegisterHotKey 注册为全局热键，
+    // 与游戏窗口前台无关。修改器最小化时也能触发。
+    public const string DetectProcess = "DetectProcess";
+    public const string LaunchAndLoad = "LaunchAndLoad";
 }

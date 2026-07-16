@@ -46,7 +46,9 @@ createApp({
         type: null,
         search: "",
         faction: "全部",
-        mod: "全部"
+        mod: "全部",
+        items: [],
+        loading: false
       }
     };
   },
@@ -612,6 +614,106 @@ createApp({
     },
     closePicker() {
       this.picker.open = false;
+      this.picker.items = [];
+      this.picker.loading = false;
+    },
+    async openUnitUpgradePicker() {
+      if (!await this.ensurePaired()) return;
+
+      this.picker.open = true;
+      this.picker.type = 'unitUpgrade';
+      this.picker.search = '';
+      this.picker.loading = true;
+      this.picker.items = [];
+      this.picker.emptyMessage = '';
+
+      try {
+        const response = await this.authorizedGet('/api/selected-unit/available-upgrades');
+        if (!response) return;
+        if (response.ok) {
+          const data = await response.json();
+          this.picker.items = data.upgrades || [];
+          if (data.message) {
+            this.picker.emptyMessage = data.message;
+            this.message = data.message;
+          }
+        } else {
+          const errBody = await response.json().catch(() => null);
+          const errMessage = errBody?.message || `HTTP ${response.status}`;
+          this.message = errMessage;
+          this.picker.open = false;
+        }
+      } catch (error) {
+        this.message = `获取升级列表失败：${error.message}。请确认已选中单位。`;
+        this.picker.open = false;
+      } finally {
+        this.picker.loading = false;
+      }
+    },
+    async grantUnitUpgrade(item) {
+      if (!await this.ensurePaired()) return;
+
+      this.busy = true;
+      try {
+        const response = await fetch('/api/selected-unit/grant-object-upgrade', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ hash: item.hash })
+        });
+        if (response.status === 401) {
+          await this.handleUnauthorized();
+          return;
+        }
+        const result = await response.json().catch(() => null);
+        const reasonCode = result?.reasonCode || '';
+        const message = result?.message || '';
+
+        if (response.ok && result?.success !== false) {
+          // 检查后端返回的 success 标志（Completed 映射为 success=true）
+          this.message = message || `已授予升级：${item.name}`;
+          // 成功授予后在 picker 内刷新列表（保持 overlay 打开）
+          await this.refreshUnitUpgrades();
+        } else {
+          // 映射不同 reasonCode 到用户可理解的消息
+          const reasonMap = {
+            'GRANT_DISABLED': '该升级当前不可授予（可能已被授予或非对象级升级）。',
+            'GRANT_TIMEOUT': '授予命令已发送但响应超时，请重试。',
+            'GRANT_FAILED': '授予升级失败，请确认单位仍被选中。',
+            'GRANT_UNKNOWN': message || '授予返回未知状态。',
+            'INVALID_UPGRADE_HASH': '升级参数无效。',
+            'NO_TARGET': '请先在电脑端检测并连接游戏进程。',
+            'PATCH_NOT_INSTALLED': '请先在电脑端安装 Patch。',
+            'DIRECT_GAME_API_REQUIRED': '该功能需要已启用 Direct GameApi 的 Agent。',
+            'DIRECT_GAME_API_NOT_READY': 'Agent 已连接，但 Direct GameApi 未就绪。',
+            'SESSION_NOT_READY': '会话尚未准备完成，请稍候。',
+            'PROFILE_OR_HOOK_UNAVAILABLE': '该功能在当前版本/profile 下暂不支持。'
+          };
+          this.message = reasonMap[reasonCode] || message || `HTTP ${response.status}`;
+        }
+      } catch (error) {
+        this.message = `授予升级失败：${error.message}`;
+      } finally {
+        this.busy = false;
+      }
+    },
+    async refreshUnitUpgrades() {
+      // 刷新 picker 内的升级列表（保持 overlay 打开）
+      try {
+        const response = await this.authorizedGet('/api/selected-unit/available-upgrades');
+        if (!response) return;
+        if (response.ok) {
+          const data = await response.json();
+          this.picker.items = data.upgrades || [];
+          if (data.message) {
+            this.message = data.message;
+          }
+        }
+      } catch (e) {
+        // 静默失败，保留现有列表
+      }
     },
     selectItem(item) {
       if (this.picker.type === 'reinforcement') {

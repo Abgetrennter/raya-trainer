@@ -114,7 +114,9 @@ constexpr uint32_t kDefaultNativeCatalogRvas[kNativeCatalogEntryCount] = {
     0x54u,                          // DestroySelectionListHeadOffset
     0x310u,                         // ProductionModulesOffset
     0x1360u,                        // LocalContextSiblingOffset
-    1u                              // RestoreOreCapacityMode (1=EAX+8, 2=ECX+0x28)
+    1u,                             // RestoreOreCapacityMode (1=EAX+8, 2=ECX+0x28)
+    0x379650u,                      // GameObjectAddUpgrade (RVA = IDA VA 0x779650 - base 0x400000)
+    0x24u,                          // UpgradeTemplateTypeOffset (Type field within UpgradeTemplateDefinition, via [tpl+0xC])
 };
 
 uint32_t g_nativeCatalogRvas[kNativeCatalogEntryCount] = {};
@@ -868,6 +870,256 @@ void GrantSelectedUpgradeOnGameThread(const uint32_t* arguments, uint32_t* resul
     }
     const uint32_t visitorArguments[] = { definition };
     results[1] = VisitSelectedObjects(GrantSelectedUpgradeVisitor, visitorArguments, results[0]) ? 1u : 0u;
+}
+
+// ---------------------------------------------------------------------------
+// Object-level upgrade grant. Same-type filter uses GameObject+0x4
+// (ThingTemplate*); the reference template is pre-read from the first selected
+// object and passed through visitor arguments — no static/global state.
+//
+// Shared resolver: resolves an upgrade hash to an UpgradeTemplate* and reports
+// its Type (PLAYER=0, OBJECT=1). Used by both the read path (collect all) and
+// the grant path (dispatch by Type). Returns false only when the template
+// cannot be resolved or the Type field is out of the known enum range.
+//
+// UpgradeTemplate layout (1.12, IDA-verified 2026-07-14, upgrades_science.md):
+//   [tpl+0xC]  = UpgradeTemplateDefinition*
+//   [definition + UpgradeTemplateTypeOffset] = Type (PLAYER=0, OBJECT=1).
+// ---------------------------------------------------------------------------
+
+// Upgrade type constants (XSD UpgradeDef.xsd binary enum, IDA branch at
+// ObjectGrantOrRemoveUpgrade_579640).
+enum UpgradeTemplateType : uint32_t
+{
+    UpgradeType_Player = 0,
+    UpgradeType_Object = 1,
+};
+
+bool TryResolveUpgradeTemplate(uint32_t upgradeHash, uint32_t typeOffset,
+                                uint32_t& outTemplate, uint32_t& outType)
+{
+    outTemplate = 0;
+    outType = UpgradeType_Player;
+    if (upgradeHash == 0 || typeOffset == 0) return false;
+
+    // Use ScienceStoreFindScience (RVA 0x1456F0 = UpgradeCenter_GetUpgradeTemplateByHash_5456F0)
+    // to resolve by NAME HASH, not ScienceStoreFindUpgrade (RVA 0x147260 = FindUpgradeTemplateById_547260)
+    // which resolves by instanceId. TriggeredBy arrays store name hashes, matching GetUpgradeTemplateByHash.
+    bool invoked = false;
+    const auto tpl = LookupStoreEntry(
+        NativeCatalogEntry::ScienceStoreFindScience, upgradeHash, invoked);
+    if (!invoked || tpl == 0) return false;
+
+    uint32_t definition = 0;
+    if (!SafeReadU32(tpl + 0xCu, definition) || definition == 0) return false;
+
+    uint32_t typeValue = 0;
+    if (!SafeReadU32(definition + typeOffset, typeValue)) return false;
+
+    if (typeValue > UpgradeType_Object) return false;  // unknown enum value
+
+    outTemplate = tpl;
+    outType = typeValue;
+    return true;
+}
+
+uint32_t GrantObjectUpgradeSameTypeVisitor(uint32_t /*selectedDrawable*/,
+                                            uint32_t gameObject,
+                                            const uint32_t* arguments)
+{
+    const uint32_t upgradeTemplate = arguments[0];
+    const uint32_t referenceThingTemplate = arguments[1];
+
+    uint32_t thisTemplate = 0;
+    if (!SafeReadU32(gameObject + 0x4u, thisTemplate) || thisTemplate == 0)
+    {
+        return 0;
+    }
+    if (thisTemplate != referenceThingTemplate)
+    {
+        return 0;
+    }
+
+    const auto moduleBase = reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr));
+    const auto addRva = ResolveNativeCatalogRva(NativeCatalogEntry::GameObjectAddUpgrade);
+    if (moduleBase == 0 || addRva == 0) return 0;
+
+    using AddUpgradeFunction = void(__thiscall*)(void*, uint32_t, uint32_t);
+    const auto fn = reinterpret_cast<AddUpgradeFunction>(moduleBase + addRva);
+    fn(reinterpret_cast<void*>(static_cast<uintptr_t>(gameObject)), upgradeTemplate, 0u);
+    return 1;
+}
+
+void GrantObjectUpgradeOnSelectedSameTypeOnGameThread(const uint32_t* arguments, uint32_t* results)
+{
+    // results[0] = grant outcome (1=success, 0=fail).
+    // results[1] = traversal-established flag.
+    results[0] = 0;
+    results[1] = 0;
+
+    const uint32_t upgradeHash = arguments[0];
+    const auto typeOffset = ResolveStructureOffset(NativeCatalogEntry::UpgradeTemplateTypeOffset);
+
+    uint32_t upgradeTemplate = 0;
+    uint32_t upgradeType = UpgradeType_Player;
+    if (!TryResolveUpgradeTemplate(upgradeHash, typeOffset, upgradeTemplate, upgradeType)) return;
+
+    if (upgradeType == UpgradeType_Object)
+    {
+        // OBJECT grant: per-object via GameObject_AddUpgrade, filtered to same-type units.
+        if (ResolveNativeCatalogRva(NativeCatalogEntry::GameObjectAddUpgrade) == 0) return;
+
+        const uint32_t firstObject = FindFirstSelectedComponent();
+        uint32_t referenceThingTemplate = 0;
+        if (firstObject == 0 ||
+            !SafeReadU32(firstObject + 0x4u, referenceThingTemplate) ||
+            referenceThingTemplate == 0)
+        {
+            return;
+        }
+
+        const uint32_t visitorArgs[2] = { upgradeTemplate, referenceThingTemplate };
+        results[1] = VisitSelectedObjects(
+            GrantObjectUpgradeSameTypeVisitor, visitorArgs, results[0]) ? 1u : 0u;
+    }
+    else
+    {
+        // PLAYER grant: player-wide via Player_GrantUpgrade (catalog entry
+        // ScienceManagerHasScience RVA + moduleBase = Player_GrantUpgrade VA).
+        // This affects the entire player, not just selected units — engine semantics.
+        // Get the player from the first selected object: [obj+ObjectOwnerOffset].
+        const uint32_t firstObject = FindFirstSelectedComponent();
+        if (firstObject == 0) return;
+
+        uint32_t player = 0;
+        if (!SafeReadStructureU32(firstObject, NativeCatalogEntry::ObjectOwnerOffset, player) ||
+            player == 0)
+        {
+            return;
+        }
+
+        results[0] = GrantUpgradeToContext(player, upgradeTemplate, 0) ? 1u : 0u;
+        results[1] = 1u;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic upgrade list reader. Reads the first selected unit's allModules
+// TriggeredBy lists and collects up to 20 unique upgrade hashes (both PLAYER
+// and OBJECT types). The grant handler dispatches by Type at grant time.
+//
+// Output is written directly into the dispatcher-owned Values[24] buffer
+// (results), never into a caller-stack pointer. Layout (IDA-verified
+// 2026-07-14, upgrades_science.md):
+//   results[0]      = success (1) incl. empty results
+//   results[1]      = UnitTypeId (SelectedUnitCode global)
+//   results[2]      = ThingTemplate* of the first selected object
+//   results[3]      = Count (0..20)
+//   results[4..23]  = upgrade hashes
+//
+//   GameObject+ProductionModulesOffset = allModules (ObjectModule**, NULL-terminated)
+//   ObjectModule+0xC  = embedded interface; this = module+0xC, [this] = vtable
+//   vtable+0x30       = upgrade handler getter (__thiscall, ecx = module+0xC)
+//   handler - 0xC     = UpgradeModuleData*
+//   UpgradeModuleData+0x0 = TriggeredBy.Count, +0x4 = TriggeredBy.Array (uint32*)
+//   GameObject+0x4    = ThingTemplate*
+// Each candidate hash is resolved via TryResolveObjectUpgradeTemplate so only
+// OBJECT upgrades are collected (PLAYER/unknown are filtered out).
+// ---------------------------------------------------------------------------
+
+uint32_t CallThiscall1(uint32_t funcAddr, uint32_t ecxArg)
+{
+    using ThiscallUintFn = uint32_t(__thiscall*)(void*);
+    const auto fn = reinterpret_cast<ThiscallUintFn>(funcAddr);
+    return fn(reinterpret_cast<void*>(static_cast<uintptr_t>(ecxArg)));
+}
+
+void GetSelectedUnitUpgradesOnGameThread(const uint32_t* /*arguments*/, uint32_t* results)
+{
+    // results = dispatcher-owned Values[24]: [0]success [1]UnitTypeId [2]ThingTemplate
+    // [3]Count [4..23]hashes. No caller-stack pointer is read or written here.
+    results[0] = 0;
+    results[1] = 0;
+    results[2] = 0;
+    results[3] = 0;
+
+    const auto modulesOffset = ResolveStructureOffset(NativeCatalogEntry::ProductionModulesOffset);
+    const auto typeOffset = ResolveStructureOffset(NativeCatalogEntry::UpgradeTemplateTypeOffset);
+    if (modulesOffset == 0 || typeOffset == 0)
+    {
+        results[0] = 1;
+        return;
+    }
+
+    const uint32_t firstObject = FindFirstSelectedComponent();
+    if (firstObject == 0)
+    {
+        results[0] = 1;
+        return;
+    }
+
+    const auto selectedUnitCode = ResolveProfileGlobal(NativeCatalogEntry::SelectedUnitCode);
+    if (selectedUnitCode != 0)
+    {
+        SafeReadU32(selectedUnitCode, results[1]);
+    }
+    SafeReadU32(firstObject + 0x4u, results[2]);
+
+    uint32_t modulesArrayAddr = 0;
+    if (!SafeReadU32(firstObject + modulesOffset, modulesArrayAddr) || modulesArrayAddr == 0)
+    {
+        results[0] = 1;
+        return;
+    }
+
+    for (uint32_t slot = 0; slot < 4096 && results[3] < 20; ++slot)
+    {
+        uint32_t modulePtr = 0;
+        if (!SafeReadU32(modulesArrayAddr + slot * sizeof(uint32_t), modulePtr)) break;
+        if (modulePtr == 0) break;
+
+        const uint32_t interfaceThis = modulePtr + 0xCu;
+        uint32_t vtable = 0;
+        if (!SafeReadU32(interfaceThis, vtable) || vtable == 0) continue;
+
+        uint32_t getter = 0;
+        if (!SafeReadU32(vtable + 0x30u, getter) || getter == 0) continue;
+
+        const uint32_t handler = CallThiscall1(getter, interfaceThis);
+        if (handler == 0) continue;
+
+        uint32_t data = 0;
+        if (!SafeReadU32(handler - 0xCu, data) || data == 0) continue;
+
+        uint32_t tbCount = 0;
+        uint32_t tbArray = 0;
+        if (!SafeReadU32(data + 0xCu, tbCount) || tbCount > 64) continue;
+        if (!SafeReadU32(data + 0x10u, tbArray) || tbArray == 0) continue;
+
+        for (uint32_t i = 0; i < tbCount && results[3] < 20; ++i)
+        {
+            uint32_t hash = 0;
+            if (!SafeReadU32(tbArray + i * sizeof(uint32_t), hash) || hash == 0) continue;
+
+            // Resolve via GetUpgradeTemplateByHash (name-hash lookup). Collect both
+            // PLAYER and OBJECT types; the grant handler dispatches by Type.
+            uint32_t resolvedTemplate = 0;
+            uint32_t resolvedType = UpgradeType_Player;
+            if (!TryResolveUpgradeTemplate(hash, typeOffset, resolvedTemplate, resolvedType)) continue;
+
+            bool dup = false;
+            for (uint32_t j = 0; j < results[3]; ++j)
+            {
+                if (results[4 + j] == hash) { dup = true; break; }
+            }
+            if (!dup)
+            {
+                results[4 + results[3]++] = hash;
+            }
+        }
+    }
+
+    results[0] = 1;
 }
 
 void ClearPlayerTechLocksOnGameThread(const uint32_t*, uint32_t* results)
@@ -2419,6 +2671,109 @@ AgentStatusCode DispatchNativeClearSelectedAttackRangeEffects(
     AgentGameApiClearSelectedAttackRangeEffectsPayload& result)
 {
     return DispatchNativeAction(request, result, ClearSelectedAttackRangeEffectsOnGameThread, nullptr, 0);
+}
+
+AgentStatusCode DispatchNativeGrantObjectUpgradeOnSelectedSameType(
+    const AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest& request,
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload& result)
+{
+    result = {};
+    result.AgentVersion = kAgentProtocolVersion;
+    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi) ||
+        request.UpgradeHash == 0)
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
+        return AgentStatusCode::InvalidCommand;
+    }
+    if (IsInShellMode())
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
+        return AgentStatusCode::Ok;
+    }
+    // Fail-closed before consuming a game-thread slot: the profile must have verified both
+    // the OBJECT-type layout and the grant function. The handler re-checks OBJECT type.
+    if (ResolveStructureOffset(NativeCatalogEntry::UpgradeTemplateTypeOffset) == 0 ||
+        ResolveNativeCatalogRva(NativeCatalogEntry::GameObjectAddUpgrade) == 0)
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
+        return AgentStatusCode::Ok;
+    }
+    const uint32_t arguments[] = { request.UpgradeHash };
+    AgentGameThreadResult nativeResult = {};
+    const auto nativeStatus = RunNativeRequest(
+        GrantObjectUpgradeOnSelectedSameTypeOnGameThread, arguments, 1,
+        request.TimeoutMilliseconds, nativeResult,
+        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
+    // Success requires traversal established (Values[1]) AND at least one actual grant
+    // (Values[0]). A traversal that matched zero same-type objects is not a success.
+    if (nativeStatus == AgentGameThreadDispatchStatus::Completed &&
+        nativeResult.Values[1] != 0 && nativeResult.Values[0] > 0)
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
+        return AgentStatusCode::Ok;
+    }
+    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
+    result.StatusCode = static_cast<uint16_t>(
+        timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
+    result.DispatchStatus = static_cast<uint32_t>(
+        timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::Failed);
+    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
+}
+
+AgentStatusCode DispatchNativeGetSelectedUnitUpgrades(
+    const AgentGameApiGetSelectedUnitUpgradesRequest& request,
+    AgentGameApiSelectedUnitUpgradesPayload& result)
+{
+    result = {};
+    result.AgentVersion = kAgentProtocolVersion;
+    if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi))
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
+        return AgentStatusCode::InvalidCommand;
+    }
+    if (IsInShellMode())
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::NoGameTick);
+        return AgentStatusCode::Ok;
+    }
+
+    // The handler writes directly into the dispatcher-owned Values[24] buffer; no
+    // caller-stack pointer crosses the game-thread boundary.
+    AgentGameThreadResult nativeResult = {};
+    const auto nativeStatus = RunNativeRequest(
+        GetSelectedUnitUpgradesOnGameThread, nullptr, 0,
+        request.TimeoutMilliseconds, nativeResult,
+        result.RequestId, result.GameThreadTickBefore, result.GameThreadTickAfter);
+
+    if (nativeStatus == AgentGameThreadDispatchStatus::Completed && nativeResult.Values[0] != 0)
+    {
+        const uint32_t count = nativeResult.Values[3];
+        if (count <= 20u)
+        {
+            result.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+            result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Completed);
+            result.UnitTypeId = nativeResult.Values[1];
+            result.ThingTemplateAddress = nativeResult.Values[2];
+            result.Count = count;
+            static_assert(sizeof(result.UpgradeHash0) == sizeof(uint32_t),
+                          "UpgradeHash fields must be uint32-sized");
+            std::memcpy(&result.UpgradeHash0, &nativeResult.Values[4], count * sizeof(uint32_t));
+            return AgentStatusCode::Ok;
+        }
+        // count > 20: corrupted handler output. Fall through to Failed; do not copy.
+    }
+    const auto timedOut = nativeStatus == AgentGameThreadDispatchStatus::TimedOut;
+    result.StatusCode = static_cast<uint16_t>(
+        timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError);
+    result.DispatchStatus = static_cast<uint32_t>(
+        timedOut ? GameApiDispatchStatus::TimedOut : GameApiDispatchStatus::Failed);
+    return timedOut ? AgentStatusCode::TimedOut : AgentStatusCode::InternalError;
 }
 
 #include "Generated/AgentGameApi.Dispatch.generated.inc"

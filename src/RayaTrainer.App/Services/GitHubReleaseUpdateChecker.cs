@@ -13,7 +13,7 @@ public interface IUpdateChecker
 
 public sealed class GitHubReleaseUpdateChecker : IUpdateChecker
 {
-    private const string LatestReleaseUrl = "https://api.github.com/repos/Abgetrennter/Ra3-trainer-refine/releases/latest";
+    private const string LatestReleaseUrl = "https://api.github.com/repos/Abgetrennter/raya-trainer/releases/latest";
     private readonly HttpClient _httpClient;
 
     public GitHubReleaseUpdateChecker()

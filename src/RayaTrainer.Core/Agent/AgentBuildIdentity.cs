@@ -11,5 +11,8 @@ public static class AgentBuildIdentity
     // Bumped 3 -> 4 for idle acquisition and final maximum-range hooks; wire protocol unchanged.
     // Bumped 4 -> 5 for the post-compare idle branch and turret target-angle hook; wire protocol unchanged.
     // Bumped 5 -> 6 for shared turret-angle and full-circle aim-deflection hooks; wire protocol unchanged.
-    public const ulong Fingerprint = 0x5241594100090006UL;
+    // v10: low 32 bits = (Version=10 << 16) | 1 = 0x000A0001. Protocol bumped 9 -> 10 for
+    // object-level unit upgrade grant (commands 46/47, Native catalog EntryCount 40 -> 41,
+    // dispatcher Values 8 -> 24). Sub-counter reset to 1 because the wire protocol changed.
+    public const ulong Fingerprint = 0x52415941000A0001UL;
 }

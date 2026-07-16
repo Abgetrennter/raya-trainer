@@ -97,7 +97,7 @@
               </Border>
             </StackPanel>
           </ListBoxItem>
-          <ListBoxItem><TextBlock Text="设置" /></ListBoxItem>
+          <ListBoxItem><TextBlock Text="设置快捷键" /></ListBoxItem>
         </ListBox>
 
         <StackPanel DockPanel.Dock="Bottom" Margin="12,0,12,14">
@@ -315,10 +315,10 @@
                 BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="0,0,0,1">
         <Expander.Header>
           <DockPanel Margin="0,0,12,0">
-            <Button DockPanel.Dock="Right" Content="装载并启动" Command="{Binding LaunchAndLoadCommand}"
+            <Button DockPanel.Dock="Right" Content="{Binding LaunchAndLoadButtonText}" Command="{Binding LaunchAndLoadCommand}"
                     ToolTip="{Binding LaunchAndLoadHelpText}"
                     Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" />
-            <Button DockPanel.Dock="Right" Content="立刻检测" Command="{Binding RefreshCommand}"
+            <Button DockPanel.Dock="Right" Content="{Binding RefreshProcessButtonText}" Command="{Binding RefreshCommand}"
                     ToolTip="{Binding RefreshProcessHelpText}"
                     Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" Margin="0,0,8,0" />
             <StackPanel>
@@ -453,13 +453,12 @@
         <Border Padding="16,10">
           <StackPanel Orientation="Horizontal">
           <Button Content="刷新状态" Command="{Binding RefreshFeatureStatesCommand}"
-                  Style="{DynamicResource CompactButton}" Margin="0,0,8,0" />
-          <Button Content="安装" Command="{Binding InstallPatchesCommand}"
-                  ToolTip="{Binding InstallPatchesHelpText}"
-                  Style="{DynamicResource PrimaryButton}" Padding="14,6" FontSize="13" Margin="0,0,8,0" />
-          <Button Content="恢复" Command="{Binding RestorePatchesCommand}"
-                  ToolTip="{Binding RestorePatchesHelpText}"
-                  Style="{DynamicResource DangerButton}" />
+                  Style="{DynamicResource CompactButton}" />
+          <ToggleButton Margin="12,0,0,0"
+                        Style="{DynamicResource CompactToggleButton}"
+                        IsChecked="{Binding IsAutoCaptureEnabled, Mode=TwoWay}"
+                        Content="进程捕获"
+                        ToolTip="启用自动捕获：修改器后台等待红色警戒3，启动后自动连接；游戏退出后自动重新等待。" />
           </StackPanel>
         </Border>
       </Expander>

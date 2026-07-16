@@ -1,5 +1,7 @@
+using System.Windows;
 using RayaTrainer.App.Services;
 using RayaTrainer.App.Web.State;
+using RayaTrainer.Core.Agent;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Manifest;
@@ -23,6 +25,8 @@ public sealed class TrainerApiHandler
     private readonly ITrainerPresetSource? _presetSource;
     private readonly ITrainerSavedPresetSource? _savedPresetSource;
     private readonly IGameStateBroadcaster? _broadcaster;
+    private readonly UpgradeNameResolver _nameResolver;
+    private readonly FeatureStateCoordinator? _featureStateCoordinator;
 
     public TrainerApiHandler(
         ITrainerSessionService session,
@@ -31,7 +35,8 @@ public sealed class TrainerApiHandler
         TrainerAppSettingsStore? settingsStore = null,
         ITrainerPresetSource? presetSource = null,
         ITrainerSavedPresetSource? savedPresetSource = null,
-        IGameStateBroadcaster? broadcaster = null)
+        IGameStateBroadcaster? broadcaster = null,
+        FeatureStateCoordinator? featureStateCoordinator = null)
     {
         _session = session;
         _commandQueue = commandQueue;
@@ -40,6 +45,8 @@ public sealed class TrainerApiHandler
         _presetSource = presetSource;
         _savedPresetSource = savedPresetSource;
         _broadcaster = broadcaster;
+        _nameResolver = new UpgradeNameResolver();
+        _featureStateCoordinator = featureStateCoordinator;
     }
 
     public TrainerWebStatusResponse GetStatus()
@@ -148,7 +155,7 @@ public sealed class TrainerApiHandler
         return new SecretProtocolCatalogResponse(entries);
     }
 
-    public Task<TrainerWebCommandResult> SetToggleAsync(
+    public async Task<TrainerWebCommandResult> SetToggleAsync(
         TrainerToggleRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -156,27 +163,48 @@ public sealed class TrainerApiHandler
         var feature = FindFeature(request.FeatureId);
         if (feature is null)
         {
-            return Task.FromResult(Publish(Failed($"未知功能：{request.FeatureId}。")));
+            return Publish(Failed($"未知功能：{request.FeatureId}。"));
         }
 
         if (!FeatureDispatchDefaults.IsToggle(feature))
         {
-            return Task.FromResult(Publish(Failed($"功能不是开关项：{request.FeatureId}。")));
+            return Publish(Failed($"功能不是开关项：{request.FeatureId}。"));
         }
 
         var capabilityFailure = RequireFeatureCapability(feature);
         if (capabilityFailure is not null)
         {
-            return Task.FromResult(Publish(capabilityFailure));
+            return Publish(capabilityFailure);
         }
 
         var ready = RequireController(out var controller);
         if (ready is not null)
         {
-            return Task.FromResult(Publish(ready));
+            return Publish(ready);
         }
 
-        return _commandQueue.RunAsync(_ =>
+        // 走协调器（若注入）：更新 desired/observed + 触发持久化
+        if (_featureStateCoordinator is not null)
+        {
+            var item = _featureStateCoordinator.FindItem(feature.RawName);
+            if (item is not null)
+            {
+                if (Application.Current?.Dispatcher is { } dispatcher)
+                {
+                    await dispatcher.InvokeAsync(
+                        () => item.SetDesired(request.Enabled, suppressApply: false));
+                }
+                else
+                {
+                    item.SetDesired(request.Enabled, suppressApply: false);
+                }
+
+                return Publish(Succeeded(request.Enabled ? "功能已开启。" : "功能已关闭。"));
+            }
+        }
+
+        // Fallback：旧路径（无协调器或找不到 item 时）
+        return await _commandQueue.RunAsync(_ =>
         {
             controller!.SetToggle(feature, request.Enabled);
             return Task.FromResult(Publish(Succeeded(request.Enabled ? "功能已开启。" : "功能已关闭。")));
@@ -377,6 +405,28 @@ public sealed class TrainerApiHandler
         }, cancellationToken);
     }
 
+    public Task<FeaturePresetsResponse> GetFeaturePresets(CancellationToken ct = default)
+    {
+        var presets = _presetSource?.GetFeaturePresets() ?? Array.Empty<FeaturePreset>();
+        return Task.FromResult(new FeaturePresetsResponse(presets));
+    }
+
+    public Task<TrainerWebCommandResult> SaveFeaturePreset(FeaturePresetSaveRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return Task.FromResult(Publish(Failed("预设名不能为空")));
+        _presetSource?.SaveFeaturePreset(request.Name.Trim(), request.Snapshot);
+        return Task.FromResult(Publish(Succeeded("预设已保存。")));
+    }
+
+    public Task<TrainerWebCommandResult> DeleteFeaturePreset(string name, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Task.FromResult(Publish(Failed("预设名不能为空")));
+        _presetSource?.DeleteFeaturePreset(name.Trim());
+        return Task.FromResult(Publish(Succeeded("预设已删除。")));
+    }
+
     public async Task<TrainerWebCommandResult> ExecuteActionAsync(
         string featureId,
         TrainerActionRequest request,
@@ -541,6 +591,74 @@ public sealed class TrainerApiHandler
         }
     }
 
+    public FeatureCapabilitySnapshot GetObjectUpgradeCapability() =>
+        _session.GetFeatureCapability(TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature);
+
+    public TrainerUnitUpgradesResponse? ReadSelectedUnitUpgrades()
+    {
+        var controller = _session.FeatureController;
+        if (controller is null) return null;
+
+        try
+        {
+            var snapshot = controller.ReadSelectedUnitUpgrades();
+            var upgrades = new List<TrainerUnitUpgradeItem>();
+            for (var i = 0u; i < snapshot.Count; i++)
+            {
+                var hash = snapshot.Hashes[(int)i];
+                upgrades.Add(new TrainerUnitUpgradeItem(
+                    hash,
+                    _nameResolver.ResolveDisplayNameOrFallback(hash),
+                    _nameResolver.TryResolveName(hash)?.Description ?? ""));
+            }
+
+            var message = snapshot.ThingTemplateAddress == 0
+                ? "请先在游戏中选中一个单位"
+                : snapshot.Count == 0
+                    ? "当前单位没有可授予的对象级升级"
+                    : "";
+
+            return new TrainerUnitUpgradesResponse(
+                snapshot.UnitTypeId,
+                $"0x{snapshot.UnitTypeId:X8}",
+                message,
+                upgrades);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public Task<TrainerWebCommandResult> GrantObjectUpgradeOnSelectedSameTypeAsync(
+        uint upgradeHash,
+        CancellationToken cancellationToken = default)
+    {
+        var capabilityFailure = RequireFeatureCapability(TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature);
+        if (capabilityFailure is not null)
+        {
+            return Task.FromResult(Publish(capabilityFailure));
+        }
+
+        var ready = RequireController(out var controller);
+        if (ready is not null) return Task.FromResult(Publish(ready));
+        if (upgradeHash == 0) return Task.FromResult(Publish(Failed("升级参数无效：hash 不能为 0。", "INVALID_UPGRADE_HASH")));
+
+        return _commandQueue.RunAsync(token =>
+        {
+            var result = controller!.GrantObjectUpgradeOnSelectedSameType(upgradeHash);
+            var (success, reasonCode, message) = result switch
+            {
+                GameApiDispatchStatus.Completed => (true, null as string, "升级已授予。"),
+                GameApiDispatchStatus.Disabled => (false, "GRANT_DISABLED", "授予升级失败：当前状态不可授予（可能已被授予或非对象级升级）。"),
+                GameApiDispatchStatus.TimedOut => (false, "GRANT_TIMEOUT", "授予升级命令已超时，请重试。"),
+                GameApiDispatchStatus.Failed => (false, "GRANT_FAILED", "授予升级失败。"),
+                _ => (false, "GRANT_UNKNOWN", $"授予升级返回未知状态：{result}。")
+            };
+            return Task.FromResult(Publish(new TrainerWebCommandResult(success, message, reasonCode)));
+        }, cancellationToken);
+    }
+
     private TrainerWebCommandResult? RequireController(out ITrainerFeatureController? controller)
     {
         controller = _session.FeatureController;
@@ -554,7 +672,7 @@ public sealed class TrainerApiHandler
         var capability = _session.GetFeatureCapability(feature);
         return capability.State == FeatureCapabilityState.Ready
             ? null
-            : Failed(capability.Reason);
+            : Failed(capability.Reason, capability.ReasonCode);
     }
 
     private TrainerFeature RequireFeature(string featureId)
@@ -667,9 +785,9 @@ public sealed class TrainerApiHandler
         return new TrainerWebCommandResult(true, message);
     }
 
-    private static TrainerWebCommandResult Failed(string message)
+    private static TrainerWebCommandResult Failed(string message, string? reasonCode = null)
     {
-        return new TrainerWebCommandResult(false, message);
+        return new TrainerWebCommandResult(false, message, reasonCode);
     }
 
     private TrainerWebCommandResult Publish(TrainerWebCommandResult result)

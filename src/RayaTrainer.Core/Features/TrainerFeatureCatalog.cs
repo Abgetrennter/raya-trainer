@@ -27,8 +27,8 @@ public static class TrainerFeatureCatalog
             ["Enemy Can't Build"] = new("禁止电脑建造建筑物/单位", "Ctrl+F10", null, null, null, false),
             ["Player God Mode"] = new("玩家全建筑/单位无敌", "Ctrl+F11", null, null, null, false),
             ["Player One Kill Mode"] = new("一击必杀敌方建筑物/单位", "Ctrl+F12", null, null, null, false),
-            ["Challenge Money"] = new("起义时刻挑战模式增加资金", "Insert", null, null, null, false),
-            ["Challenge Time"] = new("起义时刻挑战模式锁定充足时间", "Home", null, null, null, false),
+            ["Challenge Money"] = new("起义时刻挑战模式增加资金", null, null, null, null, false, HasHotkeyOverride: true),
+            ["Challenge Time"] = new("起义时刻挑战模式锁定充足时间", null, null, null, null, false, HasHotkeyOverride: true),
             ["Select Unit Level UP"] = new("选择的单位快速升级", "P", null, null, null, false),
             ["Select Unit Super Speed"] = new("选择的单位高速移动", "-", null, null, null, false),
             ["Select Unit Slow Speed"] = new("选择的单位缓慢移动", "=", null, null, null, false),
@@ -44,7 +44,7 @@ public static class TrainerFeatureCatalog
             ["Danger Level MAX"] = new("威胁等级最大", ",", null, null, null, false),
             ["Danger Level MIN"] = new("威胁等级归零", ".", null, null, null, false),
             ["Restore Danger Level Normal"] = new("威胁等级恢复原状", "/", null, null, null, false),
-            ["Restore Select Ore Mine"] = new("选择的矿脉恢复采集矿量", "'", null, null, null, false),
+            ["Restore Select Ore Mine"] = new("选择的矿脉恢复采集矿量", null, null, null, null, false, HasHotkeyOverride: true),
             ["Free Build"] = new(
                 "建筑物可随地建造",
                 "L",
@@ -104,6 +104,22 @@ public static class TrainerFeatureCatalog
             null,
             "0x12",
             SelectionMode: SelectionExecutionMode.Apply);
+
+    /// <summary>
+    /// Capability-only descriptor for object-level unit-upgrade feature.
+    /// NOT added to any rendered feature list — consumed by WPF/Web via
+    /// <see cref="ITrainerSessionService.GetFeatureCapability"/>.
+    /// </summary>
+    public static readonly TrainerFeature SelectedUnitObjectUpgradeFeature =
+        new(
+            TrainerFeatureIds.SelectedUnitObjectUpgrade,
+            "单位升级",
+            null,
+            [],
+            null,
+            null,
+            SupportedProfileIds: ["ra3_1.12"],
+            RequiresDirectGameApi: true);
 
     private static readonly TrainerFeature ClearPlayerTechLocksFeature =
         new(
@@ -439,7 +455,7 @@ public static class TrainerFeatureCatalog
         return feature with
         {
             DisplayName = featureOverride.DisplayName ?? feature.DisplayName,
-            Hotkey = featureOverride.Hotkey ?? feature.Hotkey,
+            Hotkey = featureOverride.HasHotkeyOverride ? featureOverride.Hotkey : (featureOverride.Hotkey ?? feature.Hotkey),
             EnableFlags = featureOverride.EnableFlags ?? feature.EnableFlags,
             DispatchTarget = featureOverride.DispatchTarget ?? feature.DispatchTarget,
             ValueHint = featureOverride.HasValueHintOverride ? featureOverride.ValueHint : feature.ValueHint,
@@ -500,7 +516,10 @@ public static class TrainerFeatureCatalog
         string? ValueHint,
         bool Hide,
         bool HasValueHintOverride = false,
-        IReadOnlyList<TrainerFeatureBytePatch>? ToggleBytePatches = null);
+        IReadOnlyList<TrainerFeatureBytePatch>? ToggleBytePatches = null,
+        // HasHotkeyOverride=true 时强制使用 override 中的 Hotkey（含 null），
+        // 用于主动清除 manifest 提供的默认快捷键。
+        bool HasHotkeyOverride = false);
 
 
 }

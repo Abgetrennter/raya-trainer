@@ -165,3 +165,13 @@ AgentStatusCode ClearSelectedAttackRangeEffectsFromPayload(
     const unsigned char* payload,
     uint32_t length,
     AgentGameApiClearSelectedAttackRangeEffectsPayload& result);
+
+AgentStatusCode GetSelectedUnitUpgradesFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiSelectedUnitUpgradesPayload& result);
+
+AgentStatusCode GrantObjectUpgradeOnSelectedSameTypeFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload& result);

@@ -442,6 +442,161 @@ public sealed class TrainerSessionManagerInjectedBackendTests
         Assert.DoesNotContain("切换模式", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SelectedUnitObjectUpgradeCapabilityNoTargetIsWaiting()
+    {
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), new FakeAgentClient()),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+
+        var capability = manager.GetFeatureCapability(TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature);
+
+        Assert.Equal(FeatureCapabilityState.Waiting, capability.State);
+        Assert.Equal("NO_TARGET", capability.ReasonCode);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeCapabilityRa3112Ready()
+    {
+        var agentClient = new FakeAgentClient();
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), agentClient),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+        var manifest = TestAssets.LoadManifest();
+        var target = new TrainerTarget(
+            "ra3_1.12.game",
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            ProcessId: 1234);
+
+        manager.AttachTarget(manifest, target);
+        manager.InstallPatches(manifest, "diagnostics");
+
+        var capability = manager.GetFeatureCapability(TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature);
+
+        Assert.Equal(FeatureCapabilityState.Ready, capability.State);
+        Assert.Equal("READY", capability.ReasonCode);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeCapabilityUprisingProfileUnavailable()
+    {
+        var agentClient = new FakeAgentClient
+        {
+            SignatureScanPayload = TestAgentSignatureCatalog.CreateForProfile(
+                Ra3VersionProfileRegistry.Uprising10)
+        };
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), agentClient),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+        var manifest = TestAssets.LoadManifest();
+        var target = new TrainerTarget(
+            "ra3ep1_1.0.game",
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            ProcessId: 1234,
+            FileVersion: "1.0.3313.38400",
+            VersionProfileId: Ra3VersionProfileRegistry.Uprising10.Id);
+
+        manager.AttachTarget(manifest, target);
+        manager.InstallPatches(manifest, "diagnostics");
+
+        var capability = manager.GetFeatureCapability(TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature);
+
+        Assert.Equal(FeatureCapabilityState.Unavailable, capability.State);
+        Assert.Equal("UNIT_UPGRADE_PROFILE_NOT_SUPPORTED", capability.ReasonCode);
+    }
+
+    [Fact]
+    public void IsUnitUpgradeNativeLayoutReady_AllVerifiedNonZero_ReturnsTrue()
+    {
+        var profile = Ra3VersionProfileRegistry.Ra3112;
+
+        var result = TrainerSessionManager.IsUnitUpgradeNativeLayoutReady(profile);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsUnitUpgradeNativeLayoutReady_MissingEntry_ReturnsFalse()
+    {
+        var refs = new Dictionary<string, VersionedAddress>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["GameObjectAddUpgrade"] = new("GameObjectAddUpgrade", 0x379650, AddressSupportStatus.Verified, "test"),
+            // ProductionModulesOffset deliberately omitted
+            ["UpgradeTemplateTypeOffset"] = new("UpgradeTemplateTypeOffset", 0x24, AddressSupportStatus.Verified, "test")
+        };
+        var profile = new Ra3VersionProfile
+        {
+            Id = "ra3_1.12",
+            DisplayName = "RA3 1.12 (test)",
+            ProcessName = "ra3_1.12.game",
+            FileVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "1.12.0.0" },
+            Hooks = new Dictionary<string, VersionedAddress>(),
+            RemoteGlobals = new Dictionary<string, VersionedAddress>(),
+            EngineFunctions = new Dictionary<string, VersionedAddress>(),
+            NativeAgentRefs = refs
+        };
+
+        var result = TrainerSessionManager.IsUnitUpgradeNativeLayoutReady(profile);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsUnitUpgradeNativeLayoutReady_ZeroRva_ReturnsFalse()
+    {
+        var refs = new Dictionary<string, VersionedAddress>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["GameObjectAddUpgrade"] = new("GameObjectAddUpgrade", 0, AddressSupportStatus.Verified, "test"),
+            ["ProductionModulesOffset"] = new("ProductionModulesOffset", 0x310, AddressSupportStatus.Verified, "test"),
+            ["UpgradeTemplateTypeOffset"] = new("UpgradeTemplateTypeOffset", 0x24, AddressSupportStatus.Verified, "test")
+        };
+        var profile = new Ra3VersionProfile
+        {
+            Id = "ra3_1.12",
+            DisplayName = "RA3 1.12 (test)",
+            ProcessName = "ra3_1.12.game",
+            FileVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "1.12.0.0" },
+            Hooks = new Dictionary<string, VersionedAddress>(),
+            RemoteGlobals = new Dictionary<string, VersionedAddress>(),
+            EngineFunctions = new Dictionary<string, VersionedAddress>(),
+            NativeAgentRefs = refs
+        };
+
+        var result = TrainerSessionManager.IsUnitUpgradeNativeLayoutReady(profile);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsUnitUpgradeNativeLayoutReady_NeedsReanalysisStatus_ReturnsFalse()
+    {
+        var refs = new Dictionary<string, VersionedAddress>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["GameObjectAddUpgrade"] = new("GameObjectAddUpgrade", 0x379650, AddressSupportStatus.Verified, "test"),
+            ["ProductionModulesOffset"] = new("ProductionModulesOffset", 0x310, AddressSupportStatus.Verified, "test"),
+            ["UpgradeTemplateTypeOffset"] = new("UpgradeTemplateTypeOffset", 0x24, AddressSupportStatus.NeedsReanalysis, "test")
+        };
+        var profile = new Ra3VersionProfile
+        {
+            Id = "ra3_1.12",
+            DisplayName = "RA3 1.12 (test)",
+            ProcessName = "ra3_1.12.game",
+            FileVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "1.12.0.0" },
+            Hooks = new Dictionary<string, VersionedAddress>(),
+            RemoteGlobals = new Dictionary<string, VersionedAddress>(),
+            EngineFunctions = new Dictionary<string, VersionedAddress>(),
+            NativeAgentRefs = refs
+        };
+
+        var result = TrainerSessionManager.IsUnitUpgradeNativeLayoutReady(profile);
+
+        Assert.False(result);
+    }
+
     private sealed class FakeAgentInjector : IAgentInjector
     {
         public bool InjectCalled { get; private set; }
@@ -767,6 +922,20 @@ public sealed class TrainerSessionManagerInjectedBackendTests
         public Task<AgentGameApiTeleportSelectedUnitsToMousePayload> TeleportSelectedUnitsToMouseAsync(
             int processId,
             AgentGameApiTeleportSelectedUnitsToMouseRequest request,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AgentGameApiSelectedUnitUpgradesPayload> GetSelectedUnitUpgradesAsync(
+            int processId,
+            AgentGameApiGetSelectedUnitUpgradesRequest request,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload> GrantObjectUpgradeOnSelectedSameTypeAsync(
+            int processId,
+            AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest request,
             TimeSpan timeout,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

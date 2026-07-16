@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using RayaTrainer.Core.Features;
 
 namespace RayaTrainer.App.Web;
 
@@ -17,7 +18,8 @@ public sealed record TrainerWebStatusResponse(
 
 public sealed record TrainerWebCommandResult(
     bool Success,
-    string Message);
+    string Message,
+    string? ReasonCode = null);
 
 public sealed record TrainerPairingRequest(
     string? DeviceName);
@@ -161,3 +163,24 @@ public sealed record TrainerWebQueueResult(
     bool Success,
     string Message,
     IReadOnlyList<TrainerQueueItemResult> Items);
+
+public sealed record TrainerUnitUpgradeItem(
+    uint Hash,
+    string Name,
+    string Description);
+
+public sealed record TrainerUnitUpgradesResponse(
+    uint UnitTypeId,
+    string UnitTypeIdHex,
+    string Message,
+    IReadOnlyList<TrainerUnitUpgradeItem> Upgrades);
+
+public sealed record TrainerGrantObjectUpgradeRequest(
+    uint Hash);
+
+public sealed record FeaturePresetsResponse(
+    IReadOnlyList<FeaturePreset> Presets);
+
+public sealed record FeaturePresetSaveRequest(
+    string Name,
+    FeatureStateSnapshot Snapshot);

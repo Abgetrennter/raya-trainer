@@ -1,6 +1,8 @@
 using RayaTrainer.App.Services;
+using RayaTrainer.App.ViewModels;
 using RayaTrainer.App.Web;
 using RayaTrainer.App.Web.State;
+using RayaTrainer.Core.Agent;
 using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
@@ -63,6 +65,18 @@ public sealed class TrainerApiHandlerTests
         Assert.True(result.Success);
         Assert.Equal("Zoom", controller.LastToggleFeature?.RawName);
         Assert.True(controller.LastToggleEnabled);
+    }
+
+    [Fact]
+    public async Task SetToggleAsync_ViaCoordinator_UpdatesDesiredState()
+    {
+        var (handler, controller, coordinator, items) = CreateHandlerWithCoordinator();
+
+        var result = await handler.SetToggleAsync(new TrainerToggleRequest("Zoom", true));
+
+        Assert.True(result.Success);
+        Assert.True(items["Zoom"].DesiredEnabled);
+        Assert.True(items["Zoom"].ObservedEnabled);
     }
 
     [Fact]
@@ -496,6 +510,194 @@ public sealed class TrainerApiHandlerTests
         Assert.Contains(catalog.Entries, e => e.CanGrant);
     }
 
+    // ── 单位升级（能力门控 + 响应映射） ──
+
+    [Fact]
+    public async Task GrantObjectUpgradeRejectsWhenCapabilityNotReady()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.Completed };
+        var session = new FakeTrainerSessionService
+        {
+            ArePatchesInstalledValue = true,
+            CanUseFeaturesValue = true,
+            FeatureControllerValue = controller,
+            CapabilityReason = "该功能在当前版本下不可用。"
+        };
+        var handler = new TrainerApiHandler(session, new GameApiCommandQueue(), CreateFeatures());
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x12345678);
+
+        Assert.False(result.Success);
+        Assert.Equal("PROFILE_OR_HOOK_UNAVAILABLE", result.ReasonCode);
+        Assert.Null(controller.LastGrantedUpgradeHash);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeRejectsZeroHash()
+    {
+        var handler = CreateUnitUpgradeReadyHandler(new FakeFeatureController
+            { GrantObjectUpgradeResult = GameApiDispatchStatus.Completed });
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0);
+
+        Assert.False(result.Success);
+        Assert.Equal("INVALID_UPGRADE_HASH", result.ReasonCode);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeMapsCompletedToSuccess()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.Completed };
+        var handler = CreateUnitUpgradeReadyHandler(controller);
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x12345678);
+
+        Assert.True(result.Success);
+        Assert.Equal("升级已授予。", result.Message);
+        Assert.Null(result.ReasonCode);
+        Assert.Equal(0x12345678u, controller.LastGrantedUpgradeHash);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeMapsDisabledToFailure()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.Disabled };
+        var handler = CreateUnitUpgradeReadyHandler(controller);
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x12345678);
+
+        Assert.False(result.Success);
+        Assert.Equal("GRANT_DISABLED", result.ReasonCode);
+        Assert.Equal(0x12345678u, controller.LastGrantedUpgradeHash);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeMapsTimedOutToFailure()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.TimedOut };
+        var handler = CreateUnitUpgradeReadyHandler(controller);
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x12345678);
+
+        Assert.False(result.Success);
+        Assert.Equal("GRANT_TIMEOUT", result.ReasonCode);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeMapsFailedToFailure()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.Failed };
+        var handler = CreateUnitUpgradeReadyHandler(controller);
+
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x12345678);
+
+        Assert.False(result.Success);
+        Assert.Equal("GRANT_FAILED", result.ReasonCode);
+    }
+
+    [Fact]
+    public async Task GrantObjectUpgradeForwardsAnyHashToControllerWithoutPreFilter()
+    {
+        var controller = new FakeFeatureController { GrantObjectUpgradeResult = GameApiDispatchStatus.Completed };
+        var handler = CreateUnitUpgradeReadyHandler(controller);
+
+        // A forged PLAYER-type hash (0x00000001) — the Web layer must forward it
+        // without checking against the GET history. The native layer rejects it.
+        var result = await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(0x00000001);
+
+        Assert.True(result.Success); // Completed from the controller stub; native would reject
+        Assert.Equal(0x00000001u, controller.LastGrantedUpgradeHash);
+    }
+
+    [Fact]
+    public void ReadSelectedUnitUpgradesReturnsNullWhenNoController()
+    {
+        var handler = new TrainerApiHandler(
+            new FakeTrainerSessionService(), new GameApiCommandQueue(), CreateFeatures());
+
+        Assert.Null(handler.ReadSelectedUnitUpgrades());
+    }
+
+    [Fact]
+    public void ReadSelectedUnitUpgradesShowsGuidanceWhenNoSelection()
+    {
+        var snapshot = new SelectedUnitUpgradesSnapshot(0, 0, 0, Array.Empty<uint>());
+        var controller = new FakeFeatureController { ReadSelectedUnitUpgradesResult = snapshot };
+        var handler = CreateConnectedHandler(controller);
+
+        var result = handler.ReadSelectedUnitUpgrades();
+
+        Assert.NotNull(result);
+        Assert.Equal(0u, result.UnitTypeId);
+        Assert.Empty(result.Upgrades);
+        Assert.Equal("请先在游戏中选中一个单位", result.Message);
+    }
+
+    [Fact]
+    public void ReadSelectedUnitUpgradesShowsGuidanceWhenEmptyList()
+    {
+        var snapshot = new SelectedUnitUpgradesSnapshot(0x12345678, 0x1000, 0, Array.Empty<uint>());
+        var controller = new FakeFeatureController { ReadSelectedUnitUpgradesResult = snapshot };
+        var handler = CreateConnectedHandler(controller);
+
+        var result = handler.ReadSelectedUnitUpgrades();
+
+        Assert.NotNull(result);
+        Assert.Equal(0x12345678u, result.UnitTypeId);
+        Assert.Empty(result.Upgrades);
+        Assert.Equal("当前单位没有可授予的对象级升级", result.Message);
+    }
+
+    [Fact]
+    public void ReadSelectedUnitUpgradesResolvesNameViaResolver()
+    {
+        // 0x33D87C97 is a known upgrade hash in the embedded UpgradeNames.json
+        var hashes = new uint[] { 0x33D87C97 };
+        var snapshot = new SelectedUnitUpgradesSnapshot(0x12345678, 0x1000, 1, hashes);
+        var controller = new FakeFeatureController { ReadSelectedUnitUpgradesResult = snapshot };
+        var handler = CreateConnectedHandler(controller);
+
+        var result = handler.ReadSelectedUnitUpgrades();
+
+        Assert.NotNull(result);
+        var upgrade = Assert.Single(result.Upgrades);
+        Assert.Equal(0x33D87C97u, upgrade.Hash);
+        Assert.NotEmpty(upgrade.Name);
+        Assert.DoesNotContain("0x", upgrade.Name);
+    }
+
+    [Fact]
+    public void ReadSelectedUnitUpgradesFallsBackToHexForUnknownHash()
+    {
+        var hashes = new uint[] { 0xDEADBEEF };
+        var snapshot = new SelectedUnitUpgradesSnapshot(0x12345678, 0x1000, 1, hashes);
+        var controller = new FakeFeatureController { ReadSelectedUnitUpgradesResult = snapshot };
+        var handler = CreateConnectedHandler(controller);
+
+        var result = handler.ReadSelectedUnitUpgrades();
+
+        Assert.NotNull(result);
+        var upgrade = Assert.Single(result.Upgrades);
+        Assert.Equal(0xDEADBEEFu, upgrade.Hash);
+        Assert.Equal("升级 #0xDEADBEEF", upgrade.Name);
+        Assert.Empty(upgrade.Description);
+    }
+
+    private static TrainerApiHandler CreateUnitUpgradeReadyHandler(
+        FakeFeatureController controller)
+    {
+        return new TrainerApiHandler(
+            new FakeTrainerSessionService
+            {
+                ArePatchesInstalledValue = true,
+                CanUseFeaturesValue = true,
+                FeatureControllerValue = controller,
+                DirectGameApiReadyOverride = true
+            },
+            new GameApiCommandQueue(),
+            CreateFeatures());
+    }
+
     private static TrainerApiHandler CreateConnectedHandler(
         FakeFeatureController controller,
         TrainerAppSettingsStore? settingsStore = null,
@@ -547,6 +749,61 @@ public sealed class TrainerApiHandlerTests
         ];
     }
 
+    private static (TrainerApiHandler Handler, FakeFeatureController Controller, FeatureStateCoordinator Coordinator, Dictionary<string, FeatureItemViewModel> Items) CreateHandlerWithCoordinator()
+    {
+        var controller = new FakeFeatureController();
+        var features = CreateFeatures();
+        var items = new Dictionary<string, FeatureItemViewModel>();
+        var host = new FakeFeatureHost(controller);
+
+        foreach (var f in features)
+        {
+            var item = new FeatureItemViewModel(f, host);
+            items[f.RawName] = item;
+        }
+
+        var coordinator = new FeatureStateCoordinator(
+            () => items.Values,
+            () => controller,
+            f => host.GetFeatureCapability(f),
+            Array.Empty<IFeatureParameterProvider>());
+
+        var handler = new TrainerApiHandler(
+            new FakeTrainerSessionService
+            {
+                ArePatchesInstalledValue = true,
+                CanUseFeaturesValue = true,
+                FeatureControllerValue = controller
+            },
+            new GameApiCommandQueue(),
+            features,
+            featureStateCoordinator: coordinator);
+
+        return (handler, controller, coordinator, items);
+    }
+
+    private sealed class FakeFeatureHost : IFeatureHost
+    {
+        private readonly FakeFeatureController _controller;
+
+        public FakeFeatureHost(FakeFeatureController controller) => _controller = controller;
+
+        public bool ArePatchesInstalled => true;
+        public ITrainerFeatureController? FeatureController => _controller;
+        public string StatusMessage { set => throw new NotSupportedException(); }
+
+        public FeatureCapabilitySnapshot GetFeatureCapability(TrainerFeature feature) =>
+            new(feature.RawName, feature.DisplayName, string.Empty, FeatureCapabilityState.Ready, null, null);
+
+        public void WriteResourceValuesIfNeeded(TrainerFeature feature) { }
+        public void WriteTargetHealthIfNeeded(TrainerFeature feature) { }
+        public void OnFeatureToggleChanged(TrainerFeature feature, bool enabled) { }
+        public void CompleteActionIfNeeded(TrainerFeature feature, ActionDispatchResult result) { }
+        public ReinforcementSettings GetReinforcementSettings() => throw new NotSupportedException();
+        public void OpenHotkeySettings() { }
+        public void ClearHotkey(TrainerFeature feature) { }
+    }
+
     private sealed class FakeTrainerSessionService : ITrainerSessionService
     {
         public ITrainerFeatureController? FeatureController => FeatureControllerValue;
@@ -575,6 +832,12 @@ public sealed class TrainerApiHandlerTests
 
         public string? CapabilityReason { get; init; }
 
+        /// <summary>
+        /// When set, overrides the DirectGameApiReady check so tests can test
+        /// features requiring Direct GameApi without a full IAgentFeatureController.
+        /// </summary>
+        public bool? DirectGameApiReadyOverride { get; init; }
+
         public AttachResult AttachTarget(TrainerManifest manifest, TrainerTarget target) => throw new NotSupportedException();
 
         public SessionInstallOutcome InstallPatches(TrainerManifest manifest, string diagnosticsDir) => throw new NotSupportedException();
@@ -595,7 +858,7 @@ public sealed class TrainerApiHandlerTests
                     CanUseFeatures || FeatureController is not null,
                     ArePatchesInstalled,
                     true,
-                    FeatureController is IAgentFeatureController { SupportsDirectGameApi: true },
+                    DirectGameApiReadyOverride ?? FeatureController is IAgentFeatureController { SupportsDirectGameApi: true },
                     CapabilityReason));
 
         public void Dispose()
@@ -614,6 +877,11 @@ public sealed class TrainerApiHandlerTests
         public List<ReinforcementSettings> ReinforcementSettingsHistory { get; } = [];
         public List<SecretProtocolGrantSettings> SecretProtocolSettingsHistory { get; } = [];
         public DispatchWaitStatus? DispatchStatusToReport { get; init; }
+
+        // Unit upgrade test controls
+        public SelectedUnitUpgradesSnapshot? ReadSelectedUnitUpgradesResult { get; init; }
+        public GameApiDispatchStatus GrantObjectUpgradeResult { get; init; } = GameApiDispatchStatus.Disabled;
+        public uint? LastGrantedUpgradeHash { get; private set; }
 
         public void SetToggle(TrainerFeature feature, bool enabled)
         {
@@ -700,6 +968,13 @@ public sealed class TrainerApiHandlerTests
         }
 
         public uint ReadSelectedUnitCode() => 0;
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() =>
+            ReadSelectedUnitUpgradesResult ?? SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null)
+        {
+            LastGrantedUpgradeHash = upgradeHash;
+            return GrantObjectUpgradeResult;
+        }
 
         public byte ReadActionDispatch() => 0;
         public uint ReadGameThreadTick() => 1;
@@ -729,6 +1004,12 @@ public sealed class TrainerApiHandlerTests
         public IReadOnlyList<ReinforcementPreset> GetReinforcementPresets() => _reinforcementPresets;
 
         public IReadOnlyList<SecretProtocolQueuePreset> GetSecretProtocolPresets() => _secretProtocolPresets;
+
+        public IReadOnlyList<FeaturePreset> GetFeaturePresets() => Array.Empty<FeaturePreset>();
+
+        public void SaveFeaturePreset(string name, FeatureStateSnapshot snapshot) { }
+
+        public bool DeleteFeaturePreset(string name) => false;
     }
 
     private sealed class FakeTrainerSavedPresetSource : ITrainerSavedPresetSource

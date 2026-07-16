@@ -14,7 +14,7 @@ public sealed class DirectGameApiMetadataTests
         var catalog = DirectGameApiCatalog.Load(stream);
 
         Assert.Equal(3, catalog.Version);
-        Assert.Equal(33, catalog.Apis.Count);
+        Assert.Equal(35, catalog.Apis.Count);
         Assert.All(catalog.Apis, api => Assert.Equal(DirectGameApiImplementation.Native, api.Implementation));
         Assert.Equal(catalog.Apis.Count, catalog.Apis.Select(api => api.PipeCommand.Value).Distinct().Count());
         Assert.Contains(catalog.Apis, api => api.Name == "ToggleSelectedAttackSpeed" && api.PipeCommand.Value == 42);

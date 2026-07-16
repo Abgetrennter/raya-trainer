@@ -41,6 +41,26 @@ public sealed class HotkeySettingsViewModelTests
     }
 
     [Fact]
+    public void ConstructorPopulatesTrainerControlRowsInDedicatedGroup()
+    {
+        // 主控操作热键（立刻检测 / 装载并启动）应作为独立分组出现，且默认值从 defaultHotkeys 流入。
+        var features = Array.Empty<TrainerFeature>();
+        var defaults = Dict(
+            (HotkeySettingsViewModel.DetectProcessRawName, "Ctrl+Alt+D"),
+            (HotkeySettingsViewModel.LaunchAndLoadRawName, "Ctrl+Alt+L"));
+
+        var vm = new HotkeySettingsViewModel(features, Dict(), defaults, _ => { });
+
+        var detectRow = vm.Rows.Single(r => r.RawName == HotkeySettingsViewModel.DetectProcessRawName);
+        Assert.Equal("Ctrl+Alt+D", detectRow.DefaultHotkey);
+        Assert.Equal("主控操作（全局）", detectRow.Group);
+
+        var launchRow = vm.Rows.Single(r => r.RawName == HotkeySettingsViewModel.LaunchAndLoadRawName);
+        Assert.Equal("Ctrl+Alt+L", launchRow.DefaultHotkey);
+        Assert.Equal("主控操作（全局）", launchRow.Group);
+    }
+
+    [Fact]
     public void ConflictsAreDetectedWhenTwoRowsShareSameHotkey()
     {
         var features = new[]

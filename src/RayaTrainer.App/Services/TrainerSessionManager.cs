@@ -304,7 +304,7 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
         ArgumentNullException.ThrowIfNull(feature);
         var profile = _currentTarget is null ? null : Ra3VersionProfileRegistry.ResolveTargetProfile(_currentTarget);
         var directGameApiReady = _featureController is IAgentFeatureController { SupportsDirectGameApi: true };
-        return TrainerFeatureCapabilityEvaluator.Evaluate(
+        var snapshot = TrainerFeatureCapabilityEvaluator.Evaluate(
             feature,
             new TrainerFeatureCapabilityContext(
                 HasTarget: _currentTarget is not null || (_arePatchesInstalled && _featureController is not null),
@@ -313,6 +313,50 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
                 BackendSupportsDirectGameApi: _currentTarget is null || profile?.SupportsDirectGameApi == true,
                 DirectGameApiReady: directGameApiReady,
                 UnavailableReason: _unavailableFeatureReasons.GetValueOrDefault(feature.RawName)));
+
+        // Special-case: unit-upgrade descriptor requires ra3_1.12 profile with fully verified
+        // native layout entries. Downgrade from Ready if conditions are not met.
+        if (feature.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade &&
+            snapshot.State == FeatureCapabilityState.Ready)
+        {
+            if (profile is null || !profile.Id.Equals("ra3_1.12", StringComparison.OrdinalIgnoreCase))
+            {
+                return snapshot with
+                {
+                    State = FeatureCapabilityState.Unavailable,
+                    ReasonCode = "UNIT_UPGRADE_PROFILE_NOT_SUPPORTED",
+                    Reason = "单位升级功能当前仅在 RA3 1.12 完成验证。请使用 1.12 版本游戏。"
+                };
+            }
+
+            if (!IsUnitUpgradeNativeLayoutReady(profile))
+            {
+                return snapshot with
+                {
+                    State = FeatureCapabilityState.Unavailable,
+                    ReasonCode = "UNIT_UPGRADE_NATIVE_LAYOUT_UNAVAILABLE",
+                    Reason = "单位升级所需的引擎布局尚未在当前版本完成验证。"
+                };
+            }
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>
+    /// Checks that the three native-agent catalog entries required for object-level upgrade
+    /// grant are all Verified with a non-zero RVA.
+    /// </summary>
+    internal static bool IsUnitUpgradeNativeLayoutReady(Ra3VersionProfile profile)
+    {
+        return TryHasVerifiedNonZeroRva(profile, "GameObjectAddUpgrade")
+            && TryHasVerifiedNonZeroRva(profile, "ProductionModulesOffset")
+            && TryHasVerifiedNonZeroRva(profile, "UpgradeTemplateTypeOffset");
+
+        static bool TryHasVerifiedNonZeroRva(Ra3VersionProfile p, string name) =>
+            p.NativeAgentRefs.TryGetValue(name, out var addr)
+            && addr.Status == AddressSupportStatus.Verified
+            && addr.Rva is > 0;
     }
 
     private string CreatePatchInstalledStatus(PatchMismatchReportResult result)

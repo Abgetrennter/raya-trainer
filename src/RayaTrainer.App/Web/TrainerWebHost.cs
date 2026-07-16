@@ -27,6 +27,7 @@ public sealed class TrainerWebHost : IAsyncDisposable
         TrainerAppSettingsStore? settingsStore = null,
         ITrainerPresetSource? presetSource = null,
         ITrainerSavedPresetSource? savedPresetSource = null,
+        FeatureStateCoordinator? featureStateCoordinator = null,
         int port = TrainerWebEndpointDefaults.Port)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -49,6 +50,10 @@ public sealed class TrainerWebHost : IAsyncDisposable
             builder.Services.AddSingleton(presetSource);
         }
         builder.Services.AddSingleton(savedPresetSource ?? new TrainerSavedPresetFileSource());
+        if (featureStateCoordinator is not null)
+        {
+            builder.Services.AddSingleton(featureStateCoordinator);
+        }
         builder.Services.AddSingleton(CreateWebFeatures(manifest));
         builder.Services.AddSingleton<DevicePairingTokenStore>();
         builder.Services.AddSingleton<IDeviceApprovalService, WpfDeviceApprovalService>();

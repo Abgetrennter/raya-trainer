@@ -54,7 +54,8 @@ public partial class App : Application
                 sessionManager,
                 manifest,
                 settingsStore: settingsStore,
-                presetSource: viewModel);
+                presetSource: viewModel,
+                featureStateCoordinator: viewModel.FeatureState);
         }
         catch (Exception exception)
         {

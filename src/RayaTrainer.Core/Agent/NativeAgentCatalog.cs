@@ -67,14 +67,16 @@ public static class NativeAgentCatalog
         "DestroySelectionListHeadOffset",
         "ProductionModulesOffset",
         "LocalContextSiblingOffset",
-        "RestoreOreCapacityMode"
+        "RestoreOreCapacityMode",
+        "GameObjectAddUpgrade",
+        "UpgradeTemplateTypeOffset"
     ];
 
     /// <summary>
     /// Expected entry count for a complete catalog. The DLL requires exactly this many
     /// entries before it will service DirectGameApi requests that depend on native RVAs.
     /// </summary>
-    public const int ExpectedEntryCount = 39;
+    public const int ExpectedEntryCount = 41;
 
     /// <summary>
     /// Encodes a catalog payload from an ordered RVA list. <paramref name="rvas"/> must be

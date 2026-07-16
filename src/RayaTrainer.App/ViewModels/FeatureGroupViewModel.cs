@@ -7,12 +7,19 @@ public sealed class FeatureGroupViewModel : ViewModelBase
 {
     private bool _isExpanded = true;
 
-    public FeatureGroupViewModel(string name, IReadOnlyList<FeatureItemViewModel> features, bool isExpanded = true)
+    public FeatureGroupViewModel(
+        string groupId,
+        string name,
+        IReadOnlyList<FeatureItemViewModel> features,
+        bool isExpanded = true)
     {
+        GroupId = groupId;
         Name = name;
         Features = features;
         _isExpanded = isExpanded;
     }
+
+    public string GroupId { get; }
 
     public string Name { get; }
 

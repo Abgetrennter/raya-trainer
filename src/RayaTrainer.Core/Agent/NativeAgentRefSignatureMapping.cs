@@ -33,7 +33,8 @@ public static class NativeAgentRefSignatureMapping
             ["ObjectSetPosition"] = "Rva_3E3D00",
             ["OneHitCaller1"] = "Rva_3AD79E",
             ["OneHitCaller2"] = "Rva_3ADEE2",
-            ["OneHitCaller3"] = "Rva_38E651"
+            ["OneHitCaller3"] = "Rva_38E651",
+            ["GameObjectAddUpgrade"] = "Rva_379650"
         };
 
     /// <summary>

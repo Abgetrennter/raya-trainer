@@ -1199,3 +1199,77 @@ AgentStatusCode ClearSelectedAttackRangeEffectsFromPayload(
     }
     return DispatchNativeClearSelectedAttackRangeEffects(request, result);
 }
+
+bool TryReadGetSelectedUnitUpgradesRequest(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiGetSelectedUnitUpgradesRequest& request)
+{
+    if (length != sizeof(AgentGameApiGetSelectedUnitUpgradesRequest)) return false;
+    uint32_t offset = 0;
+    if (!(TryReadUInt32(payload, length, offset, request.TimeoutMilliseconds)
+        && TryReadUInt32(payload, length, offset, request.EnableDirectGameApi)
+        && offset == length))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+AgentStatusCode GetSelectedUnitUpgradesFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiSelectedUnitUpgradesPayload& result)
+{
+    AgentGameApiGetSelectedUnitUpgradesRequest request = {};
+    if (!TryReadGetSelectedUnitUpgradesRequest(payload, length, request))
+    {
+        result = {};
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.AgentVersion = kAgentProtocolVersion;
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Failed);
+        return AgentStatusCode::InvalidCommand;
+    }
+    return DispatchNativeGetSelectedUnitUpgrades(request, result);
+}
+
+bool TryReadGrantObjectUpgradeOnSelectedSameTypeRequest(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest& request)
+{
+    if (length != sizeof(AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest)) return false;
+    uint32_t offset = 0;
+    if (!(TryReadUInt32(payload, length, offset, request.UpgradeHash)
+        && TryReadUInt32(payload, length, offset, request.TimeoutMilliseconds)
+        && TryReadUInt32(payload, length, offset, request.EnableDirectGameApi)
+        && offset == length))
+    {
+        return false;
+    }
+
+    if (request.UpgradeHash == 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+AgentStatusCode GrantObjectUpgradeOnSelectedSameTypeFromPayload(
+    const unsigned char* payload,
+    uint32_t length,
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload& result)
+{
+    AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest request = {};
+    if (!TryReadGrantObjectUpgradeOnSelectedSameTypeRequest(payload, length, request))
+    {
+        result = {};
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.AgentVersion = kAgentProtocolVersion;
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Failed);
+        return AgentStatusCode::InvalidCommand;
+    }
+    return DispatchNativeGrantObjectUpgradeOnSelectedSameType(request, result);
+}

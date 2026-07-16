@@ -346,7 +346,11 @@ internal static class Ra3_Uprising_Profile
             ["DestroySelectionListHeadOffset"] = 0x54,
             ["ProductionModulesOffset"] = 0x320,
             ["LocalContextSiblingOffset"] = 0,
-            ["RestoreOreCapacityMode"] = 2
+            ["RestoreOreCapacityMode"] = 2,
+            // GameObjectAddUpgrade: VA 0x7C8770 (signature-verified unique match 2026-07-14).
+            ["GameObjectAddUpgrade"] = 0x3C8770,
+            // UpgradeTemplateTypeOffset: verified identical to 1.12 (engine struct unchanged).
+            ["UpgradeTemplateTypeOffset"] = 0x24
         };
     }
 
@@ -392,7 +396,12 @@ internal static class Ra3_Uprising_Profile
             ["DestroySelectionListHeadOffset"] = 0x54,
             ["ProductionModulesOffset"] = 0x320,
             ["LocalContextSiblingOffset"] = 0,
-            ["RestoreOreCapacityMode"] = 2
+            ["RestoreOreCapacityMode"] = 2,
+            // GameObjectAddUpgrade: VA 0x7B04B0 (signature-verified unique match 2026-07-14).
+            ["GameObjectAddUpgrade"] = 0x3B04B0,
+            // UpgradeTemplateTypeOffset: verified identical to 1.12 via dispatch function
+            // sub_7BC030 which reads [definition+0x24] for Type (2026-07-14).
+            ["UpgradeTemplateTypeOffset"] = 0x24
         };
     }
 }

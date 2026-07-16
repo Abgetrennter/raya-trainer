@@ -46,5 +46,7 @@ public enum AgentCommand : ushort
     ToggleSelectedAttackSpeed = 42,
     ToggleSelectedAttackRange = 43,
     ClearSelectedAttackSpeedEffects = 44,
-    ClearSelectedAttackRangeEffects = 45
+    ClearSelectedAttackRangeEffects = 45,
+    GetSelectedUnitUpgrades = 46,
+    GrantObjectUpgradeOnSelectedSameType = 47
 }

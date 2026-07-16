@@ -30,7 +30,10 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Validate repository
+      - name: Test active documentation drift lint
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/active-doc-drift-tests/Test-ActiveDocDrift.ps1
+
+      - name: Validate repository (active-doc drift blocking)
         run: ./scripts/validate.ps1
 
       - name: Preflight (source + namespace + dependency)
@@ -43,6 +46,6 @@ jobs:
       - name: Contract consistency lint
         run: dotnet run --project tools/RayaTrainer.ContractLint/RayaTrainer.ContractLint.csproj -c Release -- .
 
-      - name: Validate analysis atlas (non-blocking)
+      - name: Validate generated analysis atlas (non-blocking)
         continue-on-error: true
         run: powershell -ExecutionPolicy Bypass -File ./scripts/validate-analysis-index.ps1 -Rebuild

@@ -85,6 +85,36 @@ uint32_t BodyOffset()
     return value == 0 ? 0x33Cu : value;
 }
 
+// RA3 KindOf BitWord lives at ThingTemplate+0xC0 (9 DWORDs, 288 bits).
+// Verified via PartitionFilter_IsKindOf_6FE370:
+//   bit set  ==  (1 << (index & 31)) & template->kindOf[index >> 5]
+// GameObject+0x4 = ThingTemplate* (see RA3_Analysis object_system docs).
+//
+// Projectile kinds that must NOT receive GodMode protection. These transient
+// objects die on impact/expiry through the health path (Body_ApplyHealthChange).
+// Locking their health prevents cleanup, which makes weapon detonation VFX loop
+// every frame.
+//   PROJECTILE        = 26  -> word0 bit26 mask 0x04000000
+//   SMALL_MISSILE     = 53  -> word1 bit21 mask 0x00200000
+//   BALLISTIC_MISSILE = 75  -> word2 bit11 mask 0x00000800
+bool IsProjectileObject(uint32_t object)
+{
+    uint32_t thingTemplate = 0;
+    if (!TryRead(object + 0x4u, thingTemplate) || thingTemplate == 0)
+    {
+        return false;
+    }
+    uint32_t kindOf0 = 0;
+    uint32_t kindOf1 = 0;
+    uint32_t kindOf2 = 0;
+    TryRead(thingTemplate + 0xC0u, kindOf0);
+    TryRead(thingTemplate + 0xC4u, kindOf1);
+    TryRead(thingTemplate + 0xC8u, kindOf2);
+    return (kindOf0 & 0x04000000u) != 0 ||  // PROJECTILE
+           (kindOf1 & 0x00200000u) != 0 ||  // SMALL_MISSILE
+           (kindOf2 & 0x00000800u) != 0;    // BALLISTIC_MISSILE
+}
+
 uint32_t GameModuleAddress(NativeCatalogEntry entry)
 {
     const auto moduleBase = static_cast<uint32_t>(
@@ -492,7 +522,8 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
             uint32_t owner = 0;
             if (TryRead(c.Ebx + 0x138, object) &&
                 TryRead(object + OwnerOffset(), owner) &&
-                owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)))
+                owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)) &&
+                !IsProjectileObject(object))
             {
                 const auto lockedHealth = ReadNativeFeatureState(NativeFeatureStateId::SelectedUnitMaxHealthBits);
                 TryWrite(c.Esi + 4, lockedHealth);
@@ -516,6 +547,7 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
             if (TryRead(c.Ebx + 0x138, object) && object != 0 &&
                 TryRead(object + OwnerOffset(), owner) &&
                 owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)) &&
+                !IsProjectileObject(object) &&
                 TryRead(object + BodyOffset(), body) && body != 0 &&
                 TryRead(c.Esi + 4, currentHp) && currentHp > 0.0f &&
                 TryRead(body + 0x20, maxHp))
@@ -571,7 +603,8 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
             uint32_t owner = 0;
             if (TryRead(c.Esi - 8u, object) && object != 0 &&
                 TryRead(object + OwnerOffset(), owner) && owner != 0 &&
-                owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)))
+                owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)) &&
+                !IsProjectileObject(object))
             {
                 const auto lockedHealth = ReadNativeFeatureState(NativeFeatureStateId::SelectedUnitMaxHealthBits);
                 TryWrite(c.Esi + 4u, lockedHealth);

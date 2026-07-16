@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using RayaTrainer.App.Services;
 using RayaTrainer.Core.Runtime;
 using RayaTrainer.Core.Versions;
 
@@ -220,6 +221,7 @@ public sealed partial class MainViewModel
                 CurrentTargetInfo = FormatCurrentTargetInfo(target);
                 SelectableCandidates = Array.Empty<DetectedRa3Target>();
                 NotifySessionStateChanged();
+                _autoCaptureWatcher.NotifyAttached();
                 if (autoInstall)
                 {
                     if (ArePatchesInstalled)
@@ -241,6 +243,7 @@ public sealed partial class MainViewModel
         }
         catch (Exception ex)
         {
+            _autoCaptureWatcher.NotifyAttachFailed();
             StatusMessage = ex.Message;
         }
         finally

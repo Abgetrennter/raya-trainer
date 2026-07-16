@@ -320,6 +320,9 @@ static constexpr auto kRva3AD79E = MakeBuiltInPattern(
 static constexpr auto kRva3ADEE2 = MakeBuiltInPattern(
     "Rva_3ADEE2",
     "5F 5E 81 C4 A0 00 00 00 C2 04 00 CC CC CC D9 44 24 10"); // TW 0x7ADEE2, EN 0x7EC202
+static constexpr auto kRva379650 = MakeBuiltInPattern(
+    "Rva_379650",
+    "83 EC 0C 53 8B 5C 24 14 85 DB 56 8B F1 0F 84 ? ? ? ? 8B 43 0C 8B 08 8B 51 04"); // GameObject_AddUpgrade: TW VA 0x779650 -> catalog RVA 0x379650
 static constexpr auto kRva3BA8C9 = MakeBuiltInPattern(
     "Rva_3BA8C9",
     "85 C0 8B 5C 24 18 75 ? 38 45 4E 8B 57 F8 89 5C 24 44"); // TW 0x7BA8C9, EN 0x7F8C19
@@ -454,6 +457,7 @@ static constexpr Signature kBuiltInSignatures[] = {
     kRva3E3D00.ToSignature(),
     kRva3AD79E.ToSignature(),
     kRva3ADEE2.ToSignature(),
+    kRva379650.ToSignature(),
     kRva3BA8C9.ToSignature(),
     kRva3BA9CC.ToSignature(),
     kRva3E4230.ToSignature(),
@@ -478,7 +482,7 @@ static constexpr Signature kBuiltInSignatures[] = {
     kRva88DFD0.ToSignature(SignatureAddressMode::Absolute32AtOffset, 4),
 };
 
-static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 88);
+static_assert(sizeof(kBuiltInSignatures) / sizeof(kBuiltInSignatures[0]) == 89);
 constexpr size_t kBuiltInHookCount = 48;
 
 // Process-local memory read wrapped in SEH, matching the pattern used elsewhere in the DLL

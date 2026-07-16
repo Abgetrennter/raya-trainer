@@ -23,8 +23,14 @@ public static class AgentProtocol
     /// Bumped 8 -> 9 for the Ra3Trainer -> RayaTrainer product rename. Magic changed from
     /// "RA3T" (0x54334152) to "RAYA" (0x41594152); fingerprint rotated to match. Legacy
     /// Agent pipe (Ra3Trainer.Agent.&lt;pid&gt;) is detected and refused at injection time.
+    /// Bumped 9 -> 10 for object-level unit upgrade grant: commands
+    /// <see cref="AgentCommand.GetSelectedUnitUpgrades"/>/
+    /// <see cref="AgentCommand.GrantObjectUpgradeOnSelectedSameType"/>, Native catalog entry
+    /// <c>UpgradeTemplateTypeOffset</c> (EntryCount 40 -> 41), and the dispatcher Values slot
+    /// widening (8 -> 24). An already-injected v9 Agent must not be reused: the catalog count
+    /// and command set are incompatible.
     /// </summary>
-    public const ushort Version = 9;
+    public const ushort Version = 10;
     public const int HeaderSize = 16;
     public const uint MaxPayloadLength = 64 * 1024;
 

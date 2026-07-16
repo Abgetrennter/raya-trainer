@@ -33,8 +33,14 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // an already injected Agent with the ineffective seams must not be reused. Wire protocol remains v9.
 // Fingerprint low 16 bits bumped 5 -> 6 for shared turret-angle and full-circle aim-deflection hooks;
 // an already injected chooser-only Agent must not be reused. Wire protocol remains v9.
-inline constexpr uint16_t kAgentProtocolVersion = 9;
-inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090006ull;
+// v10: protocol bumped 9 -> 10 for object-level unit upgrade grant. Adds commands
+// GetSelectedUnitUpgrades (46) / GrantObjectUpgradeOnSelectedSameType (47), Native catalog
+// entry UpgradeTemplateTypeOffset (EntryCount 40 -> 41), and widens AgentGameThreadResult.Values
+// from 8 to 24 slots. An already-injected v9 Agent must not be reused: the catalog count,
+// command set, and result layout are incompatible. Fingerprint low 32 bits reset to
+// (Version=10 << 16) | 1 = 0x000A0001.
+inline constexpr uint16_t kAgentProtocolVersion = 10;
+inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000A0001ull;
 inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
 inline constexpr uint32_t kMaxPayloadLength = 64u * 1024u;
 
@@ -84,7 +90,9 @@ enum class AgentCommand : uint16_t
     ToggleSelectedAttackSpeed = 42,
     ToggleSelectedAttackRange = 43,
     ClearSelectedAttackSpeedEffects = 44,
-    ClearSelectedAttackRangeEffects = 45
+    ClearSelectedAttackRangeEffects = 45,
+    GetSelectedUnitUpgrades = 46,
+    GrantObjectUpgradeOnSelectedSameType = 47
 };
 
 // Native agent catalog entry order. This is the host<->DLL contract: the C# host serializes
@@ -131,7 +139,9 @@ enum class NativeCatalogEntry : uint32_t
     ProductionModulesOffset = 36,
     LocalContextSiblingOffset = 37,
     RestoreOreCapacityMode = 38,
-    EntryCount = 39
+    GameObjectAddUpgrade = 39,
+    UpgradeTemplateTypeOffset = 40,
+    EntryCount = 41
 };
 
 inline constexpr uint32_t kNativeCatalogEntryCount =

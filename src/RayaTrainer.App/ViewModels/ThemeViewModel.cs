@@ -8,20 +8,30 @@ namespace RayaTrainer.App.ViewModels;
 public sealed class ThemeViewModel : ViewModelBase
 {
     private bool _isDarkTheme = true;
+    private readonly Action? _onThemeChanged;
 
     public bool IsDarkTheme
     {
         get => _isDarkTheme;
-        set { _isDarkTheme = value; OnPropertyChanged(); OnPropertyChanged(nameof(ThemeToggleText)); }
+        set { _isDarkTheme = value; OnPropertyChanged(); OnPropertyChanged(nameof(ThemeToggleText)); _onThemeChanged?.Invoke(); }
     }
 
     public string ThemeToggleText => IsDarkTheme ? "浅色主题" : "暗色主题";
 
     public RelayCommand ToggleThemeCommand { get; }
 
-    public ThemeViewModel()
+    public ThemeViewModel() : this(isDarkTheme: true) { }
+
+    public ThemeViewModel(bool isDarkTheme)
     {
+        _isDarkTheme = isDarkTheme;
         ToggleThemeCommand = new RelayCommand(ToggleTheme);
+    }
+
+    public ThemeViewModel(bool isDarkTheme, Action? onThemeChanged = null)
+        : this(isDarkTheme)
+    {
+        _onThemeChanged = onThemeChanged;
     }
 
     private void ToggleTheme()

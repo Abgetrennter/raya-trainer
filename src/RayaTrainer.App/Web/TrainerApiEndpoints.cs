@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using RayaTrainer.Core.Diagnostics;
+using RayaTrainer.Core.Features;
 using RayaTrainer.App.Web.Auth;
 using RayaTrainer.App.Web.WebSockets;
 
@@ -226,6 +228,46 @@ public static class TrainerApiEndpoints
                 : Results.BadRequest(new TrainerWebCommandResult(false, "无法读取选中单位信息。"));
         });
 
+        api.MapGet("/selected-unit/available-upgrades", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+
+            var capability = handler.GetObjectUpgradeCapability();
+            if (capability.State != FeatureCapabilityState.Ready)
+            {
+                return Results.Json(
+                    new TrainerWebCommandResult(false, capability.Reason, capability.ReasonCode),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var result = handler.ReadSelectedUnitUpgrades();
+            if (result is null)
+            {
+                return Results.Json(
+                    new TrainerWebCommandResult(false, "无法读取单位升级信息。请确认已选中一个单位。", "UNIT_UPGRADE_READ_FAILED"),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            return Results.Ok(result);
+        });
+
+        api.MapPost("/selected-unit/grant-object-upgrade", async (
+            TrainerGrantObjectUpgradeRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+
+            return ToHttpResult(await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(
+                request.Hash, cancellationToken).ConfigureAwait(false));
+        });
+
         api.MapPost("/template/model", async (
             TrainerTemplateModelReplacementRequest request,
             HttpContext context,
@@ -256,6 +298,41 @@ public static class TrainerApiEndpoints
             }
 
             return ToHttpResult(await handler.ReplaceTemplateWeaponAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        // FeaturePresets
+        api.MapGet("/feature-presets", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetFeaturePresets(ct));
+        });
+
+        api.MapPost("/feature-presets", async (
+            FeaturePresetSaveRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+            return ToHttpResult(await handler.SaveFeaturePreset(request, ct).ConfigureAwait(false));
+        });
+
+        api.MapDelete("/feature-presets/{name}", async (
+            string name,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+            return ToHttpResult(await handler.DeleteFeaturePreset(name, ct).ConfigureAwait(false));
         });
 
         return endpoints;

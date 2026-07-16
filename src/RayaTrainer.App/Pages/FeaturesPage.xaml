@@ -6,6 +6,7 @@
     <StackPanel>
       <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                Margin="0,0,0,12" FontSize="13" />
+      <ctrl:FeaturePresetCard DataContext="{Binding DataContext.FeaturePresetsPanel, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,8" />
       <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,16">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
@@ -89,29 +90,6 @@
                         </Style>
                       </TextBox.Style>
                     </TextBox>
-                    <!-- Target Health input (shown only on "设置选中建筑物/单位生命值为指定值") -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                      <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                          <Setter Property="Visibility" Value="Collapsed" />
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding DisplayName}" Value="设置选中建筑物/单位生命值为指定值">
-                              <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </StackPanel.Style>
-                      <TextBox Width="90" FontSize="12"
-                               VerticalContentAlignment="Center"
-                               Text="{Binding DataContext.SelectedUnitTargetHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
-                               ToolTip="{Binding DataContext.SelectedUnitTargetHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                      <TextBlock Text="上限" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,4,0" />
-                      <TextBox Width="90" FontSize="12"
-                               VerticalContentAlignment="Center"
-                               Text="{Binding DataContext.SelectedUnitTargetMaxHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
-                               ToolTip="{Binding DataContext.SelectedUnitTargetMaxHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                    </StackPanel>
 
                     <!-- Hotkey badge: 始终可见（无热键时显示占位），右键可跳转设置页改键。 -->
                     <ctrl:KeyBadge Grid.Column="2"

@@ -39,5 +39,6 @@
       <TargetPath>Assets\Catalogs\ReferenceNotes\object-status-notes.json</TargetPath>
     </None>
     <EmbeddedResource Include="Assets\trainer_report.json" LogicalName="RayaTrainer.Core.Assets.trainer_report.json" />
+    <EmbeddedResource Include="Assets\UpgradeNames.json" LogicalName="RayaTrainer.Core.Assets.UpgradeNames.json" />
   </ItemGroup>
 </Project>

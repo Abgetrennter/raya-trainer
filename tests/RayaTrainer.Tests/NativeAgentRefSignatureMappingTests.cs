@@ -29,6 +29,7 @@ public class NativeAgentRefSignatureMappingTests
     [InlineData("OneHitCaller1", "Rva_3AD79E")]
     [InlineData("OneHitCaller2", "Rva_3ADEE2")]
     [InlineData("OneHitCaller3", "Rva_38E651")]
+    [InlineData("GameObjectAddUpgrade", "Rva_379650")]
     public void Address_class_refs_map_to_signature_keys(string refName, string expectedKey)
     {
         Assert.True(NativeAgentRefSignatureMapping.TryGetSignatureKey(refName, out var key));
@@ -60,16 +61,16 @@ public class NativeAgentRefSignatureMappingTests
     [Fact]
     public void Every_native_agent_ref_classified_by_hand_is_covered()
     {
-        // EntryNames 的 39 条必须要么在映射表里（地址类），要么明确是常量类。
+        // EntryNames 的 41 条必须要么在映射表里（地址类），要么明确是常量类。
         var classified = new HashSet<string>(NativeAgentCatalog.EntryNames, StringComparer.OrdinalIgnoreCase);
         foreach (var name in NativeAgentCatalog.EntryNames)
         {
             NativeAgentRefSignatureMapping.TryGetSignatureKey(name, out _);
         }
-        // 23 地址类 + 16 常量类 = 39
+        // 24 地址类 + 17 常量类 = 41（UpgradeTemplateTypeOffset 属常量类，无签名）
         var addressCount = NativeAgentCatalog.EntryNames
             .Count(n => NativeAgentRefSignatureMapping.TryGetSignatureKey(n, out _));
-        Assert.Equal(23, addressCount);
-        Assert.Equal(39, NativeAgentCatalog.EntryNames.Count);
+        Assert.Equal(24, addressCount);
+        Assert.Equal(41, NativeAgentCatalog.EntryNames.Count);
     }
 }

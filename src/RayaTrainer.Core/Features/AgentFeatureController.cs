@@ -170,6 +170,88 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
         return result.UnitTypeId;
     }
 
+    public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades()
+    {
+        EnsureDirectGameApiSupported();
+        var result = _client.GetSelectedUnitUpgradesAsync(
+                _processId,
+                new AgentGameApiGetSelectedUnitUpgradesRequest(
+                    TimeoutMilliseconds: 5000,
+                    EnableDirectGameApi: true),
+                GameApiCommandTimeout)
+            .GetAwaiter()
+            .GetResult();
+        if (result.StatusCode != AgentStatusCode.Ok ||
+            result.DispatchStatus != GameApiDispatchStatus.Completed)
+        {
+            throw new InvalidDataException(
+                $"Agent GetSelectedUnitUpgrades returned status={result.StatusCode}, dispatch={result.DispatchStatus}, " +
+                $"request={result.RequestId}, tick={result.GameThreadTickBefore}->{result.GameThreadTickAfter}.");
+        }
+
+        // Empty (no selection or no upgrade-triggered modules) is a successful
+        // empty snapshot, not an exception. Callers branch on Count == 0.
+        // Defense-in-depth: the native handler caps Count at 20, but a corrupted or
+        // forged payload must not drive an unbounded allocation here.
+        if (result.Count > 20)
+        {
+            throw new InvalidDataException(
+                $"Agent GetSelectedUnitUpgrades returned Count={result.Count}, exceeds the 20-entry maximum. " +
+                $"request={result.RequestId}, tick={result.GameThreadTickBefore}->{result.GameThreadTickAfter}.");
+        }
+
+        var hashes = new uint[result.Count];
+        if (result.Count > 0)
+        {
+            hashes[0] = result.UpgradeHash0;
+            if (result.Count > 1) hashes[1] = result.UpgradeHash1;
+            if (result.Count > 2) hashes[2] = result.UpgradeHash2;
+            if (result.Count > 3) hashes[3] = result.UpgradeHash3;
+            if (result.Count > 4) hashes[4] = result.UpgradeHash4;
+            if (result.Count > 5) hashes[5] = result.UpgradeHash5;
+            if (result.Count > 6) hashes[6] = result.UpgradeHash6;
+            if (result.Count > 7) hashes[7] = result.UpgradeHash7;
+            if (result.Count > 8) hashes[8] = result.UpgradeHash8;
+            if (result.Count > 9) hashes[9] = result.UpgradeHash9;
+            if (result.Count > 10) hashes[10] = result.UpgradeHash10;
+            if (result.Count > 11) hashes[11] = result.UpgradeHash11;
+            if (result.Count > 12) hashes[12] = result.UpgradeHash12;
+            if (result.Count > 13) hashes[13] = result.UpgradeHash13;
+            if (result.Count > 14) hashes[14] = result.UpgradeHash14;
+            if (result.Count > 15) hashes[15] = result.UpgradeHash15;
+            if (result.Count > 16) hashes[16] = result.UpgradeHash16;
+            if (result.Count > 17) hashes[17] = result.UpgradeHash17;
+            if (result.Count > 18) hashes[18] = result.UpgradeHash18;
+            if (result.Count > 19) hashes[19] = result.UpgradeHash19;
+        }
+        return new SelectedUnitUpgradesSnapshot(
+            result.UnitTypeId,
+            result.ThingTemplateAddress,
+            result.Count,
+            hashes);
+    }
+
+    public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null)
+    {
+        EnsureDirectGameApiSupported();
+        var effectiveTimeout = timeout ?? GameApiCommandTimeout;
+        var gameApiTimeoutMilliseconds = Math.Clamp((uint)effectiveTimeout.TotalMilliseconds, 1u, 5000u);
+        var request = new AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest(
+            UpgradeHash: upgradeHash,
+            TimeoutMilliseconds: gameApiTimeoutMilliseconds,
+            EnableDirectGameApi: true);
+        var result = _client.GrantObjectUpgradeOnSelectedSameTypeAsync(_processId, request, effectiveTimeout)
+            .GetAwaiter().GetResult();
+        if (result.StatusCode != AgentStatusCode.Ok &&
+            result.StatusCode != AgentStatusCode.TimedOut)
+        {
+            throw new InvalidOperationException(
+                $"Agent GrantObjectUpgradeOnSelectedSameType failed: status={result.StatusCode}, dispatch={result.DispatchStatus}.");
+        }
+
+        return result.DispatchStatus;
+    }
+
     private void EnsureDirectGameApiSupported()
     {
         if (!_supportsDirectGameApi)

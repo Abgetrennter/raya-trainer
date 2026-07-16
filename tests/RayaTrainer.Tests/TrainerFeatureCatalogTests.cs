@@ -48,9 +48,10 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Contains(features, feature =>
             feature.DisplayName == "摧毁选择的建筑物/单位" &&
             feature.Hotkey == "Delete");
+        // 矿脉储量重置的默认快捷键已主动清除（用户要求），UI feature 列表里 Hotkey 为 null。
         Assert.Contains(features, feature =>
             feature.DisplayName == "选择的矿脉恢复采集矿量" &&
-            feature.Hotkey == "'");
+            feature.Hotkey is null);
         Assert.Contains(features, feature =>
             feature.DisplayName == "威胁等级归零" &&
             feature.Hotkey == ".");
@@ -333,7 +334,10 @@ public sealed class TrainerFeatureCatalogTests
         // 配置字典的 key 必须是稳定的 RawName，而非可变的中文 DisplayName。
         Assert.Equal("Ctrl+F1", hotkeys["Moeny"]);
         Assert.Equal("O", hotkeys["Select Unit Change ID"]);
-        Assert.Equal("'", hotkeys["Restore Select Ore Mine"]);
+        // 矿脉储量重置与起义时刻两个功能的默认快捷键已主动清除（用户要求），不再生成默认值。
+        Assert.DoesNotContain("Restore Select Ore Mine", hotkeys.Keys);
+        Assert.DoesNotContain("Challenge Money", hotkeys.Keys);
+        Assert.DoesNotContain("Challenge Time", hotkeys.Keys);
         Assert.DoesNotContain("Set Unit Support State", hotkeys.Keys);
         Assert.DoesNotContain("Secret Protocol Binding Probe", hotkeys.Keys);
         Assert.DoesNotContain("Soviet Orbital Refuse Rank 1 Probe", hotkeys.Keys);
@@ -470,9 +474,6 @@ public sealed class TrainerFeatureCatalogTests
         Assert.False(toggle.SupportsProfile("ra3_uprising_1.0"));
         Assert.False(toggle.SupportsProfile("ra3_uprising_1.1"));
         Assert.Equal(SelectionExecutionMode.Apply, toggle.SelectionMode);
-        // Prove no collision: Restore Select Ore Mine retains its apostrophe binding.
-        var oreMine = Assert.Single(features, feature => feature.RawName == "Restore Select Ore Mine");
-        Assert.Equal("'", oreMine.Hotkey);
     }
 
     [Fact]
@@ -616,6 +617,46 @@ public sealed class TrainerFeatureCatalogTests
         Assert.False(clear.SupportsProfile("ra3_uprising_1.0"));
         Assert.False(clear.SupportsProfile("ra3_uprising_1.1"));
         Assert.Equal(SelectionExecutionMode.Apply, clear.SelectionMode);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeFeatureExistsWithCorrectProperties()
+    {
+        var feature = TrainerFeatureCatalog.SelectedUnitObjectUpgradeFeature;
+
+        Assert.Equal("Selected Unit Object Upgrade", feature.RawName);
+        Assert.Equal("单位升级", feature.DisplayName);
+        Assert.Null(feature.Hotkey);
+        Assert.Empty(feature.EnableFlags);
+        Assert.Null(feature.DispatchTarget);
+        Assert.Null(feature.ValueHint);
+        Assert.Equal(new[] { "ra3_1.12" }, feature.SupportedProfileIds);
+        Assert.True(feature.RequiresDirectGameApi);
+        Assert.Null(feature.SelectionMode);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeFeatureNotInGridFeatures()
+    {
+        var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
+
+        Assert.DoesNotContain(features, f => f.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeFeatureNotInPanelActions()
+    {
+        var actions = TrainerFeatureCatalog.CreatePanelActions();
+
+        Assert.DoesNotContain(actions, f => f.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade);
+    }
+
+    [Fact]
+    public void SelectedUnitObjectUpgradeFeatureNotInUiFeatures()
+    {
+        var features = TrainerFeatureCatalog.CreateUiFeatures(TestAssets.LoadManifest().Features);
+
+        Assert.DoesNotContain(features, f => f.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade);
     }
 
     private static void AssertBytePatch(

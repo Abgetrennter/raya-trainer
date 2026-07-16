@@ -197,8 +197,6 @@ public sealed class MainViewModelHelpTextTests
         var viewModel = SharedTestDoubles.LoadDefaultViewModel();
 
         Assert.Contains("立刻扫描 RA3 进程", viewModel.RefreshProcessHelpText);
-        Assert.Contains("hook 写入当前 RA3 进程", viewModel.InstallPatchesHelpText);
-        Assert.Contains("还原已写入的 hook", viewModel.RestorePatchesHelpText);
         Assert.Contains("选择游戏程序路径", viewModel.GameLaunch.BrowseLauncherHelpText);
         Assert.Contains("保存 RA3 路径、启动参数", viewModel.SaveLauncherSettingsHelpText);
         Assert.Contains("最终参数", viewModel.LaunchAndLoadHelpText);
@@ -217,20 +215,20 @@ public sealed class MainViewModelHelpTextTests
     {
         var viewModel = LoadViewModel(
             new StubUpdateChecker(UpdateCheckResult.Success(
-                "v0.1.13",
-                "v0.1.14",
-                "RA3 Trainer v0.1.14",
-                "https://github.com/Abgetrennter/Ra3-trainer-refine/releases/tag/v0.1.14",
-                new DateTimeOffset(2026, 6, 10, 1, 59, 54, TimeSpan.Zero),
+                "v0.0.2",
+                "v0.0.3",
+                "RayaTrainer v0.0.3",
+                "https://github.com/Abgetrennter/raya-trainer/releases/tag/v0.0.3",
+                new DateTimeOffset(2026, 7, 13, 6, 58, 29, TimeSpan.Zero),
                 Array.Empty<UpdateReleaseAsset>())),
-            new StubVersionProvider("v0.1.13"));
+            new StubVersionProvider("v0.0.2"));
 
-        Assert.Equal("当前版本：v0.1.13", viewModel.Tools.CurrentVersionText);
+        Assert.Equal("当前版本：v0.0.2", viewModel.Tools.CurrentVersionText);
         Assert.Contains("GitHub", viewModel.Tools.CheckForUpdatesHelpText);
 
         await viewModel.Tools.CheckForUpdatesAsync();
 
-        Assert.Contains("发现新版 v0.1.14", viewModel.StatusMessage);
+        Assert.Contains("发现新版 v0.0.3", viewModel.StatusMessage);
         Assert.Contains("GitHub Release", viewModel.StatusMessage);
     }
 

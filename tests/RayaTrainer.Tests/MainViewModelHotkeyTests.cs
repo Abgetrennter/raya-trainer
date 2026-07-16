@@ -71,7 +71,8 @@ public sealed class MainViewModelHotkeyTests
         viewModel.ReloadHotkeys(newHotkeys);
 
         Assert.Equal("Alt+F9", money.Hotkey);
-        // 改动应被持久化到配置文件（RawName 作 key）。
+        // 改动通过 Persistence 防抖协调器异步写文件，flush 确保持久化完毕。
+        viewModel.Persistence.Flush();
         var savedText = File.ReadAllText(settingsPath);
         Assert.Contains("\"Moeny\"", savedText);
         Assert.Contains("\"Alt+F9\"", savedText);
@@ -123,9 +124,63 @@ public sealed class MainViewModelHotkeyTests
         Assert.Null(moneyItem.Hotkey);
         Assert.False(moneyItem.ClearHotkeyCommand.CanExecute(null));
         // 持久化到配置文件：Moeny 键值为空串（契约：空串=未分配）。
+        viewModel.Persistence.Flush();
         var savedText = File.ReadAllText(settingsPath);
         Assert.Contains("\"Moeny\"", savedText);
         Assert.Contains("\"\"", savedText);
+    }
+
+    [Fact]
+    public void DefaultHotkeysIncludeTrainerControlActions()
+    {
+        // 主控操作热键（立刻检测 / 装载并启动）默认应有 Ctrl+Alt+D / Ctrl+Alt+L，
+        // 并在首次启动时持久化到 settings.json。
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var settingsPath = Path.Combine(directory, "settings.json");
+
+        var viewModel = MainViewModel.Load(TestAssets.LoadManifest(), new TrainerAppSettingsStore(settingsPath));
+
+        Assert.Equal("立刻检测 (Ctrl+Alt+D)", viewModel.RefreshProcessButtonText);
+        Assert.Equal("装载并启动 (Ctrl+Alt+L)", viewModel.LaunchAndLoadButtonText);
+
+        // 持久化层：默认键应写入 settings.json，便于用户后续编辑。
+        var savedText = File.ReadAllText(settingsPath);
+        Assert.Contains("\"DetectProcess\"", savedText);
+        Assert.Contains("\"Ctrl+Alt+D\"", savedText);
+        Assert.Contains("\"LaunchAndLoad\"", savedText);
+        Assert.Contains("\"Ctrl+Alt+L\"", savedText);
+    }
+
+    [Fact]
+    public void ReloadHotkeysRefreshesTrainerControlButtonText()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var settingsPath = Path.Combine(directory, "settings.json");
+
+        var viewModel = MainViewModel.Load(TestAssets.LoadManifest(), new TrainerAppSettingsStore(settingsPath));
+        // 默认值：Ctrl+Alt+D / Ctrl+Alt+L。
+        Assert.Equal("立刻检测 (Ctrl+Alt+D)", viewModel.RefreshProcessButtonText);
+
+        // 运行时改成 F9 / F10。
+        viewModel.ReloadHotkeys(new Dictionary<string, string>
+        {
+            ["DetectProcess"] = "F9",
+            ["LaunchAndLoad"] = "F10"
+        });
+
+        Assert.Equal("立刻检测 (F9)", viewModel.RefreshProcessButtonText);
+        Assert.Equal("装载并启动 (F10)", viewModel.LaunchAndLoadButtonText);
+
+        // 清空：按钮文本应回到无括号形式。
+        viewModel.ReloadHotkeys(new Dictionary<string, string>
+        {
+            ["DetectProcess"] = "",
+            ["LaunchAndLoad"] = ""
+        });
+        Assert.Equal("立刻检测", viewModel.RefreshProcessButtonText);
+        Assert.Equal("装载并启动", viewModel.LaunchAndLoadButtonText);
     }
 
 }

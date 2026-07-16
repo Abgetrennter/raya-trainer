@@ -1,5 +1,6 @@
 using RayaTrainer.App.Services;
 using RayaTrainer.App.ViewModels;
+using RayaTrainer.Core.Agent;
 using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Hashing;
@@ -134,6 +135,8 @@ internal sealed class StubFeatureController : ITrainerFeatureController
     public void ClearAutoRepairPulse() { }
     public void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f) { }
     public uint ReadSelectedUnitCode() => 0;
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() => SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null) => GameApiDispatchStatus.Disabled;
     public byte ReadActionDispatch() => 0;
     public uint ReadGameThreadTick() => 1;
     public int ReadGameMode() => 0;
@@ -198,6 +201,8 @@ internal sealed class ResourceWriteFeatureController : ITrainerFeatureController
     public void ClearAutoRepairPulse() => throw new NotImplementedException();
     public void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f) => throw new NotImplementedException();
     public uint ReadSelectedUnitCode() => throw new NotImplementedException();
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() => SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null) => GameApiDispatchStatus.Disabled;
     public byte ReadActionDispatch() => throw new NotImplementedException();
     public uint ReadGameThreadTick() => throw new NotImplementedException();
     public int ReadGameMode() => throw new NotImplementedException();

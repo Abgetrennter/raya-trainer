@@ -96,7 +96,12 @@ internal static class Ra3_1_13_Profile
                     ["DestroySelectionListHeadOffset"] = 0x54,
                     ["ProductionModulesOffset"] = 0x310,
                     ["LocalContextSiblingOffset"] = 0x1360,
-                    ["RestoreOreCapacityMode"] = 1
+                    ["RestoreOreCapacityMode"] = 1,
+                    // GameObjectAddUpgrade: VA 0x79C190 (signature-verified unique match 2026-07-14).
+                    ["GameObjectAddUpgrade"] = 0x39C190,
+                    // UpgradeTemplateTypeOffset: Type field within UpgradeTemplateDefinition,
+                    // verified identical to 1.12 (engine struct layout unchanged).
+                    ["UpgradeTemplateTypeOffset"] = 0x24
                 },
                 Source),
             OptionalSignatureSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

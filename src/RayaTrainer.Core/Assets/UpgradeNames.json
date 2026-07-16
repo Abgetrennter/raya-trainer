@@ -1,0 +1,370 @@
+{
+  "2166404025": {
+    "Name": "EasyAISinglePlayer",
+    "Description": ""
+  },
+  "1230256624": {
+    "Name": "MediumAISinglePlayer",
+    "Description": ""
+  },
+  "4173329510": {
+    "Name": "HardAISinglePlayer",
+    "Description": ""
+  },
+  "1680299996": {
+    "Name": "EasyAIMultiPlayer",
+    "Description": ""
+  },
+  "2251262938": {
+    "Name": "MediumAIMultiPlayer",
+    "Description": ""
+  },
+  "1616741598": {
+    "Name": "HardAIMultiPlayer",
+    "Description": ""
+  },
+  "1491326166": {
+    "Name": "Veterancy_VETERAN",
+    "Description": ""
+  },
+  "432741999": {
+    "Name": "Veterancy_ELITE",
+    "Description": ""
+  },
+  "534566273": {
+    "Name": "Veterancy_HEROIC",
+    "Description": ""
+  },
+  "455347817": {
+    "Name": "ProductionVeterancy_VETERAN",
+    "Description": ""
+  },
+  "731443244": {
+    "Name": "ProductionVeterancy_ELITE",
+    "Description": ""
+  },
+  "65767756": {
+    "Name": "ProductionVeterancy_HEROIC",
+    "Description": ""
+  },
+  "2820915744": {
+    "Name": "CreationVeterancy_VETERAN",
+    "Description": ""
+  },
+  "1553843596": {
+    "Name": "CreationVeterancy_ELITE",
+    "Description": ""
+  },
+  "3164905731": {
+    "Name": "CreationVeterancy_HEROIC",
+    "Description": ""
+  },
+  "3302736942": {
+    "Name": "AllFactionUpgrade",
+    "Description": ""
+  },
+  "2454326646": {
+    "Name": "AlliesFaction",
+    "Description": ""
+  },
+  "1101580012": {
+    "Name": "SovietFaction",
+    "Description": ""
+  },
+  "1032865958": {
+    "Name": "JapanFaction",
+    "Description": ""
+  },
+  "1170119207": {
+    "Name": "NoSpawnUponDestruction",
+    "Description": ""
+  },
+  "4140395831": {
+    "Name": "InfantryCaptureBuilding",
+    "Description": ""
+  },
+  "3573735326": {
+    "Name": "StructureLevel1",
+    "Description": ""
+  },
+  "2881248225": {
+    "Name": "StructureLevel2",
+    "Description": ""
+  },
+  "1118746048": {
+    "Name": "StructureLevel3",
+    "Description": ""
+  },
+  "1901401531": {
+    "Name": "ObjectDefault",
+    "Description": ""
+  },
+  "1519580499": {
+    "Name": "Pack",
+    "Description": ""
+  },
+  "2943157005": {
+    "Name": "UnPack",
+    "Description": ""
+  },
+  "74055968": {
+    "Name": "BasePurchasableUpgrade",
+    "Description": ""
+  },
+  "2964187329": {
+    "Name": "AlliedTech2",
+    "Description": "UpgradeDesc:AlliedTech2"
+  },
+  "3263597919": {
+    "Name": "AlliedTech3",
+    "Description": "UpgradeDesc:AlliedTech3"
+  },
+  "2883789811": {
+    "Name": "AlliedPowerPlantTurbine",
+    "Description": "UpgradeDesc:AlliedPowerPlantTurbine"
+  },
+  "3423923224": {
+    "Name": "AlliedNavalYardRepairBay",
+    "Description": "UpgradeDesc:AlliedNavalYardRepairBay"
+  },
+  "3587508416": {
+    "Name": "AlliedWarFactoryRepairBay",
+    "Description": "UpgradeDesc:AlliedWarFactoryRepairBay"
+  },
+  "3828111105": {
+    "Name": "AlliedHighTechnology",
+    "Description": ""
+  },
+  "869825687": {
+    "Name": "AlliedAirPower",
+    "Description": ""
+  },
+  "3573839498": {
+    "Name": "Uprade_IFV_FlakTrooper",
+    "Description": ""
+  },
+  "1302057603": {
+    "Name": "Uprade_IFV_GoldenGun",
+    "Description": ""
+  },
+  "1905629024": {
+    "Name": "Uprade_IFV_MachineGun",
+    "Description": ""
+  },
+  "2363388723": {
+    "Name": "Uprade_IFV_JapanMachineGun",
+    "Description": ""
+  },
+  "964410512": {
+    "Name": "Uprade_IFV_MissleTrooper",
+    "Description": ""
+  },
+  "2495761539": {
+    "Name": "Uprade_IFV_Pistol",
+    "Description": ""
+  },
+  "2096918958": {
+    "Name": "Uprade_IFV_PlasmaBazooka",
+    "Description": ""
+  },
+  "1734391036": {
+    "Name": "Uprade_IFV_PsyonicCrush",
+    "Description": ""
+  },
+  "1381399503": {
+    "Name": "Uprade_IFV_Repair",
+    "Description": ""
+  },
+  "4074186045": {
+    "Name": "Uprade_IFV_Roar",
+    "Description": ""
+  },
+  "2633920294": {
+    "Name": "Uprade_IFV_Shotgun",
+    "Description": ""
+  },
+  "1240625256": {
+    "Name": "Uprade_IFV_Shuriken",
+    "Description": ""
+  },
+  "3657796974": {
+    "Name": "Uprade_IFV_SovietCommando",
+    "Description": ""
+  },
+  "2462001807": {
+    "Name": "Uprade_IFV_TeslaTrooper",
+    "Description": ""
+  },
+  "1537585879": {
+    "Name": "AlliedCrane",
+    "Description": "UpgradeDesc:AlliedCrane"
+  },
+  "380191810": {
+    "Name": "AlliedRadarDish",
+    "Description": "UpgradeDesc:AlliedRadarDish"
+  },
+  "411165818": {
+    "Name": "AlliedConstructionYardRepairBay",
+    "Description": "UpgradeDesc:AlliedConstructionYardRepairBay"
+  },
+  "1958968298": {
+    "Name": "SovietCrane",
+    "Description": "UpgradeDesc:SovietCrane"
+  },
+  "1100510758": {
+    "Name": "SovietRadarDish",
+    "Description": "UpgradeDesc:SovietRadarDish"
+  },
+  "950984116": {
+    "Name": "SovietSalvageYard",
+    "Description": "UpgradeDesc:SovietSalvageYard"
+  },
+  "1639819936": {
+    "Name": "SovietWarFactorySalvageYard",
+    "Description": "UpgradeDesc:SovietWarFactorySalvageYard"
+  },
+  "1085159074": {
+    "Name": "SovietNavalYardSalvageYard",
+    "Description": "UpgradeDesc:SovietNavalYardSalvageYard"
+  },
+  "2726620369": {
+    "Name": "SovietTerrorDroneEggs",
+    "Description": ""
+  },
+  "2722968647": {
+    "Name": "SovietCrushPuppiesPower",
+    "Description": ""
+  },
+  "1022070141": {
+    "Name": "JapanRadarDish",
+    "Description": "UpgradeDesc:JapanRadarDish"
+  },
+  "1739491128": {
+    "Name": "JapanRepairBay",
+    "Description": "UpgradeDesc:JapanRepairBay"
+  },
+  "3208351208": {
+    "Name": "JapanBarracksTech2",
+    "Description": "UpgradeDesc:JapanBarracksTech2"
+  },
+  "1014899848": {
+    "Name": "JapanBarracksTech3",
+    "Description": "UpgradeDesc:JapanBarracksTech3"
+  },
+  "2129619442": {
+    "Name": "JapanNavalYardTech2",
+    "Description": "UpgradeDesc:JapanNavalYardTech2"
+  },
+  "3102094287": {
+    "Name": "JapanNavalYardTech3",
+    "Description": "UpgradeDesc:JapanNavalYardTech3"
+  },
+  "398520988": {
+    "Name": "JapanWarFactoryTech2",
+    "Description": "UpgradeDesc:JapanWarFactoryTech2"
+  },
+  "3481684697": {
+    "Name": "JapanWarFactoryTech3",
+    "Description": "UpgradeDesc:JapanWarFactoryTech3"
+  },
+  "3906445971": {
+    "Name": "JapanPowerPlantTurbine",
+    "Description": "UpgradeDesc:JapanPowerPlantTurbine"
+  },
+  "2671527358": {
+    "Name": "JapanNavalPower",
+    "Description": ""
+  },
+  "630087934": {
+    "Name": "JapanAdvancedMissilePacks",
+    "Description": ""
+  },
+  "1601967663": {
+    "Name": "JapanEnhancedKamikaze",
+    "Description": ""
+  },
+  "599079903": {
+    "Name": "Leech_ApocCannonUpgrade",
+    "Description": ""
+  },
+  "4237546110": {
+    "Name": "Leech_AlliedTankCannonUpgrade",
+    "Description": ""
+  },
+  "2777832026": {
+    "Name": "Leech_SovietTankCannonUpgrade",
+    "Description": ""
+  },
+  "1077498734": {
+    "Name": "Leech_JapanTankCannonUpgrade",
+    "Description": ""
+  },
+  "3370690427": {
+    "Name": "Leech_PrismCannonUpgrade",
+    "Description": ""
+  },
+  "3745007481": {
+    "Name": "Leech_GaussCannonUpgrade",
+    "Description": ""
+  },
+  "3521737873": {
+    "Name": "Leech_AutoCannonUpgrade",
+    "Description": ""
+  },
+  "2846440366": {
+    "Name": "Leech_V4RocketUpgrade",
+    "Description": ""
+  },
+  "1099554511": {
+    "Name": "Leech_FlakMissileUpgrade",
+    "Description": ""
+  },
+  "503779374": {
+    "Name": "Leech_StrikerMissileUpgrade",
+    "Description": ""
+  },
+  "1090103960": {
+    "Name": "Leech_IFVMissileUpgrade",
+    "Description": ""
+  },
+  "3456457132": {
+    "Name": "Leech_TeslaCoilUpgrade",
+    "Description": ""
+  },
+  "3315482546": {
+    "Name": "Leech_FlakCannonUpgrade",
+    "Description": ""
+  },
+  "4243149403": {
+    "Name": "Leech_BeamWeaponUpgrade",
+    "Description": ""
+  },
+  "3482369801": {
+    "Name": "Leech_LaserCannonUpgrade",
+    "Description": ""
+  },
+  "158558407": {
+    "Name": "Leech_Athena_CannonUpgrade",
+    "Description": ""
+  },
+  "377093596": {
+    "Name": "Leech_Ship_CannonUpgrade",
+    "Description": ""
+  },
+  "1086672271": {
+    "Name": "Leech_AircraftCarrier_Upgrade",
+    "Description": ""
+  },
+  "1032450710": {
+    "Name": "Leech_AlliedAntiAir_Upgrade",
+    "Description": ""
+  },
+  "2069290515": {
+    "Name": "RiptideLocomotorModifier",
+    "Description": ""
+  },
+  "2592353131": {
+    "Name": "Confetti_Weapon_Upgrade",
+    "Description": ""
+  }
+}

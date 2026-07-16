@@ -117,7 +117,15 @@ internal static partial class Ra3_1_12_Profile
             ["DestroySelectionListHeadOffset"] = Verified("DestroySelectionListHeadOffset", 0x54, "AgentGameApi.cpp"),
             ["ProductionModulesOffset"] = Verified("ProductionModulesOffset", 0x310, "AgentGameApi.cpp"),
             ["LocalContextSiblingOffset"] = Verified("LocalContextSiblingOffset", 0x1360, "AgentNativeHooks.cpp"),
-            ["RestoreOreCapacityMode"] = Verified("RestoreOreCapacityMode", 1, "AgentNativeHooks.cpp")
+            ["RestoreOreCapacityMode"] = Verified("RestoreOreCapacityMode", 1, "AgentNativeHooks.cpp"),
+            // GameObjectAddUpgrade RVA = 0x379650 (IDA VA 0x779650 - module base 0x400000).
+            // The no-scan catalog path reads this value verbatim, so it must be the RVA.
+            ["GameObjectAddUpgrade"] = Verified("GameObjectAddUpgrade", 0x379650, "AgentGameApi.cpp"),
+            // UpgradeTemplateTypeOffset = offset of UpgradeTemplate.Type within
+            // UpgradeTemplateDefinition (reached via [UpgradeTemplate+0xC] -> definition).
+            // OBJECT enum value is 1 (XSD UpgradeType {PLAYER=0, OBJECT=1}; IDA branch
+            // ObjectGrantOrRemoveUpgrade_579640). Verified 2026-07-14 (upgrades_science.md).
+            ["UpgradeTemplateTypeOffset"] = Verified("UpgradeTemplateTypeOffset", 0x24, "AgentGameApi.cpp")
         };
     }
 

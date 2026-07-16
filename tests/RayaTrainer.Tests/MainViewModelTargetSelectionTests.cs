@@ -158,12 +158,13 @@ public sealed class MainViewModelTargetSelectionTests
         Assert.True(toggle.IsFeatureEnabled);
 
         // A second RefreshProcess disposes (-> ResetToggleStates) then re-installs.
-        // The stub now reports toggleState:false, so the row must land at "未启用".
+        // The stub now reports toggleState:false, but _desiredEnabled persists from the
+        // earlier user toggle. The row lands at "应用失败" (desired=true, observed=false).
         viewModel.RefreshProcess();
 
         Assert.True(viewModel.ArePatchesInstalled);
         Assert.False(toggle.IsFeatureEnabled);
-        Assert.Equal("未启用", toggle.Status);
+        Assert.Equal("应用失败", toggle.Status);
     }
 
     private static FeatureItemViewModel FirstToggleItem(MainViewModel viewModel) =>

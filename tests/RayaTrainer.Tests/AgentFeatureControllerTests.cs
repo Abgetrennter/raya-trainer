@@ -122,6 +122,34 @@ public sealed class AgentFeatureControllerTests
         Assert.Equal(TimeSpan.FromSeconds(8), client.LastTeleportSelectedUnitsToMousePipeTimeout);
     }
 
+    [Fact]
+    public void ReadSelectedUnitUpgradesRejectsCountOverTwenty()
+    {
+        // Defense-in-depth: the native handler caps Count at 20, but a corrupted/forged payload
+        // must not drive an unbounded allocation. Count=21 must throw InvalidDataException.
+        var client = new FakeAgentClient
+        {
+            SelectedUnitUpgradesPayload = new AgentGameApiSelectedUnitUpgradesPayload(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                UnitTypeId: 0x1111u,
+                ThingTemplateAddress: 0x2222u,
+                Count: 21u,
+                UpgradeHash0: 0xAu, UpgradeHash1: 0, UpgradeHash2: 0, UpgradeHash3: 0,
+                UpgradeHash4: 0, UpgradeHash5: 0, UpgradeHash6: 0, UpgradeHash7: 0,
+                UpgradeHash8: 0, UpgradeHash9: 0, UpgradeHash10: 0, UpgradeHash11: 0,
+                UpgradeHash12: 0, UpgradeHash13: 0, UpgradeHash14: 0, UpgradeHash15: 0,
+                UpgradeHash16: 0, UpgradeHash17: 0, UpgradeHash18: 0, UpgradeHash19: 0,
+                DispatchStatus: GameApiDispatchStatus.Completed,
+                RequestId: 7u,
+                GameThreadTickBefore: 0u,
+                GameThreadTickAfter: 0u)
+        };
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+
+        Assert.Throws<InvalidDataException>(() => controller.ReadSelectedUnitUpgrades());
+    }
+
     [Theory]
     [InlineData("Clear Selected Attack Speed Effects", "清空满攻速单位")]
     [InlineData("Clear Selected Attack Range Effects", "清空无限射程单位")]
@@ -400,6 +428,7 @@ public sealed class AgentFeatureControllerTests
         public AgentGameApiSetSelectedUnitHealthRequest? LastSetSelectedUnitHealthRequest { get; private set; }
         public TimeSpan LastSetSelectedUnitHealthPipeTimeout { get; private set; }
         public GameApiDispatchStatus SetSelectedUnitHealthDispatchStatus { get; init; } = GameApiDispatchStatus.Completed;
+        public AgentGameApiSelectedUnitUpgradesPayload SelectedUnitUpgradesPayload { get; init; } = BuildEmptyUpgradesPayload();
         public AgentGameApiExpandProductionQueueRequest? LastExpandProductionQueueRequest { get; private set; }
         public TimeSpan LastExpandProductionQueuePipeTimeout { get; private set; }
         public AgentGameApiTeleportSelectedUnitsToMouseRequest? LastTeleportSelectedUnitsToMouseRequest { get; private set; }
@@ -917,6 +946,47 @@ public sealed class AgentFeatureControllerTests
             LastTeleportSelectedUnitsToMouseRequest = request;
             LastTeleportSelectedUnitsToMousePipeTimeout = timeout;
             return Task.FromResult(new AgentGameApiTeleportSelectedUnitsToMousePayload(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                GameApiDispatchStatus.Completed,
+                1,
+                0,
+                0));
+        }
+
+        public Task<AgentGameApiSelectedUnitUpgradesPayload> GetSelectedUnitUpgradesAsync(
+            int processId,
+            AgentGameApiGetSelectedUnitUpgradesRequest request,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(SelectedUnitUpgradesPayload);
+        }
+
+        private static AgentGameApiSelectedUnitUpgradesPayload BuildEmptyUpgradesPayload() =>
+            new AgentGameApiSelectedUnitUpgradesPayload(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                UnitTypeId: 0,
+                ThingTemplateAddress: 0,
+                Count: 0,
+                UpgradeHash0: 0, UpgradeHash1: 0, UpgradeHash2: 0, UpgradeHash3: 0,
+                UpgradeHash4: 0, UpgradeHash5: 0, UpgradeHash6: 0, UpgradeHash7: 0,
+                UpgradeHash8: 0, UpgradeHash9: 0, UpgradeHash10: 0, UpgradeHash11: 0,
+                UpgradeHash12: 0, UpgradeHash13: 0, UpgradeHash14: 0, UpgradeHash15: 0,
+                UpgradeHash16: 0, UpgradeHash17: 0, UpgradeHash18: 0, UpgradeHash19: 0,
+                DispatchStatus: GameApiDispatchStatus.Completed,
+                RequestId: 1,
+                GameThreadTickBefore: 0,
+                GameThreadTickAfter: 0);
+
+        public Task<AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload> GrantObjectUpgradeOnSelectedSameTypeAsync(
+            int processId,
+            AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest request,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload(
                 AgentStatusCode.Ok,
                 AgentProtocol.Version,
                 GameApiDispatchStatus.Completed,

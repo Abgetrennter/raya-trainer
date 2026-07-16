@@ -3,6 +3,7 @@ using RayaTrainer.Core.Manifest;
 namespace RayaTrainer.Core.Features;
 
 public sealed record TrainerFeatureGroupDefinition(
+    string GroupId,
     string Name,
     IReadOnlyList<string> FeatureDisplayNames,
     bool IsExpanded = true);
@@ -11,10 +12,10 @@ public static class TrainerFeatureGroupCatalog
 {
     public static IReadOnlyList<TrainerFeatureGroupDefinition> Groups { get; } =
     [
-        new("玩家资源", ["增加玩家战场资金", "无限电力", "无限秘密协议点数", "解开所有秘密协议技能"]),
-        new("建造与地图", ["快速建造建筑物/单位", "消散战争迷雾", "无限缩放", "禁止电脑建造建筑物/单位", "建筑物可随地建造", "忽略建造前置条件", "解除同时存在数量上限（超武/英雄多造，英雄需配合忽略建造前置条件）", "扩展选中建筑建造队列", "恢复选中建筑建造队列", "清除玩家科技锁"]),
-        new("渲染与性能", ["60fps 帧率解锁"]),
-        new("其他操作", ["威胁等级最大", "威胁等级归零", "威胁等级恢复原状", "选择的矿脉恢复采集矿量", "允许后台响应（失焦时修改器仍可响应，仅限单机/遭遇战）", "时间冻结（伪回合制，仅限单机/遭遇战）", "时间慢放（50% 速度，仅限单机/遭遇战）"], false)
+        new("player-resources", "玩家资源", ["增加玩家战场资金", "无限电力", "无限秘密协议点数", "解开所有秘密协议技能"]),
+        new("build-map", "建造与地图", ["快速建造建筑物/单位", "消散战争迷雾", "无限缩放", "禁止电脑建造建筑物/单位", "建筑物可随地建造", "忽略建造前置条件", "解除同时存在数量上限（超武/英雄多造，英雄需配合忽略建造前置条件）", "扩展选中建筑建造队列", "恢复选中建筑建造队列", "清除玩家科技锁"]),
+        new("render-perf", "渲染与性能", ["60fps 帧率解锁"]),
+        new("other-ops", "其他操作", ["威胁等级最大", "威胁等级归零", "威胁等级恢复原状", "选择的矿脉恢复采集矿量", "允许后台响应（失焦时修改器仍可响应，仅限单机/遭遇战）", "时间冻结（伪回合制，仅限单机/遭遇战）", "时间慢放（50% 速度，仅限单机/遭遇战）", "起义时刻挑战模式增加资金", "起义时刻挑战模式锁定充足时间"], false)
     ];
 
     /// <summary>
@@ -55,4 +56,12 @@ public static class TrainerFeatureGroupCatalog
         return Groups.FirstOrDefault(group => group.FeatureDisplayNames.Contains(feature.DisplayName, StringComparer.Ordinal))?.Name
             ?? "秘密协议与扩展操作";
     }
+}
+
+public static class GroupIds
+{
+    public const string SelectedUnitDamage = "selected-unit.damage";
+    public const string SelectedUnitHealth = "selected-unit.health";
+    public const string SelectedUnitSpeed = "selected-unit.speed";
+    public const string SelectedUnitOther = "selected-unit.other";
 }

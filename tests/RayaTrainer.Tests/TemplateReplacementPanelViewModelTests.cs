@@ -149,6 +149,8 @@ public sealed class TemplateReplacementPanelViewModelTests
         public void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f) => throw new NotImplementedException();
 
         public uint ReadSelectedUnitCode() => throw new NotImplementedException();
+        public SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades() => SelectedUnitUpgradesSnapshot.Empty;
+        public GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null) => GameApiDispatchStatus.Disabled;
 
         public byte ReadActionDispatch() => throw new NotImplementedException();
         public uint ReadGameThreadTick() => throw new NotImplementedException();

@@ -502,4 +502,34 @@ public sealed partial class AgentNamedPipeClient
             AgentGameApiClearSelectedAttackRangeEffectsPayload.ReadFrom,
             cancellationToken);
     }
+
+    public Task<AgentGameApiSelectedUnitUpgradesPayload> GetSelectedUnitUpgradesAsync(
+        int processId,
+        AgentGameApiGetSelectedUnitUpgradesRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        return SendCommandAsync(
+            processId,
+            AgentCommand.GetSelectedUnitUpgrades,
+            request.Encode(),
+            timeout,
+            AgentGameApiSelectedUnitUpgradesPayload.ReadFrom,
+            cancellationToken);
+    }
+
+    public Task<AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload> GrantObjectUpgradeOnSelectedSameTypeAsync(
+        int processId,
+        AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        return SendCommandAsync(
+            processId,
+            AgentCommand.GrantObjectUpgradeOnSelectedSameType,
+            request.Encode(),
+            timeout,
+            AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload.ReadFrom,
+            cancellationToken);
+    }
 }

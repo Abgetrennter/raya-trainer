@@ -582,6 +582,62 @@ struct AgentGameApiClearSelectedAttackRangeEffectsPayload
     uint32_t GameThreadTickAfter;
 };
 
+struct AgentGameApiGetSelectedUnitUpgradesRequest
+{
+    uint32_t TimeoutMilliseconds;
+    uint32_t EnableDirectGameApi;
+};
+
+struct AgentGameApiSelectedUnitUpgradesPayload
+{
+    uint16_t StatusCode;
+    uint16_t AgentVersion;
+    uint32_t UnitTypeId;
+    uint32_t ThingTemplateAddress;
+    uint32_t Count;
+    uint32_t UpgradeHash0;
+    uint32_t UpgradeHash1;
+    uint32_t UpgradeHash2;
+    uint32_t UpgradeHash3;
+    uint32_t UpgradeHash4;
+    uint32_t UpgradeHash5;
+    uint32_t UpgradeHash6;
+    uint32_t UpgradeHash7;
+    uint32_t UpgradeHash8;
+    uint32_t UpgradeHash9;
+    uint32_t UpgradeHash10;
+    uint32_t UpgradeHash11;
+    uint32_t UpgradeHash12;
+    uint32_t UpgradeHash13;
+    uint32_t UpgradeHash14;
+    uint32_t UpgradeHash15;
+    uint32_t UpgradeHash16;
+    uint32_t UpgradeHash17;
+    uint32_t UpgradeHash18;
+    uint32_t UpgradeHash19;
+    uint32_t DispatchStatus;
+    uint32_t RequestId;
+    uint32_t GameThreadTickBefore;
+    uint32_t GameThreadTickAfter;
+};
+
+struct AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest
+{
+    uint32_t UpgradeHash;
+    uint32_t TimeoutMilliseconds;
+    uint32_t EnableDirectGameApi;
+};
+
+struct AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload
+{
+    uint16_t StatusCode;
+    uint16_t AgentVersion;
+    uint32_t DispatchStatus;
+    uint32_t RequestId;
+    uint32_t GameThreadTickBefore;
+    uint32_t GameThreadTickAfter;
+};
+
 #pragma pack(pop)
 
 static_assert(sizeof(AgentGameApiGetThingClassRequest) == 12);
@@ -650,4 +706,8 @@ static_assert(sizeof(AgentGameApiClearSelectedAttackSpeedEffectsRequest) == 8);
 static_assert(sizeof(AgentGameApiClearSelectedAttackSpeedEffectsPayload) == 20);
 static_assert(sizeof(AgentGameApiClearSelectedAttackRangeEffectsRequest) == 8);
 static_assert(sizeof(AgentGameApiClearSelectedAttackRangeEffectsPayload) == 20);
+static_assert(sizeof(AgentGameApiGetSelectedUnitUpgradesRequest) == 8);
+static_assert(sizeof(AgentGameApiSelectedUnitUpgradesPayload) == 112);
+static_assert(sizeof(AgentGameApiGrantObjectUpgradeOnSelectedSameTypeRequest) == 12);
+static_assert(sizeof(AgentGameApiGrantObjectUpgradeOnSelectedSameTypePayload) == 20);
 }

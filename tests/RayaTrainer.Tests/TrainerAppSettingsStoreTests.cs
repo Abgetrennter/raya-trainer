@@ -31,7 +31,7 @@ public sealed class TrainerAppSettingsStoreTests
         Assert.True(File.Exists(path));
         var savedText = File.ReadAllText(path);
         Assert.Contains("\"Hotkeys\"", savedText);
-        Assert.Contains("\"SchemaVersion\": 1", savedText);
+        Assert.Contains("\"SchemaVersion\": 2", savedText);
         Assert.DoesNotContain("\"Runtime\"", savedText);
         Assert.Contains("\"增加玩家战场资金\"", savedText);
         Assert.Contains("\"执行队列\"", savedText);
@@ -154,7 +154,8 @@ public sealed class TrainerAppSettingsStoreTests
         var loaded = store.Load();
 
         Assert.Equal(TrainerAppSettingsStore.CurrentSchemaVersion, loaded.SchemaVersion);
-        Assert.True(File.Exists(Path.Combine(directory, "RayaTrainer.settings.legacy.json")));
+        var backups = Directory.GetFiles(directory, "RayaTrainer.settings.legacy.*.json");
+        Assert.Single(backups);
     }
 
     [Fact]
@@ -289,5 +290,118 @@ public sealed class TrainerAppSettingsStoreTests
         Assert.Equal("有效预设", preset.Name);
         Assert.Single(preset.Entries);
         Assert.Equal("轨道垃圾", preset.Entries[0].Name);
+    }
+
+    [Fact]
+    public void SaveAndLoad_RoundTripsV2Fields()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "RayaTrainer.settings.json");
+        var store = new TrainerAppSettingsStore(path);
+        var desired = new Dictionary<string, bool> { ["Power"] = true, ["MAP"] = false };
+        var params_ = new Dictionary<string, string> { ["selectedUnit.targetHealth.current"] = "5000" };
+        var groupExpand = new Dictionary<string, bool> { ["玩家资源"] = false };
+        var presets = new[]
+        {
+            new FeaturePreset("战斗",
+                new FeatureStateSnapshot(desired, params_),
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow)
+        };
+
+        var original = new TrainerAppSettings(
+            "C:\\game.exe", "-ui", 30,
+            ResourceValueSettings.Default,
+            Array.Empty<ReinforcementPreset>(),
+            new Dictionary<string, string>(),
+            "", "",
+            null, false, false,
+            IsDarkTheme: false,
+            WindowBounds: new WindowBounds(10, 20, 1000, 800, true),
+            SelectedPageId: PageIds.SelectedUnit,
+            GroupExpandedStates: groupExpand,
+            DesiredToggleStates: desired,
+            FeatureParameterValues: params_,
+            FeaturePresets: presets,
+            LastAppliedFeaturePresetName: "战斗");
+
+        store.Save(original);
+        var loaded = store.Load();
+
+        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.False(loaded.IsDarkTheme);
+        Assert.Equal(new WindowBounds(10, 20, 1000, 800, true), loaded.WindowBounds);
+        Assert.Equal(PageIds.SelectedUnit, loaded.SelectedPageId);
+        Assert.False(loaded.GroupExpandedStates["玩家资源"]);
+        Assert.True(loaded.DesiredToggleStates["Power"]);
+        Assert.False(loaded.DesiredToggleStates["MAP"]);
+        Assert.Equal("5000", loaded.FeatureParameterValues["selectedUnit.targetHealth.current"]);
+        Assert.Equal("战斗", loaded.FeaturePresets[0].Name);
+        Assert.Equal("战斗", loaded.LastAppliedFeaturePresetName);
+    }
+
+    [Fact]
+    public void Load_MigratesV1ToV2_PreservesFields_AddsDefaults_CreatesBackup()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "RayaTrainer.settings.json");
+        var v1Json = """
+            {
+              "SchemaVersion": 1,
+              "LauncherPath": "C:\\old.exe",
+              "LauncherArguments": "-win",
+              "AttachTimeoutSeconds": 45,
+              "ResourceValues": { "MoneyAmount": 5000, "PowerValue": 200, "ScPointValue": 10 },
+              "Hotkeys": { "Power": "Ctrl+F2" },
+              "HidePrimaryActionCard": true,
+              "AutoCaptureEnabled": true
+            }
+            """;
+        File.WriteAllText(path, v1Json);
+
+        var store = new TrainerAppSettingsStore(path);
+        var loaded = store.Load();
+
+        // v1 字段保留
+        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal("C:\\old.exe", loaded.LauncherPath);
+        Assert.Equal("-win", loaded.LauncherArguments);
+        Assert.Equal(45, loaded.AttachTimeoutSeconds);
+        Assert.Equal(5000, loaded.ResourceValues.MoneyAmount);
+        Assert.Equal("Ctrl+F2", loaded.Hotkeys["Power"]);
+        Assert.True(loaded.HidePrimaryActionCard);
+        Assert.True(loaded.AutoCaptureEnabled);
+
+        // v2 字段默认
+        Assert.True(loaded.IsDarkTheme);
+        Assert.Null(loaded.WindowBounds);
+        Assert.Equal(PageIds.Features, loaded.SelectedPageId);
+        Assert.Empty(loaded.GroupExpandedStates);
+        Assert.Empty(loaded.DesiredToggleStates);
+        Assert.Empty(loaded.FeatureParameterValues);
+        Assert.Empty(loaded.FeaturePresets);
+        Assert.Null(loaded.LastAppliedFeaturePresetName);
+
+        // 备份文件存在（.v1.<timestamp>.json）
+        var backups = Directory.GetFiles(dir, "RayaTrainer.settings.v1.*.json");
+        Assert.Single(backups);
+    }
+
+    [Fact]
+    public void Load_CorruptJson_CreatesCorruptBackup_UsesDefaults()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "RayaTrainer.settings.json");
+        File.WriteAllText(path, "{ this is not valid json }}}");
+
+        var store = new TrainerAppSettingsStore(path);
+        var loaded = store.Load();
+
+        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal("", loaded.LauncherPath); // 默认
+
+        var backups = Directory.GetFiles(dir, "RayaTrainer.settings.corrupt.*.json");
+        Assert.Single(backups);
     }
 }

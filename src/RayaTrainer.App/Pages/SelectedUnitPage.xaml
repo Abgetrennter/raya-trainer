@@ -18,6 +18,7 @@
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <Grid.Style>
@@ -35,11 +36,35 @@
                                ToolTip="{Binding HelpText}"
                                ToolTipService.InitialShowDelay="250"
                                ToolTipService.ShowDuration="12000"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+
+                    <!-- Target Health input (shown only on "设置选中建筑物/单位生命值为指定值") -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                      <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding DisplayName}" Value="设置选中建筑物/单位生命值为指定值">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </StackPanel.Style>
+                      <TextBox Width="90" FontSize="12"
+                               VerticalContentAlignment="Center"
+                               Text="{Binding DataContext.SelectedUnitTargetHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                               ToolTip="{Binding DataContext.SelectedUnitTargetHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <TextBlock Text="上限" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="8,0,4,0" />
+                      <TextBox Width="90" FontSize="12"
+                               VerticalContentAlignment="Center"
+                               Text="{Binding DataContext.SelectedUnitTargetMaxHealthText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                               ToolTip="{Binding DataContext.SelectedUnitMaxHealthHelpText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </StackPanel>
 
                     <!-- Hotkey badge -->
-                    <ctrl:KeyBadge Grid.Column="1"
+                    <ctrl:KeyBadge Grid.Column="2"
                                    Content="{Binding HotkeyDisplay}"
                                    ToolTip="右键修改快捷键"
                                    VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="28">
@@ -54,7 +79,7 @@
                     </ctrl:KeyBadge>
 
                     <!-- Toggle or Execute -->
-                    <Grid Grid.Column="2" Margin="14,0,0,0" VerticalAlignment="Center">
+                    <Grid Grid.Column="3" Margin="14,0,0,0" VerticalAlignment="Center">
                       <ctrl:ToggleSwitch IsChecked="{Binding IsFeatureEnabled, Mode=OneWay}"
                                          Command="{Binding Command}" ToolTip="{Binding HelpText}"
                                          Visibility="{Binding IsToggle, Converter={StaticResource BoolVis}}" />
@@ -67,7 +92,7 @@
                     </Grid>
 
                     <!-- Capability badge -->
-                    <Border Grid.Column="3" CornerRadius="8" Padding="7,2" Margin="12,0,0,0"
+                    <Border Grid.Column="4" CornerRadius="8" Padding="7,2" Margin="12,0,0,0"
                             ToolTip="{Binding CapabilityReason}" VerticalAlignment="Center">
                       <Border.Style>
                         <Style TargetType="Border">
@@ -100,7 +125,7 @@
                     </Border>
 
                     <!-- Status -->
-                    <TextBlock Grid.Column="4" Text="{Binding Status}" ToolTip="{Binding HelpText}"
+                    <TextBlock Grid.Column="5" Text="{Binding Status}" ToolTip="{Binding HelpText}"
                                VerticalAlignment="Center" Margin="14,0,0,0"
                                FontSize="12" MinWidth="50" TextAlignment="Right">
                       <TextBlock.Style>
@@ -122,6 +147,70 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+
+      <!-- 单位升级子面板 -->
+      <Border CornerRadius="10" Padding="16,12" Margin="0,8,0,16"
+              Background="{DynamicResource BrushCardBackground}">
+        <StackPanel>
+          <!-- 标题行 -->
+          <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="单位升级" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="（仅当前选中同类单位生效）" FontSize="11"
+                         Foreground="{DynamicResource BrushTextDim}"
+                         Margin="8,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="刷新可用升级"
+                    Command="{Binding UnitUpgrade.RefreshCommand}"
+                    Style="{DynamicResource SmallButton}"
+                    Padding="12,5" FontSize="12" />
+          </Grid>
+
+          <!-- 升级列表 -->
+          <ItemsControl ItemsSource="{Binding UnitUpgrade.AvailableUpgrades}"
+                        Visibility="{Binding UnitUpgrade.IsListVisible, Converter={StaticResource BoolVis}}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border CornerRadius="6" Padding="10,8" Margin="0,4"
+                        Background="{DynamicResource BrushCardBackground}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+                      <TextBlock Text="{Binding Description}" FontSize="11"
+                                 Foreground="{DynamicResource BrushTextDim}"
+                                 Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="授予"
+                            Command="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=DataContext.UnitUpgrade.GrantCommand}"
+                            CommandParameter="{Binding}"
+                            Style="{DynamicResource SmallButton}"
+                            Padding="12,5" FontSize="12"
+                            VerticalAlignment="Center" Margin="12,0,0,0" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- 状态文案（始终可见） -->
+          <TextBlock Text="{Binding UnitUpgrade.StatusMessage}"
+                     FontSize="12"
+                     Foreground="{DynamicResource BrushTextDim}"
+                     FontStyle="Italic"
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

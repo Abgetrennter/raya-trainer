@@ -14,7 +14,11 @@ public sealed class HotkeySettingsViewModel : ViewModelBase
     // 两个动作热键作为虚拟 feature 纳入设置页统一管理（与功能热键共用同一冲突检测/保存逻辑）。
     public const string ExecuteReinforcementQueueRawName = TrainerFeatureIds.ExecuteReinforcementQueue;
     public const string ReadSelectedUnitCodeRawName = TrainerFeatureIds.ReadSelectedUnitCode;
+    // 主控操作热键：全局注册（Win32 RegisterHotKey），与游戏前台无关，单独分组便于用户识别。
+    public const string DetectProcessRawName = TrainerFeatureIds.DetectProcess;
+    public const string LaunchAndLoadRawName = TrainerFeatureIds.LaunchAndLoad;
     private const string ActionGroupName = "动作热键";
+    private const string TrainerControlGroupName = "主控操作（全局）";
 
     private readonly Action<IReadOnlyDictionary<string, string>> _applyChanges;
 
@@ -79,6 +83,10 @@ public sealed class HotkeySettingsViewModel : ViewModelBase
         AddActionRow(ExecuteReinforcementQueueRawName, "执行队列（增援）", currentHotkeys, defaultHotkeys);
         AddActionRow(ReadSelectedUnitCodeRawName, "读取选中单位代码", currentHotkeys, defaultHotkeys);
 
+        // 主控操作热键：全局注册，单独分组。括注"全局"提示用户这两个键不要求游戏前台。
+        AddActionRow(DetectProcessRawName, "立刻检测（全局）", currentHotkeys, defaultHotkeys, TrainerControlGroupName);
+        AddActionRow(LaunchAndLoadRawName, "装载并启动（全局）", currentHotkeys, defaultHotkeys, TrainerControlGroupName);
+
         // 按分组聚合（保留 Rows 顺序，分组只是 UI 视图）。
         foreach (var group in Rows.GroupBy(r => r.Group, StringComparer.Ordinal))
         {
@@ -88,11 +96,12 @@ public sealed class HotkeySettingsViewModel : ViewModelBase
 
     private void AddActionRow(string rawName, string displayName,
         IReadOnlyDictionary<string, string> currentHotkeys,
-        IReadOnlyDictionary<string, string> defaultHotkeys)
+        IReadOnlyDictionary<string, string> defaultHotkeys,
+        string groupName = ActionGroupName)
     {
         var current = Resolve(currentHotkeys, rawName);
         var defaultValue = Resolve(defaultHotkeys, rawName);
-        var row = new HotkeyRowViewModel(rawName, displayName, ActionGroupName, current, defaultValue, rawName);
+        var row = new HotkeyRowViewModel(rawName, displayName, groupName, current, defaultValue, rawName);
         row.CurrentHotkeyChanged += OnRowHotkeyChanged;
         Rows.Add(row);
     }

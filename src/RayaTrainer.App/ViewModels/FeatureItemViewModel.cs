@@ -10,7 +10,8 @@ public sealed class FeatureItemViewModel : ViewModelBase
 {
     private readonly IFeatureHost _owner;
     private readonly IFeatureSoundPlayer _soundPlayer;
-    private bool _enabled;
+    private bool? _desiredEnabled;
+    private bool? _observedEnabled;
     private bool _isExecuting;
     private string _status = "未启用";
     // 运行时热重载用此覆盖替换 Feature.Hotkey。null 表示未设置覆盖（回退 Feature.Hotkey）；
@@ -56,11 +57,30 @@ public sealed class FeatureItemViewModel : ViewModelBase
         ClearHotkeyCommand.RaiseCanExecuteChanged();
     }
 
-    public string ActionText => IsToggle ? (_enabled ? "关闭" : "开启") : "执行";
+    public bool? DesiredEnabled => _desiredEnabled;
+    public bool? ObservedEnabled => _observedEnabled;
+
+    public bool IsFeatureEnabled =>
+        IsToggle && _observedEnabled == true;
 
     public bool IsToggle => FeatureDispatchDefaults.IsToggle(Feature);
 
-    public bool IsFeatureEnabled => IsToggle && _enabled;
+    /// <summary>
+    /// ActionText：
+    /// - observed=true → "关闭"（用户可关）
+    /// - desired=true, observed=null → "关闭"（待连接，但可取消期望）
+    /// - desired=true, observed=false → "关闭"（应用失败但期望在）
+    /// - 其余 → "开启"
+    /// </summary>
+    public string ActionText
+    {
+        get
+        {
+            if (!IsToggle) return "执行";
+            var effective = _observedEnabled ?? _desiredEnabled;
+            return effective == true ? "关闭" : "开启";
+        }
+    }
 
     public FeatureCapabilitySnapshot Capability => _owner.GetFeatureCapability(Feature);
 
@@ -117,52 +137,87 @@ public sealed class FeatureItemViewModel : ViewModelBase
         Command.RaiseCanExecuteChanged();
     }
 
-    /// <summary>
-    /// 断开/恢复 patch 时把本 toggle 功能状态强制归零，不依赖活跃 controller。
-    /// 与 <see cref="RefreshToggleState"/> 不同：后者读取实时状态，会在 controller 为 null 时
-    /// 提前返回并保留旧的"已启用"标记——这正是重新加载/恢复时 UI 撒谎的来源。
-    /// </summary>
+    /// <summary>断线/恢复 Patch：只清 Observed，保留 Desired。</summary>
     public void ResetToggleState()
     {
-        if (!IsToggle)
-        {
-            return;
-        }
-
-        _enabled = false;
-        Status = "未启用";
+        if (!IsToggle) return;
+        _observedEnabled = null;
+        Status = _desiredEnabled == true ? "已保存，待连接" : "未启用";
+        OnPropertyChanged(nameof(ObservedEnabled));
         OnPropertyChanged(nameof(ActionText));
         OnPropertyChanged(nameof(IsFeatureEnabled));
     }
 
+    /// <summary>从 Agent readback 更新 Observed。不反向覆盖 Desired。</summary>
     public void RefreshToggleState()
     {
-        if (!IsToggle)
-        {
-            return;
-        }
-
+        if (!IsToggle) return;
         var controller = _owner.FeatureController;
-        if (controller is null)
-        {
-            return;
-        }
-
+        if (controller is null) return;
         try
         {
             var state = controller.ReadToggleState(Feature);
-            if (_enabled != state)
-            {
-                _enabled = state;
-                Status = _enabled ? "已启用" : "未启用";
-                OnPropertyChanged(nameof(ActionText));
-                OnPropertyChanged(nameof(IsFeatureEnabled));
-            }
+            _observedEnabled = state;
+            Status = ResolveStatus();
+            OnPropertyChanged(nameof(ObservedEnabled));
+            OnPropertyChanged(nameof(ActionText));
+            OnPropertyChanged(nameof(IsFeatureEnabled));
         }
-        catch
+        catch { }
+    }
+
+    /// <summary>启动/预设装载时设定期望。suppressApply=true 仅记 desired 不调 controller。</summary>
+    public void SetDesired(bool enabled, bool suppressApply)
+    {
+        if (!IsToggle) return;
+        _desiredEnabled = enabled;
+        if (suppressApply)
         {
-            // 读取失败时保持当前状态
+            _observedEnabled = null;
+            Status = "已保存，待连接";
         }
+        else
+        {
+            var controller = _owner.FeatureController;
+            if (controller is null)
+            {
+                _observedEnabled = null;
+                Status = "已保存，待连接";
+            }
+            else
+            {
+                if (enabled) { _owner.WriteResourceValuesIfNeeded(Feature); _owner.WriteTargetHealthIfNeeded(Feature); }
+                controller.SetToggle(Feature, enabled);
+                _observedEnabled = enabled;
+                _soundPlayer.Play(FeatureSoundCueResolver.ForToggleState(enabled));
+                Status = enabled ? "已启用" : "已关闭";
+            }
+            _owner.OnFeatureToggleChanged(Feature, enabled);
+        }
+        OnPropertyChanged(nameof(DesiredEnabled));
+        OnPropertyChanged(nameof(ObservedEnabled));
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(IsFeatureEnabled));
+    }
+
+    public void ClearObserved()
+    {
+        _observedEnabled = null;
+        Status = _desiredEnabled == true ? "已保存，待连接" : "未启用";
+        OnPropertyChanged(nameof(ObservedEnabled));
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(IsFeatureEnabled));
+    }
+
+    /// <summary>测试用别名：RefreshObserved = RefreshToggleState。</summary>
+    public void RefreshObserved() => RefreshToggleState();
+
+    private string ResolveStatus()
+    {
+        if (!IsToggle) return Status;
+        if (_observedEnabled == true) return "已启用";
+        if (_desiredEnabled == true) return _observedEnabled == false ? "应用失败" : "已保存，待连接";
+        return "未启用";
     }
 
     public void ExecuteFromHotkey()
@@ -195,6 +250,13 @@ public sealed class FeatureItemViewModel : ViewModelBase
     {
         try
         {
+            if (IsToggle)
+            {
+                var nextEnabled = !(_observedEnabled ?? _desiredEnabled ?? false);
+                SetDesired(nextEnabled, suppressApply: false);
+                return;
+            }
+
             var controller = _owner.FeatureController;
             if (controller is null)
             {
@@ -207,25 +269,6 @@ public sealed class FeatureItemViewModel : ViewModelBase
             {
                 Status = Capability.State == FeatureCapabilityState.Waiting ? "等待中" : "不可用";
                 _owner.StatusMessage = Capability.Reason;
-                return;
-            }
-
-            if (IsToggle)
-            {
-                var nextEnabled = !_enabled;
-                if (nextEnabled)
-                {
-            _owner.WriteResourceValuesIfNeeded(Feature);
-            _owner.WriteTargetHealthIfNeeded(Feature);
-                }
-
-                _enabled = nextEnabled;
-                controller.SetToggle(Feature, _enabled);
-                _owner.OnFeatureToggleChanged(Feature, _enabled);
-                Status = _enabled ? "已启用" : "已关闭";
-                _soundPlayer.Play(FeatureSoundCueResolver.ForToggleState(_enabled));
-                OnPropertyChanged(nameof(ActionText));
-                OnPropertyChanged(nameof(IsFeatureEnabled));
                 return;
             }
 

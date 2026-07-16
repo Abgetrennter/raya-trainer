@@ -152,6 +152,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleInjectorProjectBuildsForWinX86()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var projectPath = Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -173,6 +174,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleInjectionVerificationScriptUsesRepoRootAndWinX86Injector()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var scriptPath = Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -199,6 +201,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleDllProjectIncludesPlannedRuntimeComponents()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var repoRoot = RepositoryRoot();
         var projectPath = Path.Combine(
             repoRoot,
@@ -290,6 +293,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleMcpVerificationScriptUsesMcpSmokeChecks()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var scriptPath = Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -322,6 +326,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleBuildsLuaApiFromNormalizedAddresses()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var sourcePath = Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -339,6 +344,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleSelectedUnitToolUsesVerifiedSelectionOffsets()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var repoRoot = RepositoryRoot();
         var offsetsHeader = File.ReadAllText(Path.Combine(
             repoRoot,
@@ -365,6 +371,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleResolveOffsetKeepsStructOffsetsUnnormalized()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var handlers = File.ReadAllText(Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -381,6 +388,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleDoesNotPollLuaRequestsFromDllWorkerThread()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var repoRoot = RepositoryRoot();
         var dllMain = File.ReadAllText(Path.Combine(
             repoRoot,
@@ -410,6 +418,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleUpdateHookUsesAbiNeutralTrampoline()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var updateHook = File.ReadAllText(Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -429,6 +438,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleDllCopiesOffsetsConfigNextToDll()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var project = File.ReadAllText(Path.Combine(
             RepositoryRoot(),
             "tools",
@@ -444,6 +454,7 @@ public sealed class AgentProjectLayoutTests
     [Fact]
     public void LuaConsoleReportsUpdateHookDiagnostics()
     {
+        if (!LuaConsoleLayoutAvailable) return;
         var repoRoot = RepositoryRoot();
         var hookHeader = File.ReadAllText(Path.Combine(
             repoRoot,
@@ -476,6 +487,12 @@ public sealed class AgentProjectLayoutTests
         Assert.Contains("luaState", handlers, StringComparison.Ordinal);
         Assert.Contains("hookGameFrame", handlers, StringComparison.Ordinal);
     }
+
+    // The Ra3LuaConsole tooling lives in a separate solution and is intentionally excluded
+    // from the public projection (scripts/migrate-allowlist.txt). These layout invariants
+    // only apply to the private repository; no-op when the tool tree is absent.
+    private static bool LuaConsoleLayoutAvailable =>
+        Directory.Exists(Path.Combine(RepositoryRoot(), "tools", "Ra3LuaConsole"));
 
     private static string RepositoryRoot()
     {

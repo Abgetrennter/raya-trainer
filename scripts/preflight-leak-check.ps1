@@ -173,29 +173,44 @@ function Test-Binary {
     return $violations
 }
 
-# ─── Layer 3: Namespace scan (reflection-based) ─────────────────────────
+# ─── Layer 3: Namespace scan (PE metadata based) ────────────────────────
 function Test-Namespace {
     $violations = @()
     $asmPaths = Get-ChildItem -Recurse -File -LiteralPath $TargetDir -Filter 'RayaTrainer.*.dll' -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' -or $_.FullName -match '\\Release\\' }
-    if (-not $asmPaths) {
-        $asmPaths = Get-ChildItem -Recurse -File -LiteralPath $TargetDir -Filter 'RayaTrainer.*.dll' -ErrorAction SilentlyContinue
-    }
+        Where-Object { $_.FullName -notmatch '\\(\.git|\.worktrees)\\' }
     if (-not $asmPaths) {
         $violations += 'no RayaTrainer.*.dll found for namespace check - build first'
         return $violations
     }
     foreach ($asm in $asmPaths) {
-        Write-Host "  reflecting $($asm.Name)"
-        $loaded = [System.Reflection.Assembly]::LoadFrom($asm.FullName)
-        $types = $loaded.GetTypes()
-        foreach ($t in $types) {
-            if ($t.Namespace -and $t.Namespace.StartsWith('Ra3Trainer.', [StringComparison]::Ordinal)) {
-                $violations += "$($asm.Name): type '$($t.FullName)' in legacy namespace '$($t.Namespace)'"
+        $stream = $null
+        $peReader = $null
+        try {
+            $stream = [System.IO.File]::OpenRead($asm.FullName)
+            $peReader = [System.Reflection.PortableExecutable.PEReader]::new($stream)
+            if (-not $peReader.HasMetadata) {
+                Write-Host "  skipping native PE $($asm.Name)"
+                continue
             }
+
+            Write-Host "  scanning metadata $($asm.Name)"
+            $metadataReader = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($peReader)
+            foreach ($handle in $metadataReader.TypeDefinitions) {
+                $definition = $metadataReader.GetTypeDefinition($handle)
+                $namespace = $metadataReader.GetString($definition.Namespace)
+                if ($namespace -and $namespace.StartsWith('Ra3Trainer.', [StringComparison]::Ordinal)) {
+                    $name = $metadataReader.GetString($definition.Name)
+                    $violations += "$($asm.Name): type '$namespace.$name' in legacy namespace '$namespace'"
+                }
+            }
+        } catch {
+            $violations += "$($asm.Name): namespace metadata scan failed: $($_.Exception.Message)"
+        } finally {
+            if ($peReader) { $peReader.Dispose() }
+            if ($stream) { $stream.Dispose() }
         }
     }
-    return $violations
+    return @($violations | Sort-Object -Unique)
 }
 
 # ─── Layer 4: Dependency / legal file scan ──────────────────────────────

@@ -1,5 +1,6 @@
 using RayaTrainer.Core.Manifest;
 using RayaTrainer.Core.Runtime;
+using RayaTrainer.Core.Agent;
 
 namespace RayaTrainer.Core.Features;
 
@@ -40,6 +41,20 @@ public interface ITrainerFeatureController
     void WriteTargetHealthValue(float targetHealth, float targetMaxHealth = 0f);
 
     uint ReadSelectedUnitCode();
+
+    /// <summary>
+    /// Reads the available OBJECT-type upgrade hashes from the first selected
+    /// unit's modules through the game-thread dispatcher. Returns up to 20
+    /// unique hashes plus the unit type id. Empty when no unit is selected.
+    /// </summary>
+    SelectedUnitUpgradesSnapshot ReadSelectedUnitUpgrades();
+
+    /// <summary>
+    /// Grants an OBJECT-type upgrade to selected units of the same type as the
+    /// first selected unit (ThingTemplate* comparison on GameObject+0x4).
+    /// Returns the dispatch status reported by the game thread.
+    /// </summary>
+    GameApiDispatchStatus GrantObjectUpgradeOnSelectedSameType(uint upgradeHash, TimeSpan? timeout = null);
 
     /// <summary>
     /// Reads the DLL game-thread dispatcher heartbeat counter.
