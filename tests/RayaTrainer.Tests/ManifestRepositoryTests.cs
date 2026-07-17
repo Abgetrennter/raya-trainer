@@ -15,10 +15,10 @@ public sealed class ManifestRepositoryTests
         Assert.Equal(TestAssets.CurrentManifestHookCount, manifest.PatchManifest.Hooks.Count);
         Assert.Empty(manifest.ActionDispatch);
 
-        var money = Assert.Single(manifest.Features, feature => feature.RawName == "Moeny");
+        var money = Assert.Single(manifest.Features, feature => feature.RawName == "Money");
         Assert.Equal("Money", money.DisplayName);
         Assert.Equal("Ctrl+F1", money.Hotkey);
-        Assert.Equal(new[] { "Moeny" }, money.EnableFlags);
+        Assert.Equal(new[] { "Money" }, money.EnableFlags);
 
         var destroy = Assert.Single(manifest.Features, feature => feature.RawName == "Destory Select Unit");
         Assert.Equal("Destroy Select Unit", destroy.DisplayName);

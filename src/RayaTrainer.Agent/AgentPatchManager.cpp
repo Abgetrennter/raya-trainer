@@ -13,6 +13,7 @@
 
 #include "AgentPatchManager.h"
 #include "AgentFeatureState.h"
+#include "AgentGameApi.h"
 #include "AgentGameThreadDispatcher.h"
 #include "AgentNativeHooks.h"
 #include "AgentSignatureScanner.h"
@@ -21,12 +22,17 @@ namespace RayaTrainer::agent
 {
 namespace
 {
+// Test seam for IP conflict injection. 0=normal, 1=force-pass, 2=force-conflict.
+// Declared early because SuspendedThreadSet::IsIpOutsideRanges references it.
+int g_ipConflictTestSeamMode = 0;
+
 struct InstalledPatch
 {
     uint32_t Address;
     std::vector<unsigned char> OriginalBytes;
     std::vector<unsigned char> PatchBytes;
     void* Trampoline;
+    uint32_t NativeHookId = 0;
 };
 
 struct ParsedWrite
@@ -44,6 +50,7 @@ struct ParsedHook
 };
 
 std::vector<InstalledPatch> g_installedPatches;
+std::vector<InstalledPatchSet> g_installedPatchSets;
 constexpr size_t kTrampolineCapacity = 512;
 
 struct CodeRange
@@ -123,7 +130,7 @@ public:
                     return false;
                 }
 
-                threads_.push_back({ thread, context.Eip });
+                threads_.push_back({ thread, context.Eip, entry.th32ThreadID });
             }
 
             hasEntry = Thread32Next(snapshot, &entry);
@@ -149,11 +156,67 @@ public:
         return true;
     }
 
+    // Returns true if every suspended thread's IP is at least kIpGuardPadding bytes
+    // away from all given ranges (range plus guard zone on each side).
+    // Used for CodeFlow entries: the executing thread must not be within ±16 bytes of
+    // the patched address to avoid tearing a live instruction.
+    static constexpr uint32_t kIpGuardPadding = 16;
+
+    bool IsIpOutsideRanges(const std::vector<CodeRange>& ranges) const
+    {
+        // Test seam override
+        if (g_ipConflictTestSeamMode == 1) return true;
+        if (g_ipConflictTestSeamMode == 2) return false;
+
+        for (const auto& thread : threads_)
+        {
+            for (const auto& range : ranges)
+            {
+                const uint32_t guardStart = range.Address >= kIpGuardPadding
+                    ? range.Address - kIpGuardPadding
+                    : 0;
+                if (thread.InstructionPointer >= guardStart &&
+                    thread.InstructionPointer < range.Address + range.Length + kIpGuardPadding)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // When IsIpOutsideRanges returns false, use this to retrieve the first conflicting
+    // thread's details for diagnostic capture.
+    bool GetFirstIpConflict(
+        const std::vector<CodeRange>& ranges,
+        uint32_t& outThreadId,
+        uint32_t& outIp) const
+    {
+        for (const auto& thread : threads_)
+        {
+            for (const auto& range : ranges)
+            {
+                const uint32_t guardStart = range.Address >= kIpGuardPadding
+                    ? range.Address - kIpGuardPadding
+                    : 0;
+                if (thread.InstructionPointer >= guardStart &&
+                    thread.InstructionPointer < range.Address + range.Length + kIpGuardPadding)
+                {
+                    outThreadId = thread.ThreadId;
+                    outIp = thread.InstructionPointer;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 private:
     struct SuspendedThread
     {
         HANDLE Handle;
         uint32_t InstructionPointer;
+        DWORD ThreadId;
     };
 
     void ResumeAll()
@@ -177,6 +240,37 @@ PatchMismatchCapture g_lastMismatch;
 constexpr uint32_t kMismatchDumpBefore = 16;
 constexpr uint32_t kMismatchDumpAfter = 96;
 
+// IP conflict diagnostic: populated when a CodeFlow entry transaction is aborted because
+// a suspended thread's instruction pointer falls within the ±16 byte guard zone of the
+// target address. The host queries this via TryGetLastIpConflict to emit
+// agent.patchset_codeflow_ip_conflict diagnostics.
+PatchSetIpConflictCapture g_lastIpConflict;
+
+// Monotonic sequence counter for diagnostic recency ordering. Incremented before every
+// mismatch or IP conflict capture so WriteMismatchDiagnosticsResponse can select the
+// most recent diagnostic regardless of source.
+uint32_t g_nextDiagnosticSequence = 1;
+
+void ResetLastIpConflict()
+{
+    g_lastIpConflict = PatchSetIpConflictCapture{};
+}
+
+void CapturePatchSetIpConflict(
+    uint32_t patchSetId,
+    uint32_t entryAddress,
+    uint32_t conflictingThreadId,
+    uint32_t observedIp,
+    bool isRestore)
+{
+    g_lastIpConflict.PatchSetId = patchSetId;
+    g_lastIpConflict.ConflictingEntryAddress = entryAddress;
+    g_lastIpConflict.ConflictingThreadId = conflictingThreadId;
+    g_lastIpConflict.ObservedIp = observedIp;
+    g_lastIpConflict.IsRestore = isRestore;
+    g_lastIpConflict.Sequence = g_nextDiagnosticSequence++;
+}
+
 // Forward declaration: CaptureMismatch needs to read a dump window around the hook site,
 // but ReadProcessLocalMemory is defined further down in this anonymous namespace.
 bool ReadProcessLocalMemory(uint32_t address, unsigned char* bytes, size_t length);
@@ -192,6 +286,9 @@ void CaptureMismatch(const ParsedHook& hook, const std::vector<unsigned char>& a
     capture.HookAddress = hook.Address;
     capture.Expected = hook.OriginalBytes;
     capture.Actual = actual;
+    capture.OriginKind = 0;         // Hook origin
+    capture.SubjectId = hook.NativeHookId;
+    capture.Sequence = g_nextDiagnosticSequence++;
 
     // Read a dump window around the hook site. Start before the hook address when possible
     // (the leading bytes are context for the failing instruction), then extend past the
@@ -233,6 +330,18 @@ public:
 
         std::memcpy(&value, data_ + offset_, sizeof(uint32_t));
         offset_ += sizeof(uint32_t);
+        return true;
+    }
+
+    bool ReadUInt8(uint8_t& value)
+    {
+        if (remaining() < sizeof(uint8_t))
+        {
+            return false;
+        }
+
+        value = data_[offset_];
+        offset_ += sizeof(uint8_t);
         return true;
     }
 
@@ -659,15 +768,149 @@ bool InstallHook(const ParsedHook& hook)
         hook.Address,
         std::move(current),
         patchBytes,
-        trampoline });
+        trampoline,
+        hook.NativeHookId });
     return true;
 }
 }
 
 bool RestoreInstalledPatches()
 {
+    // 1. Restore enabled patch sets first (if any)
+    // 1. Restore enabled patch sets first, applying CodeFlow rules
+    bool allPatchSetsRestored = true;
+    for (auto& ps : g_installedPatchSets)
+    {
+        if (!ps.IsEnabled)
+        {
+            continue;
+        }
+
+        // For restore, target = DisableBytes, expected pre = EnableBytes
+        // Partition by Kind for CodeFlow-first ordering
+        std::vector<const PatchSetEntry*> cfEntries;
+        std::vector<const PatchSetEntry*> dataEntries;
+        cfEntries.reserve(ps.Definition.Entries.size());
+        dataEntries.reserve(ps.Definition.Entries.size());
+
+        for (const auto& entry : ps.Definition.Entries)
+        {
+            if (entry.Kind == PatchSetEntryKind::CodeFlow)
+            {
+                cfEntries.push_back(&entry);
+            }
+            else
+            {
+                dataEntries.push_back(&entry);
+            }
+        }
+
+        // Build full range list for initial coarse is-outside check
+        std::vector<CodeRange> allPsRanges;
+        allPsRanges.reserve(ps.Definition.Entries.size());
+        for (const auto* e : cfEntries)
+        {
+            allPsRanges.push_back(
+                { e->Address, static_cast<uint32_t>(e->DisableBytes.size()) });
+        }
+        for (const auto* e : dataEntries)
+        {
+            allPsRanges.push_back(
+                { e->Address, static_cast<uint32_t>(e->DisableBytes.size()) });
+        }
+
+        bool psRestored = false;
+        for (uint32_t attempt = 0; attempt < 100 && !psRestored; ++attempt)
+        {
+            {
+                SuspendedThreadSet threads;
+                if (!threads.SuspendAllOtherThreads())
+                {
+                    continue;
+                }
+                if (!threads.IsOutside(allPsRanges))
+                {
+                    continue;
+                }
+
+                // CodeFlow entries first, each with IP guard
+                bool cfOk = true;
+                for (const auto* entry : cfEntries)
+                {
+                    CodeRange range{ entry->Address,
+                        static_cast<uint32_t>(entry->DisableBytes.size()) };
+                    const std::vector<CodeRange> singleRange = { range };
+
+                    if (!threads.IsIpOutsideRanges(singleRange))
+                    {
+                        uint32_t conflictThreadId = 0;
+                        uint32_t conflictIp = 0;
+                        threads.GetFirstIpConflict(singleRange,
+                            conflictThreadId, conflictIp);
+                        CapturePatchSetIpConflict(
+                            ps.Definition.Id,
+                            entry->Address,
+                            conflictThreadId,
+                            conflictIp,
+                            /*isRestore=*/true);
+                        cfOk = false;
+                        break;
+                    }
+                }
+
+                if (!cfOk)
+                {
+                    // IP conflict on a CodeFlow entry — mark partial failure,
+                    // still try remaining entries.
+                    continue;
+                }
+
+                psRestored = true;
+                // Write CodeFlow entries first (IP already verified above)
+                for (const auto* entry : cfEntries)
+                {
+                    if (!WriteProcessLocalMemory(
+                            entry->Address,
+                            entry->DisableBytes.data(),
+                            entry->DisableBytes.size()))
+                    {
+                        psRestored = false;
+                    }
+                }
+                // Then Data entries
+                for (const auto* entry : dataEntries)
+                {
+                    if (!WriteProcessLocalMemory(
+                            entry->Address,
+                            entry->DisableBytes.data(),
+                            entry->DisableBytes.size()))
+                    {
+                        psRestored = false;
+                    }
+                }
+            }
+
+            if (!psRestored)
+            {
+                Sleep(1);
+            }
+        }
+
+        ps.IsEnabled = false;
+        if (!psRestored)
+        {
+            allPatchSetsRestored = false;
+        }
+    }
+
+    // 2. Restore hooks (existing logic)
     if (g_installedPatches.empty())
     {
+        if (!allPatchSetsRestored)
+        {
+            return false;
+        }
+        g_installedPatchSets.clear();
         AgentGameThreadDispatcher::Reset();
         ResetNativeHookRuntime();
         return true;
@@ -684,8 +927,8 @@ bool RestoreInstalledPatches()
               static_cast<uint32_t>(kTrampolineCapacity) });
     }
 
-    bool restored = false;
-    for (uint32_t attempt = 0; attempt < 100 && !restored; ++attempt)
+    bool hooksRestored = false;
+    for (uint32_t attempt = 0; attempt < 100 && !hooksRestored; ++attempt)
     {
         {
             SuspendedThreadSet threads;
@@ -695,7 +938,7 @@ bool RestoreInstalledPatches()
             }
             else if (threads.IsOutside(guardedRanges))
             {
-                restored = true;
+                hooksRestored = true;
                 for (auto index = g_installedPatches.rbegin();
                      index != g_installedPatches.rend();
                      ++index)
@@ -705,7 +948,7 @@ bool RestoreInstalledPatches()
                             index->OriginalBytes.data(),
                             index->OriginalBytes.size()))
                     {
-                        restored = false;
+                        hooksRestored = false;
                         for (const auto& patch : g_installedPatches)
                         {
                             WriteProcessLocalMemory(
@@ -719,13 +962,13 @@ bool RestoreInstalledPatches()
             }
         }
 
-        if (!restored)
+        if (!hooksRestored)
         {
             Sleep(1);
         }
     }
 
-    if (!restored)
+    if (!hooksRestored)
     {
         return false;
     }
@@ -738,6 +981,13 @@ bool RestoreInstalledPatches()
         }
     }
     g_installedPatches.clear();
+
+    if (!allPatchSetsRestored)
+    {
+        return false;
+    }
+
+    g_installedPatchSets.clear();
     AgentGameThreadDispatcher::Reset();
     ResetNativeHookRuntime();
     return true;
@@ -761,32 +1011,127 @@ bool TryGetLastMismatch(PatchMismatchCapture& outCapture)
     return true;
 }
 
+bool TryGetLastIpConflict(PatchSetIpConflictCapture& outCapture)
+{
+    // A pending IP conflict is signalled by a non-zero PatchSetId; ResetLastIpConflict and
+    // fresh PatchSetIpConflictCapture{} both zero the struct.
+    if (g_lastIpConflict.PatchSetId == 0)
+    {
+        return false;
+    }
+
+    outCapture = g_lastIpConflict;
+    return true;
+}
+
+void SetIpConflictTestSeamMode(int mode)
+{
+    g_ipConflictTestSeamMode = mode;
+}
+
+bool CheckDuplicatePatchSetAddress(
+    const std::vector<PatchSetEntry>& entries, uint32_t address)
+{
+    for (const auto& e : entries)
+    {
+        if (e.Address == address)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 AgentStatusCode InstallPatchesFromPayload(const unsigned char* data, uint32_t length)
 {
+    // v11: refuse if native catalog not yet delivered. InstallPatches must never run
+    // with a zeroed catalog — hook handler code would read zero RVAs and silently no-op.
+    if (!HasNativeCatalog())
+    {
+        return AgentStatusCode::InvalidCommand;
+    }
+
     if (data == nullptr && length != 0)
     {
         return AgentStatusCode::InvalidCommand;
     }
 
     PayloadReader reader(data, length);
-    uint32_t writeCount = 0;
-    if (!reader.ReadUInt32(writeCount) || writeCount > 1024)
+
+    // PatchSet section (v11) — replaces the old v10 writes section.
+    uint32_t patchSetCount = 0;
+    if (!reader.ReadUInt32(patchSetCount) || patchSetCount > 32)
     {
         return AgentStatusCode::InvalidCommand;
     }
 
-    std::vector<ParsedWrite> writes;
-    writes.reserve(writeCount);
-    for (uint32_t index = 0; index < writeCount; index++)
+    std::vector<InstalledPatchSet> newPatchSets;
+    newPatchSets.reserve(patchSetCount);
+    for (uint32_t psIndex = 0; psIndex < patchSetCount; ++psIndex)
     {
-        ParsedWrite write = {};
-        if (!reader.ReadUInt32(write.Address) ||
-            !reader.ReadBytes(write.Bytes) ||
-            write.Bytes.empty())
+        InstalledPatchSet ps = {};
+        if (!reader.ReadUInt32(ps.Definition.Id))
         {
             return AgentStatusCode::InvalidCommand;
         }
-        writes.push_back(std::move(write));
+
+        uint32_t entryCount = 0;
+        if (!reader.ReadUInt32(entryCount) || entryCount > 64)
+        {
+            return AgentStatusCode::InvalidCommand;
+        }
+
+        ps.Definition.Entries.reserve(entryCount);
+        for (uint32_t eIndex = 0; eIndex < entryCount; ++eIndex)
+        {
+            PatchSetEntry entry = {};
+
+            if (!reader.ReadUInt32(entry.Address) || entry.Address == 0)
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            // Check for duplicate address within this patch set
+            if (CheckDuplicatePatchSetAddress(ps.Definition.Entries, entry.Address))
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            uint8_t kindVal = 0;
+            if (!reader.ReadUInt8(kindVal))
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+            entry.Kind = static_cast<PatchSetEntryKind>(kindVal);
+            if (entry.Kind != PatchSetEntryKind::Data &&
+                entry.Kind != PatchSetEntryKind::CodeFlow &&
+                entry.Kind != PatchSetEntryKind::DerivedStateReset)
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            if (!reader.ReadBytes(entry.EnableBytes) ||
+                entry.EnableBytes.empty() || entry.EnableBytes.size() > 16)
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            if (!reader.ReadBytes(entry.DisableBytes) ||
+                entry.DisableBytes.empty() || entry.DisableBytes.size() > 16)
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            // EnableBytes and DisableBytes must be same length for each entry
+            if (entry.EnableBytes.size() != entry.DisableBytes.size())
+            {
+                return AgentStatusCode::InvalidCommand;
+            }
+
+            ps.Definition.Entries.push_back(std::move(entry));
+        }
+
+        newPatchSets.push_back(std::move(ps));
     }
 
     uint32_t hookCount = 0;
@@ -815,59 +1160,53 @@ AgentStatusCode InstallPatchesFromPayload(const unsigned char* data, uint32_t le
         return AgentStatusCode::InvalidCommand;
     }
 
+    // Pre-verify all patch set entries: current bytes must equal DisableBytes
+    ResetLastMismatch();
+    for (const auto& ps : newPatchSets)
+    {
+        for (const auto& entry : ps.Definition.Entries)
+        {
+            if (entry.Kind == PatchSetEntryKind::DerivedStateReset)
+            {
+                continue;
+            }
+
+            std::vector<unsigned char> current(entry.DisableBytes.size());
+            if (!ReadProcessLocalMemory(entry.Address, current.data(), current.size()) ||
+                current != entry.DisableBytes)
+            {
+                // Capture mismatch
+                PatchMismatchCapture capture;
+                capture.HookAddress = entry.Address;
+                capture.Expected = entry.DisableBytes;
+                capture.Actual = current;
+                capture.OriginKind = 1;         // RuntimePatchSet origin
+                capture.SubjectId = ps.Definition.Id;
+                capture.Sequence = g_nextDiagnosticSequence++;
+                const uint32_t dumpStart =
+                    entry.Address >= 16 ? entry.Address - 16 : entry.Address;
+                const uint32_t dumpBefore = entry.Address - dumpStart;
+                const uint32_t dumpLength = dumpBefore + std::max<uint32_t>(
+                    static_cast<uint32_t>(entry.DisableBytes.size()), 96u);
+                capture.Dump.resize(dumpLength);
+                if (!ReadProcessLocalMemory(dumpStart, capture.Dump.data(), dumpLength))
+                {
+                    capture.Dump.clear();
+                }
+                g_lastMismatch = std::move(capture);
+                return AgentStatusCode::PatchMismatch;
+            }
+        }
+    }
+
     if (!RestoreInstalledPatches())
     {
         return AgentStatusCode::InternalError;
     }
     ResetLastMismatch();
 
-    if (!writes.empty())
-    {
-        std::vector<CodeRange> writeRanges;
-        writeRanges.reserve(writes.size());
-        for (const auto& write : writes)
-        {
-            writeRanges.push_back(
-                { write.Address, static_cast<uint32_t>(write.Bytes.size()) });
-        }
-
-        bool written = false;
-        for (uint32_t attempt = 0; attempt < 100 && !written; ++attempt)
-        {
-            {
-                SuspendedThreadSet threads;
-                if (!threads.SuspendAllOtherThreads())
-                {
-                    // Retry transient thread-snapshot races.
-                }
-                else if (threads.IsOutside(writeRanges))
-                {
-                    written = true;
-                    for (const auto& write : writes)
-                    {
-                        if (!WriteProcessLocalMemory(
-                                write.Address,
-                                write.Bytes.data(),
-                                write.Bytes.size()))
-                        {
-                            written = false;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!written)
-            {
-                Sleep(1);
-            }
-        }
-
-        if (!written)
-        {
-            return AgentStatusCode::InternalError;
-        }
-    }
+    // Register patch sets (not enabled — IsEnabled = false)
+    g_installedPatchSets = std::move(newPatchSets);
 
     g_installedPatches.reserve(hooks.size());
     for (const auto& hook : hooks)
@@ -886,5 +1225,338 @@ AgentStatusCode InstallPatchesFromPayload(const unsigned char* data, uint32_t le
     }
 
     return AgentStatusCode::Ok;
+}
+
+// ── PatchSet helpers ────────────────────────────────────────────────────────────
+
+InstalledPatchSet* FindInstalledPatchSet(uint32_t id)
+{
+    for (auto& ps : g_installedPatchSets)
+    {
+        if (ps.Definition.Id == id)
+        {
+            return &ps;
+        }
+    }
+    return nullptr;
+}
+
+const PatchSetEntry* FindPatchSetEntry(uint32_t patchSetId, uint32_t address)
+{
+    const auto* ps = FindInstalledPatchSet(patchSetId);
+    if (ps == nullptr)
+    {
+        return nullptr;
+    }
+
+    for (const auto& entry : ps->Definition.Entries)
+    {
+        if (entry.Address == address)
+        {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+bool IsHookInstalled(uint32_t nativeHookId)
+{
+    for (const auto& patch : g_installedPatches)
+    {
+        if (patch.NativeHookId == nativeHookId)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsPatchSetEnabled(uint32_t patchSetId)
+{
+    const auto* ps = FindInstalledPatchSet(patchSetId);
+    return ps != nullptr && ps->IsEnabled;
+}
+
+AgentStatusCode SetRuntimePatchSetFromPayload(const unsigned char* data, uint32_t length)
+{
+    if (data == nullptr || length != 8)
+    {
+        return AgentStatusCode::InvalidCommand;
+    }
+
+    uint32_t patchSetId = 0;
+    uint32_t enableFlag = 0;
+    std::memcpy(&patchSetId, data, sizeof(patchSetId));
+    std::memcpy(&enableFlag, data + sizeof(patchSetId), sizeof(enableFlag));
+
+    auto* installed = FindInstalledPatchSet(patchSetId);
+    if (installed == nullptr)
+    {
+        return AgentStatusCode::InvalidCommand;
+    }
+
+    const bool targetEnabled = (enableFlag != 0);
+
+    // B1 Hook 41 dependency gate: PatchSet 1 (FrameRateUnlock) requires Hook 41
+    // Also prevents accidentally enabling PatchSet that isn't gated.
+    if (patchSetId == static_cast<uint32_t>(NativeRuntimePatchSetId::FrameRateUnlock) &&
+        targetEnabled)
+    {
+        if (!IsHookInstalled(41))
+        {
+            return AgentStatusCode::InvalidCommand;
+        }
+    }
+
+    // Idempotency check
+    if (installed->IsEnabled == targetEnabled)
+    {
+        return AgentStatusCode::Ok;
+    }
+
+    // ── Phase A: Partition entries by Kind ──────────────────────────────────────
+    struct WritePlan
+    {
+        uint32_t Address;
+        const std::vector<unsigned char>* TargetBytes;
+        const std::vector<unsigned char>* ExpectedPreBytes;
+        bool SkipExpectedPreVerification;
+    };
+
+    auto makePlan = [&](const PatchSetEntry& entry) -> WritePlan {
+        WritePlan p;
+        p.Address = entry.Address;
+        p.SkipExpectedPreVerification =
+            entry.Kind == PatchSetEntryKind::DerivedStateReset;
+        if (targetEnabled)
+        {
+            p.TargetBytes = &entry.EnableBytes;
+            p.ExpectedPreBytes = &entry.DisableBytes;
+        }
+        else
+        {
+            p.TargetBytes = &entry.DisableBytes;
+            p.ExpectedPreBytes = &entry.EnableBytes;
+        }
+        return p;
+    };
+
+    std::vector<WritePlan> cfWrites;
+    std::vector<WritePlan> dataWrites;
+    for (const auto& entry : installed->Definition.Entries)
+    {
+        auto plan = makePlan(entry);
+        if (entry.Kind == PatchSetEntryKind::CodeFlow)
+        {
+            cfWrites.push_back(std::move(plan));
+        }
+        else
+        {
+            dataWrites.push_back(std::move(plan));
+        }
+    }
+
+    // Build combined ranges for initial coarse thread-safety check
+    std::vector<CodeRange> allRanges;
+    allRanges.reserve(cfWrites.size() + dataWrites.size());
+    for (const auto& p : cfWrites)
+    {
+        allRanges.push_back({ p.Address, static_cast<uint32_t>(p.TargetBytes->size()) });
+    }
+    for (const auto& p : dataWrites)
+    {
+        allRanges.push_back({ p.Address, static_cast<uint32_t>(p.TargetBytes->size()) });
+    }
+
+    // Transaction: suspend → pre-verify → CodeFlow-first (IP-guarded) → Data
+    bool committed = false;
+    for (uint32_t attempt = 0; attempt < 100 && !committed; ++attempt)
+    {
+        {
+            SuspendedThreadSet threads;
+            if (!threads.SuspendAllOtherThreads())
+            {
+                continue;
+            }
+
+            // Initial coarse-range check: no thread IP inside any target range
+            if (!threads.IsOutside(allRanges))
+            {
+                continue;
+            }
+
+            // ── Phase C: Pre-write verification (all entries, both kinds) ──────
+            ResetLastIpConflict();
+            bool verifyOk = true;
+
+            auto verifyPlan = [&](const WritePlan& p) {
+                std::vector<unsigned char> current(p.ExpectedPreBytes->size());
+                const bool readOk = ReadProcessLocalMemory(
+                    p.Address, current.data(), current.size());
+                if (!readOk ||
+                    (!p.SkipExpectedPreVerification && current != *p.ExpectedPreBytes))
+                {
+                    PatchMismatchCapture capture;
+                    capture.HookAddress = p.Address;
+                    capture.Expected = *p.ExpectedPreBytes;
+                    capture.Actual = current;
+                    capture.OriginKind = 1;         // RuntimePatchSet origin
+                    capture.SubjectId = installed->Definition.Id;
+                    capture.Sequence = g_nextDiagnosticSequence++;
+                    const uint32_t dumpStart =
+                        p.Address >= 16 ? p.Address - 16 : p.Address;
+                    const uint32_t dumpBefore = p.Address - dumpStart;
+                    const uint32_t dumpLength = dumpBefore + std::max<uint32_t>(
+                        static_cast<uint32_t>(p.ExpectedPreBytes->size()), 96u);
+                    capture.Dump.resize(dumpLength);
+                    if (!ReadProcessLocalMemory(dumpStart, capture.Dump.data(), dumpLength))
+                    {
+                        capture.Dump.clear();
+                    }
+                    g_lastMismatch = std::move(capture);
+                    verifyOk = false;
+                }
+            };
+
+            for (const auto& p : cfWrites)
+            {
+                verifyPlan(p);
+                if (!verifyOk) break;
+            }
+            if (verifyOk)
+            {
+                for (const auto& p : dataWrites)
+                {
+                    verifyPlan(p);
+                    if (!verifyOk) break;
+                }
+            }
+
+            if (!verifyOk)
+            {
+                // g_lastMismatch already populated; PatchMismatch is terminal
+                return AgentStatusCode::PatchMismatch;
+            }
+
+            // ── Phase D: CodeFlow entries first, each atomic + IP-guarded ──────
+            std::vector<const WritePlan*> writtenCF;
+            writtenCF.reserve(cfWrites.size());
+
+            bool cfOk = true;
+            for (size_t i = 0; i < cfWrites.size(); ++i)
+            {
+                const auto& p = cfWrites[i];
+                const CodeRange range{ p.Address,
+                    static_cast<uint32_t>(p.TargetBytes->size()) };
+                const std::vector<CodeRange> singleRange = { range };
+
+                // IP guard: no thread within ±16 bytes of this CodeFlow entry
+                if (!threads.IsIpOutsideRanges(singleRange))
+                {
+                    uint32_t conflictThreadId = 0;
+                    uint32_t conflictIp = 0;
+                    threads.GetFirstIpConflict(singleRange, conflictThreadId, conflictIp);
+                    CapturePatchSetIpConflict(
+                        installed->Definition.Id,
+                        p.Address,
+                        conflictThreadId,
+                        conflictIp,
+                        /*isRestore=*/false);
+
+                    // Rollback any CodeFlow entries already written before this one
+                    for (const auto* w : writtenCF)
+                    {
+                        WriteProcessLocalMemory(
+                            w->Address,
+                            w->ExpectedPreBytes->data(),
+                            w->ExpectedPreBytes->size());
+                    }
+                    cfOk = false;
+                    break;
+                }
+
+                if (WriteProcessLocalMemory(
+                        p.Address,
+                        p.TargetBytes->data(),
+                        p.TargetBytes->size()))
+                {
+                    writtenCF.push_back(&p);
+                }
+                else
+                {
+                    // Rollback already-written CodeFlow entries
+                    for (const auto* w : writtenCF)
+                    {
+                        WriteProcessLocalMemory(
+                            w->Address,
+                            w->ExpectedPreBytes->data(),
+                            w->ExpectedPreBytes->size());
+                    }
+                    cfOk = false;
+                    break;
+                }
+            }
+
+            if (!cfOk)
+            {
+                // IP conflict already captured via g_lastIpConflict.
+                // Write failure did not modify state (rolled back above).
+                // Using InternalError because a new status code would be wire-breaking;
+                // the host queries TryGetLastIpConflict for the specific diagnostic.
+                break;
+            }
+
+            // ── Phase E: Data entries — batched write ──────────────────────────
+            // On failure, rollback ALL writes (CodeFlow first, then Data).
+            std::vector<const WritePlan*> writtenData;
+            writtenData.reserve(dataWrites.size());
+
+            bool dataOk = true;
+            for (size_t i = 0; i < dataWrites.size(); ++i)
+            {
+                const auto& p = dataWrites[i];
+                if (WriteProcessLocalMemory(
+                        p.Address,
+                        p.TargetBytes->data(),
+                        p.TargetBytes->size()))
+                {
+                    writtenData.push_back(&p);
+                }
+                else
+                {
+                    // Rollback all written entries
+                    for (const auto* w : writtenCF)
+                    {
+                        WriteProcessLocalMemory(
+                            w->Address,
+                            w->ExpectedPreBytes->data(),
+                            w->ExpectedPreBytes->size());
+                    }
+                    for (const auto* w : writtenData)
+                    {
+                        WriteProcessLocalMemory(
+                            w->Address,
+                            w->ExpectedPreBytes->data(),
+                            w->ExpectedPreBytes->size());
+                    }
+                    dataOk = false;
+                    break;
+                }
+            }
+
+            if (dataOk)
+            {
+                committed = true;
+                installed->IsEnabled = targetEnabled;
+            }
+        }
+
+        if (!committed)
+        {
+            Sleep(1);
+        }
+    }
+
+    return committed ? AgentStatusCode::Ok : AgentStatusCode::InternalError;
 }
 }

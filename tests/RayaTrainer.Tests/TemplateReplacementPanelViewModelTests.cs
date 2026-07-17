@@ -199,6 +199,10 @@ public sealed class TemplateReplacementPanelViewModelTests
 
         public void Reset(TrainerFeature feature) => throw new NotImplementedException();
 
-        public bool ReadToggleState(TrainerFeature feature) => false;
+        public bool? ReadToggleState(TrainerFeature feature) => false;
+        public bool? ReadPulseFired(TrainerFeature feature) => null;
+        public bool IsPulseFeature(TrainerFeature feature) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
     }
 }

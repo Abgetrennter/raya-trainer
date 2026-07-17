@@ -12,6 +12,7 @@ public sealed class FeatureItemViewModel : ViewModelBase
     private readonly IFeatureSoundPlayer _soundPlayer;
     private bool? _desiredEnabled;
     private bool? _observedEnabled;
+    private bool? _observedPulseFired;
     private bool _isExecuting;
     private string _status = "未启用";
     // 运行时热重载用此覆盖替换 Feature.Hotkey。null 表示未设置覆盖（回退 Feature.Hotkey）；
@@ -59,14 +60,29 @@ public sealed class FeatureItemViewModel : ViewModelBase
 
     public bool? DesiredEnabled => _desiredEnabled;
     public bool? ObservedEnabled => _observedEnabled;
+    public bool? ObservedPulseFired => _observedPulseFired;
 
     public bool IsFeatureEnabled =>
         IsToggle && _observedEnabled == true;
 
     public bool IsToggle => FeatureDispatchDefaults.IsToggle(Feature);
 
+    public bool IsPulse
+    {
+        get
+        {
+            var controller = _owner.FeatureController;
+            return controller?.IsPulseFeature(Feature) ?? false;
+        }
+    }
+
+    public bool IsPulseTriggered => IsPulse && _observedPulseFired == true;
+
+    public bool IsPulseReady => IsPulse && _observedPulseFired != true;
+
     /// <summary>
     /// ActionText：
+    /// - Pulse features → "触发"
     /// - observed=true → "关闭"（用户可关）
     /// - desired=true, observed=null → "关闭"（待连接，但可取消期望）
     /// - desired=true, observed=false → "关闭"（应用失败但期望在）
@@ -76,6 +92,7 @@ public sealed class FeatureItemViewModel : ViewModelBase
     {
         get
         {
+            if (IsPulse) return "触发";
             if (!IsToggle) return "执行";
             var effective = _observedEnabled ?? _desiredEnabled;
             return effective == true ? "关闭" : "开启";
@@ -148,20 +165,39 @@ public sealed class FeatureItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsFeatureEnabled));
     }
 
-    /// <summary>从 Agent readback 更新 Observed。不反向覆盖 Desired。</summary>
+    /// <summary>从 Agent readback 更新 Observed/Pulse 状态。不反向覆盖 Desired。</summary>
     public void RefreshToggleState()
     {
-        if (!IsToggle) return;
+        // Skip features that are neither toggles nor pulses
+        if (!IsToggle && !IsPulse) return;
+
         var controller = _owner.FeatureController;
         if (controller is null) return;
         try
         {
-            var state = controller.ReadToggleState(Feature);
-            _observedEnabled = state;
-            Status = ResolveStatus();
-            OnPropertyChanged(nameof(ObservedEnabled));
-            OnPropertyChanged(nameof(ActionText));
-            OnPropertyChanged(nameof(IsFeatureEnabled));
+            if (IsPulse)
+            {
+                var state = controller.ReadPulseFired(Feature);
+                _observedPulseFired = state;
+                Status = state switch
+                {
+                    null => "未读取",
+                    true => "已触发",
+                    false => "就绪"
+                };
+                OnPropertyChanged(nameof(ObservedPulseFired));
+                OnPropertyChanged(nameof(IsPulseTriggered));
+                OnPropertyChanged(nameof(IsPulseReady));
+            }
+            else
+            {
+                var state = controller.ReadToggleState(Feature);
+                _observedEnabled = state;
+                Status = ResolveStatus();
+                OnPropertyChanged(nameof(ObservedEnabled));
+                OnPropertyChanged(nameof(ActionText));
+                OnPropertyChanged(nameof(IsFeatureEnabled));
+            }
         }
         catch { }
     }
@@ -368,7 +404,7 @@ public sealed class FeatureItemViewModel : ViewModelBase
     {
         return Feature.RawName switch
         {
-            "Moeny" => "执行一次资金增量写入，金额来自顶部 Money 输入框。",
+            "Money" => "执行一次资金增量写入，金额来自顶部 Money 输入框。",
             "Power" => "把可用电力维持在顶部 Power 输入框指定值，并压低用电量读数。",
             "SC POINT" => "把秘密协议点数维持在顶部 SC Point 输入框指定值。",
             "HAVE ALL SC" => "把秘密协议解锁进度写满，直接开放协议技能树。",

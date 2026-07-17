@@ -270,7 +270,7 @@ public sealed class AgentProtocolTests
                 processId,
                 moduleBase: 0x400000,
                 installedHookCount: 0,
-                nativeRuntimeCapabilities: 7,
+                nativeRuntimeCapabilities: 0x1F,
                 gameThreadTick: 12);
             var responseHeader = new AgentProtocolHeader(
                 AgentProtocol.Magic,
@@ -293,7 +293,7 @@ public sealed class AgentProtocolTests
         Assert.Equal(AgentProtocol.Version, result.AgentVersion);
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(0x400000u, result.ModuleBase);
-        Assert.Equal(7u, result.NativeRuntimeCapabilities);
+        Assert.Equal(0x1Fu, result.NativeRuntimeCapabilities);
         Assert.Equal(12u, result.GameThreadTick);
         await serverTask;
     }
@@ -353,8 +353,10 @@ public sealed class AgentProtocolTests
     {
         var processId = Environment.ProcessId;
         var pipeName = AgentPipeName.ForProcessId(processId);
+        // L5: v11 install payload — PatchSets + Hooks (no more bare Writes).
+        // Use an empty PatchSets list and one Hook for wire-format coverage.
         var request = new AgentInstallPatchesRequest(
-            [new AgentMemoryWrite(0x700200, [0xCC])],
+            [],
             [new AgentPatchHook(0x401000, 0x700200, 6, [0x8B, 0x50, 0x28, 0x8B, 0x42, 0x20])]);
         var expectedPayload = request.Encode();
         using var server = new NamedPipeServerStream(
@@ -398,6 +400,60 @@ public sealed class AgentProtocolTests
 
         Assert.Equal(AgentStatusCode.Ok, result.StatusCode);
         Assert.Equal(1u, result.InstalledHookCount);
+        await serverTask;
+    }
+
+    [Fact]
+    public async Task SetRuntimePatchSetAsyncSends8BytePayloadAndReadsCommandResult()
+    {
+        var processId = Environment.ProcessId;
+        var pipeName = AgentPipeName.ForProcessId(processId);
+        using var server = new NamedPipeServerStream(
+            pipeName,
+            PipeDirection.InOut,
+            maxNumberOfServerInstances: 1,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
+
+        var serverTask = Task.Run(async () =>
+        {
+            await server.WaitForConnectionAsync();
+
+            var requestHeaderBuffer = new byte[AgentProtocol.HeaderSize];
+            await server.ReadExactlyAsync(requestHeaderBuffer);
+            var requestHeader = AgentProtocolHeader.ReadFrom(requestHeaderBuffer);
+
+            Assert.Equal(AgentCommand.SetRuntimePatchSet, requestHeader.Command);
+            Assert.Equal(8u, requestHeader.PayloadLength);
+
+            var payload = new byte[requestHeader.PayloadLength];
+            await server.ReadExactlyAsync(payload);
+
+            // Payload: [patchSetId(4)] [enable(4)]
+            var receivedId = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
+            var receivedEnable = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
+            Assert.Equal(1u, receivedId);           // FrameRateUnlock
+            Assert.Equal(1u, receivedEnable);       // true
+
+            var responsePayload = AgentCommandResultPayload.Encode(AgentStatusCode.Ok, AgentProtocol.Version, installedHookCount: 0);
+            var responseHeader = new AgentProtocolHeader(
+                AgentProtocol.Magic,
+                AgentProtocol.Version,
+                AgentCommand.SetRuntimePatchSet,
+                requestHeader.SequenceId,
+                (uint)responsePayload.Length);
+            var responseHeaderBuffer = new byte[AgentProtocol.HeaderSize];
+            responseHeader.WriteTo(responseHeaderBuffer);
+
+            await server.WriteAsync(responseHeaderBuffer);
+            await server.WriteAsync(responsePayload);
+            await server.FlushAsync();
+        });
+
+        var client = new AgentNamedPipeClient();
+        var result = await client.SetRuntimePatchSetAsync(processId, patchSetId: 1, enable: true, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(AgentStatusCode.Ok, result.StatusCode);
         await serverTask;
     }
 

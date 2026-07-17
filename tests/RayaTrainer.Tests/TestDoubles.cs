@@ -141,7 +141,11 @@ internal sealed class StubFeatureController : ITrainerFeatureController
     public uint ReadGameThreadTick() => 1;
     public int ReadGameMode() => 0;
     public void Reset(TrainerFeature feature) { }
-    public bool ReadToggleState(TrainerFeature feature) => _toggleState;
+    public bool? ReadToggleState(TrainerFeature feature) => _toggleState;
+    public bool? ReadPulseFired(TrainerFeature feature) => null;
+    public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
+    public bool IsPulseFeature(TrainerFeature feature) => false;
 }
 
 /// <summary>
@@ -207,7 +211,11 @@ internal sealed class ResourceWriteFeatureController : ITrainerFeatureController
     public uint ReadGameThreadTick() => throw new NotImplementedException();
     public int ReadGameMode() => throw new NotImplementedException();
     public void Reset(TrainerFeature feature) => throw new NotImplementedException();
-    public bool ReadToggleState(TrainerFeature feature) => false;
+    public bool? ReadToggleState(TrainerFeature feature) => false;
+    public bool? ReadPulseFired(TrainerFeature feature) => null;
+    public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
+    public bool IsPulseFeature(TrainerFeature feature) => false;
 }
 
 /// <summary>
@@ -231,5 +239,16 @@ internal static class ReflectionHelper
         SetPrivateField(sessionManager, "_featureController", controller);
         SetPrivateField(sessionManager, "_arePatchesInstalled", true);
         return sessionManager;
+    }
+}
+
+internal sealed class FakeAgentInjector : IAgentInjector
+{
+    public bool InjectCalled { get; private set; }
+
+    public AgentInjectionResult Inject(int processId, string agentDllPath, TimeSpan timeout)
+    {
+        InjectCalled = true;
+        return new AgentInjectionResult(true, "ok", 0x5000);
     }
 }

@@ -65,7 +65,7 @@ public sealed class ContractConsistencyLintTests
             inline constexpr uint32_t kAgentMagic = 0x41594152u;
             inline constexpr uint16_t kAgentProtocolVersion = 9;
             inline constexpr uint64_t kAgentBuildFingerprint = 0x5241594100090002ull;
-            inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
+            inline constexpr uint32_t kNativeRuntimeCapabilities = 0x0000001Fu;
             }
             """);
 

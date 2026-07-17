@@ -106,17 +106,23 @@
                       </ctrl:KeyBadge.ContextMenu>
                     </ctrl:KeyBadge>
 
-                    <!-- Toggle or Execute -->
+                    <!-- Toggle / Action / Pulse -->
                     <Grid Grid.Column="3" Margin="14,0,0,0" VerticalAlignment="Center">
                       <ctrl:ToggleSwitch IsChecked="{Binding IsFeatureEnabled, Mode=OneWay}"
                                          Command="{Binding Command}" ToolTip="{Binding HelpText}"
                                          Visibility="{Binding IsToggle, Converter={StaticResource BoolVis}}" />
-                      <Button Content="执行" Command="{Binding Command}" ToolTip="{Binding HelpText}"
+                      <!-- Action or Pulse button (hidden when IsToggle) -->
+                      <Button Content="{Binding ActionText}" Command="{Binding Command}" ToolTip="{Binding HelpText}"
                               Style="{DynamicResource SmallButton}" Padding="12,5" FontSize="12">
                         <Button.Visibility>
                           <Binding Path="IsToggle" Converter="{StaticResource InvBoolVis}" />
                         </Button.Visibility>
                       </Button>
+                      <!-- Pulse triggered badge (shown when IsPulseTriggered) -->
+                      <Border Background="{DynamicResource BrushSuccess}" CornerRadius="6"
+                              Padding="10,5" Visibility="{Binding IsPulseTriggered, Converter={StaticResource BoolVis}}">
+                        <TextBlock Text="已触发" FontSize="12" FontWeight="SemiBold" Foreground="White" />
+                      </Border>
                     </Grid>
 
                     <!-- Capability: availability is independent from the current toggle/action state. -->

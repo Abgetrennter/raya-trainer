@@ -81,24 +81,24 @@ public sealed class FeatureToggleViewModel : ViewModelBase
     public IEnumerable<FeatureItemViewModel> AllFeatureItems() =>
         _groups.SelectMany(g => g.Features);
 
-    /// <summary>刷新所有 toggle 功能的开关状态。供 RefreshFeatureStates 委托。</summary>
+    /// <summary>刷新所有 toggle 和 pulse 功能的状态。供 RefreshFeatureStates 委托。</summary>
     public void RefreshToggleStates()
     {
         foreach (var item in AllFeatureItems())
         {
-            if (item.IsToggle)
+            if (item.IsToggle || item.IsPulse)
             {
                 item.RefreshToggleState();
             }
         }
     }
 
-    /// <summary>断开/恢复 patch 时把所有 toggle 功能状态重置为"未启用"，避免显示陈旧的已启用状态。</summary>
+    /// <summary>断开/恢复 patch 时把所有 toggle/pulse 功能状态重置为"未启用"，避免显示陈旧的已启用状态。</summary>
     public void ResetToggleStates()
     {
         foreach (var item in AllFeatureItems())
         {
-            if (item.IsToggle)
+            if (item.IsToggle || item.IsPulse)
             {
                 item.ResetToggleState();
             }
@@ -153,6 +153,6 @@ public sealed class FeatureToggleViewModel : ViewModelBase
     }
 
     private static bool IsResourceValueFeature(TrainerFeature feature) =>
-        feature.RawName is "Moeny" or "Power" or "SC POINT";
+        feature.RawName is "Money" or "Power" or "SC POINT";
 
 }

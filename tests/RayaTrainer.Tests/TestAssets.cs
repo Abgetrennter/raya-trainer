@@ -1,3 +1,4 @@
+using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
 using RayaTrainer.Core.Runtime;
 
@@ -14,5 +15,25 @@ internal static class TestAssets
     public static TrainerManifest LoadManifest()
     {
         return TrainerRuntimeAssets.LoadManifest();
+    }
+
+    public static byte[]? ResolveRuntimePatchSetDisableBytes(
+        uint address,
+        uint byteCount,
+        uint moduleBase = 0x400000,
+        IReadOnlyList<RuntimePatchSetDefinition>? definitions = null)
+    {
+        foreach (var definition in definitions ?? RuntimePatchSetCatalog.All)
+        {
+            foreach (var entry in definition.Entries)
+            {
+                if (address == moduleBase + entry.Rva && byteCount == entry.DisableBytes.Count)
+                {
+                    return entry.DisableBytes.ToArray();
+                }
+            }
+        }
+
+        return null;
     }
 }

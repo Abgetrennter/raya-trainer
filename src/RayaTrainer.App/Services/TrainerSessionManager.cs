@@ -37,6 +37,7 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
     {
         _agentBackendFactory = agentBackendFactory;
         _agentDllPathProvider = agentDllPathProvider;
+        _capabilityPolicy = new TrainerFeatureCapabilityPolicy();
         _diagnosticState.OnChanged = () => DiagnosticsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -106,6 +107,14 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
                 .AttachAsync(target, manifest, _agentDllPathProvider(), TimeSpan.FromSeconds(5))
                 .GetAwaiter()
                 .GetResult());
+
+            // Deliver the per-profile native catalog BETWEEN attach and install, so
+            // InstallPatchesAsync sees a ready catalog and every native hook handler
+            // immediately has the correct profile-specific RVAs.
+            _agentBackend
+                .DeliverNativeCatalogAsync(target, TimeSpan.FromSeconds(30))
+                .GetAwaiter()
+                .GetResult();
         }
         catch (Exception ex)
         {
@@ -116,6 +125,13 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
             _targetProcessId = null;
             _featureController = null;
             _arePatchesInstalled = false;
+
+            if (ex is NativeCatalogDeliveryException)
+            {
+                _diagnosticState.CaptureNativeCatalogDeliveryFailure(ex);
+                throw new InvalidOperationException(ex.Message, ex);
+            }
+
             _diagnosticState.RecordFailure("agent.attach_failed", ex.Message);
             if (ex is AgentCompatibilityException)
             {
@@ -198,12 +214,23 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
         }
         catch (InvalidOperationException ex) when (IsAgentPatchMismatch(ex))
         {
-            var reportPath = WriteAgentMismatchReport(diagnosticsDir);
+            var (reportPath, mismatchKind) = WriteAgentMismatchReport(diagnosticsDir);
             _arePatchesInstalled = false;
             _diagnosticState.SetReportPath(reportPath);
+            var eventCode = mismatchKind switch
+            {
+                MismatchKind.RuntimePatchSet => "agent.patchset_install_mismatch",
+                MismatchKind.PatchSetIpConflict => "agent.patchset_codeflow_ip_conflict",
+                _ => "patch.mismatch"
+            };
             _diagnosticState.RecordFailure(
-                "patch.mismatch",
-                "Agent Patch 安装失败：Hook 原始字节不匹配。",
+                eventCode,
+                mismatchKind switch
+                {
+                    MismatchKind.RuntimePatchSet => "Agent Patch 安装失败：运行时 PatchSet 入口字节不匹配。",
+                    MismatchKind.PatchSetIpConflict => "Agent Patch 安装失败：线程 IP 冲突导致 CodeFlow 入口无法安全 patch。",
+                    _ => "Agent Patch 安装失败：Hook 原始字节不匹配。"
+                },
                 reportPath);
             throw new InvalidOperationException(
                 string.IsNullOrWhiteSpace(reportPath)
@@ -301,12 +328,16 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
             _foregroundWindowProcess.GetForegroundProcessId() == targetProcessId;
     }
 
+    private readonly TrainerFeatureCapabilityPolicy _capabilityPolicy;
+
     public FeatureCapabilitySnapshot GetFeatureCapability(TrainerFeature feature)
     {
         ArgumentNullException.ThrowIfNull(feature);
+
+        // 1. Compute base snapshot using existing evaluator (behavior-preserving).
         var profile = _currentTarget is null ? null : Ra3VersionProfileRegistry.ResolveTargetProfile(_currentTarget);
         var directGameApiReady = _featureController is IAgentFeatureController { SupportsDirectGameApi: true };
-        var snapshot = TrainerFeatureCapabilityEvaluator.Evaluate(
+        var baseSnapshot = TrainerFeatureCapabilityEvaluator.Evaluate(
             feature,
             new TrainerFeatureCapabilityContext(
                 HasTarget: _currentTarget is not null || (_arePatchesInstalled && _featureController is not null),
@@ -316,60 +347,84 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
                 DirectGameApiReady: directGameApiReady,
                 UnavailableReason: _unavailableFeatureReasons.GetValueOrDefault(feature.RawName)));
 
-        // Special-case: unit-upgrade descriptor requires ra3_1.12 profile with fully verified
-        // native layout entries. Downgrade from Ready if conditions are not met.
-        if (feature.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade &&
-            snapshot.State == FeatureCapabilityState.Ready)
+        // 2. Build capability context for policy evaluation.
+        var capContext = BuildCapabilityContext(baseSnapshot);
+
+        // 3. Evaluate policy gates (composite NativeToggle, CapabilityOnly profile,
+        //    transitional P1 special cases).
+        var evaluation = _capabilityPolicy.Evaluate(feature, capContext);
+
+        // 4. Apply evaluation result on top of base snapshot.
+        return ApplyEvaluation(baseSnapshot, evaluation);
+    }
+
+    /// <summary>
+    /// Assembles the <see cref="ITrainerFeatureCapabilityContext"/> from current session state.
+    /// </summary>
+    private ITrainerFeatureCapabilityContext BuildCapabilityContext(FeatureCapabilitySnapshot baseSnapshot)
+    {
+        var profile = _currentTarget is null ? null : Ra3VersionProfileRegistry.ResolveTargetProfile(_currentTarget);
+        return new SessionManagerCapabilityContext
         {
-            if (profile is null || !profile.Id.Equals("ra3_1.12", StringComparison.OrdinalIgnoreCase))
-            {
-                return snapshot with
-                {
-                    State = FeatureCapabilityState.Unavailable,
-                    ReasonCode = "UNIT_UPGRADE_PROFILE_NOT_SUPPORTED",
-                    Reason = "单位升级功能当前仅在 RA3 1.12 完成验证。请使用 1.12 版本游戏。"
-                };
-            }
+            IsAgentConnected = _agentBackend?.IsConnected == true,
+            CurrentProfile = profile,
+            InstalledNativeHookIds = _agentBackend?.InstalledNativeHookIds ?? (IReadOnlyCollection<uint>)Array.Empty<uint>(),
+            RegisteredPatchSetIds = _agentBackend?.PatchSetsRegistered ?? (IReadOnlyCollection<uint>)Array.Empty<uint>(),
+            IsNativeCatalogDelivered = _agentBackend?.IsNativeCatalogDelivered == true,
+            BaseSnapshot = baseSnapshot
+        };
+    }
 
-            if (!IsUnitUpgradeNativeLayoutReady(profile))
-            {
-                return snapshot with
-                {
-                    State = FeatureCapabilityState.Unavailable,
-                    ReasonCode = "UNIT_UPGRADE_NATIVE_LAYOUT_UNAVAILABLE",
-                    Reason = "单位升级所需的引擎布局尚未在当前版本完成验证。"
-                };
-            }
-        }
-
-        return snapshot;
+    /// <summary>
+    /// Merges a <see cref="FeatureCapabilityEvaluation"/> back into the base snapshot,
+    /// preserving the feature identity metadata (FeatureId, DisplayName, GroupName).
+    /// </summary>
+    private static FeatureCapabilitySnapshot ApplyEvaluation(
+        FeatureCapabilitySnapshot baseSnapshot,
+        FeatureCapabilityEvaluation evaluation)
+    {
+        return baseSnapshot with
+        {
+            State = evaluation.State,
+            ReasonCode = evaluation.ReasonCode,
+            Reason = evaluation.Reason ?? baseSnapshot.Reason
+        };
     }
 
     /// <summary>
     /// Checks that the three native-agent catalog entries required for object-level upgrade
-    /// grant are all Verified with a non-zero RVA.
+    /// grant are all Verified with a non-zero RVA. Delegates to the policy class.
     /// </summary>
-    internal static bool IsUnitUpgradeNativeLayoutReady(Ra3VersionProfile profile)
-    {
-        return TryHasVerifiedNonZeroRva(profile, "GameObjectAddUpgrade")
-            && TryHasVerifiedNonZeroRva(profile, "ProductionModulesOffset")
-            && TryHasVerifiedNonZeroRva(profile, "UpgradeTemplateTypeOffset");
+    internal static bool IsUnitUpgradeNativeLayoutReady(Ra3VersionProfile profile) =>
+        TrainerFeatureCapabilityPolicy.IsUnitUpgradeNativeLayoutReady(profile);
 
-        static bool TryHasVerifiedNonZeroRva(Ra3VersionProfile p, string name) =>
-            p.NativeAgentRefs.TryGetValue(name, out var addr)
-            && addr.Status == AddressSupportStatus.Verified
-            && addr.Rva is > 0;
+    /// <summary>
+    /// Default <see cref="ITrainerFeatureCapabilityContext"/> implementation that reads from
+    /// the session manager's current state.
+    /// </summary>
+    private sealed class SessionManagerCapabilityContext : ITrainerFeatureCapabilityContext
+    {
+        public bool IsAgentConnected { get; init; }
+        public Ra3VersionProfile? CurrentProfile { get; init; }
+        public IReadOnlyCollection<uint> InstalledNativeHookIds { get; init; } = Array.Empty<uint>();
+        public IReadOnlyCollection<uint> RegisteredPatchSetIds { get; init; } = Array.Empty<uint>();
+        public bool IsNativeCatalogDelivered { get; init; }
+        public FeatureCapabilitySnapshot BaseSnapshot { get; init; } = null!;
     }
 
     private string CreatePatchInstalledStatus(PatchMismatchReportResult result)
     {
+        var skippedPatchSetCount = _agentBackend?.SkippedPatchSetIds.Count ?? 0;
+        var patchSetNotice = skippedPatchSetCount == 0
+            ? string.Empty
+            : "；当前游戏构建的 60fps 运行时补丁位置不同，已安全禁用“60fps 帧率解锁”，其他功能不受影响";
         if (result.SkippedHooks.Count == 0)
         {
-            return $"DLL Agent Patch 已安装，Hook={result.InstallResult.InstalledHookCount}；{RemoteSymbolSummary}";
+            return $"DLL Agent Patch 已安装，Hook={result.InstallResult.InstalledHookCount}{patchSetNotice}；{RemoteSymbolSummary}";
         }
 
         var disabledCount = _unavailableFeatureReasons.Count;
-        var message = $"Patch 已部分安装；{result.SkippedHooks.Count} 个 hook 因版本未验证或字节不匹配已跳过，{disabledCount} 个相关功能已禁用。";
+        var message = $"Patch 已部分安装；{result.SkippedHooks.Count} 个 hook 因版本未验证或字节不匹配已跳过，{disabledCount} 个相关功能已禁用{patchSetNotice}。";
         return string.IsNullOrWhiteSpace(result.ReportPath)
             ? message
             : $"{message} 诊断日志：{result.ReportPath}";
@@ -560,48 +615,64 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
     }
 
     /// <summary>
-    /// Pulls the last hook mismatch from the DLL and writes a PatchMismatchReport, mirroring
-    /// the external-memory backend's report. Returns the report path, or null if the DLL had
-    /// no diagnostic to report.
+    /// Pulls the last mismatch diagnostic from the DLL (either Hook, RuntimePatchSet, or
+    /// PatchSetIpConflict) and writes a PatchMismatchReport, mirroring the external-memory
+    /// backend's report. Returns (report path, mismatch kind) or (null, Hook) when no
+    /// diagnostic is available.
     /// </summary>
-    private string? WriteAgentMismatchReport(string diagnosticsDir)
+    private (string? Path, MismatchKind Kind) WriteAgentMismatchReport(string diagnosticsDir)
     {
         if (_agentBackend is null || _agentTarget is null)
         {
-            return null;
+            return (null, MismatchKind.Hook);
         }
 
-        AgentMismatchDiagnosticsPayload diagnostics;
-        try
+        // Prefer the diagnostic already fetched by InjectedAgentBackend.InstallPatchesAsync,
+        // which will have the extended kind/subject fields. Fall back to a direct query when
+        // the backend hasn't cached one (backward compat).
+        var diagnostic = _agentBackend.LastMismatchDiagnostic;
+        if (diagnostic is null)
         {
-            diagnostics = _agentBackend
-                .GetMismatchDiagnosticsAsync(TimeSpan.FromSeconds(2))
-                .GetAwaiter()
-                .GetResult();
-        }
-        catch
-        {
-            // The DLL may be in a state where the diagnostics query itself fails; fall back to
-            // the bare status-code message in that case.
-            return null;
+            // Query the agent directly. This populates LastMismatchDiagnostic on success
+            // and returns null if the agent has no pending diagnostic.
+            try
+            {
+                diagnostic = _agentBackend
+                    .GetMismatchDiagnosticsAsync(TimeSpan.FromSeconds(2))
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch
+            {
+                // The DLL may be in a state where the diagnostics query itself fails; fall back to
+                // the bare status-code message in that case.
+                return (null, MismatchKind.Hook);
+            }
+
+            if (diagnostic is null)
+            {
+                return (null, MismatchKind.Hook);
+            }
         }
 
-        if (!diagnostics.HasMismatch)
-        {
-            return null;
-        }
+        var kind = diagnostic.Kind;
+        var absoluteAddress = unchecked((nint)diagnostic.HookAddress);
 
-        // The DLL reports the offending hook address and bytes but not the manifest metadata
-        // (section title / enable flags), since address resolution now lives on the host.
         // Build a synthetic PatchHookPlan so the existing PatchMismatchReportWriter can render
         // the same expected/actual/dump layout it uses for the external backend.
-        var absoluteAddress = unchecked((nint)diagnostics.HookAddress);
+        // For IP conflicts, the payload carries no expected/actual/dump bytes, so use empty arrays.
+        var hasBytes = diagnostic.ExpectedBytes.Length > 0;
         var syntheticHook = new PatchHookPlan(
-            Address: $"0x{diagnostics.HookAddress:X}",
-            PatchLength: Math.Max(5, diagnostics.ExpectedBytes.Length),
-            OriginalBytes: diagnostics.ExpectedBytes)
+            Address: $"0x{diagnostic.HookAddress:X}",
+            PatchLength: Math.Max(5, hasBytes ? diagnostic.ExpectedBytes.Length : 5),
+            OriginalBytes: hasBytes ? diagnostic.ExpectedBytes : [0x90])
         {
-            SectionTitle = "Agent hook (version mismatch)"
+            SectionTitle = kind switch
+            {
+                MismatchKind.RuntimePatchSet => "Agent PatchSet pre-install mismatch",
+                MismatchKind.PatchSetIpConflict => "Agent PatchSet CodeFlow IP conflict",
+                _ => "Agent hook (version mismatch)"
+            }
         };
 
         var skipped = new SkippedPatchHook(
@@ -609,18 +680,32 @@ public sealed class TrainerSessionManager : ITrainerSessionService, ITrainerDiag
             HookIndex: 0,
             HookCount: 0,
             absoluteAddress,
-            diagnostics.ExpectedBytes,
-            diagnostics.ActualBytes,
-            unchecked((nint)diagnostics.DumpStartAddress),
-            diagnostics.DumpBytes,
-            "Patch 点原始字节不匹配；可能原因：该位置已经被 patch 过、游戏版本不一致，或者 MOD 加载时修改了代码段。");
+            hasBytes ? diagnostic.ExpectedBytes : [],
+            hasBytes ? diagnostic.ActualBytes : [],
+            unchecked((nint)diagnostic.HookAddress),
+            hasBytes ? diagnostic.DumpBytes : [],
+            kind switch
+            {
+                MismatchKind.RuntimePatchSet =>
+                    "PatchSet 入口原始字节不匹配；可能原因：该位置已经被 patch 过、游戏版本不一致。",
+                MismatchKind.PatchSetIpConflict =>
+                    "CodeFlow 入口线程 IP 冲突；目标线程在 ±16 字节安全区内执行，无法安全 patch。",
+                _ => "Patch 点原始字节不匹配；可能原因：该位置已经被 patch 过、游戏版本不一致，或者 MOD 加载时修改了代码段。"
+            });
 
         var installResult = new PatchInstallResult(
             HookCount: 0,
             InstalledHookCount: 0,
             new[] { skipped });
 
-        return PatchMismatchReportWriter.Write(diagnosticsDir, _agentTarget, installResult, new PatchMismatchReportOptions());
+        var path = PatchMismatchReportWriter.Write(
+            diagnosticsDir,
+            _agentTarget,
+            installResult,
+            new PatchMismatchReportOptions(),
+            diagnostics: [diagnostic]);
+
+        return (path, kind);
     }
 
     private static string FormatInstallableProfiles()

@@ -119,6 +119,28 @@ public sealed class AgentPatchPayloadBuilderTests
         Assert.Equal(liveBytes, Assert.Single(result.Request.Hooks).OriginalBytes);
     }
 
+    [Fact]
+    public void Signature_compatibility_candidate_omits_fixed_rva_patch_sets()
+    {
+        var target = new TrainerTarget(
+            GameTarget.ProcessName,
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            VersionProfileId: "ra3_1.12",
+            SignatureCompatibilityMode: true);
+        var liveBytes = new byte[] { 0x03, 0x78, 0x04, 0x8B, 0x11 };
+
+        var result = AgentPatchPayloadBuilder.BuildWithDiagnostics(
+            BuildManifest(),
+            target,
+            new AgentStatusPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0, 0x400000, 0),
+            new Dictionary<string, uint> { ["_BackPlayerMoney"] = 0xA65E9E },
+            new Dictionary<string, byte[]> { ["_BackPlayerMoney"] = liveBytes });
+
+        Assert.Empty(result.Request.PatchSets);
+    }
+
     private static TrainerManifest BuildManifest()
     {
         // A single hook matching _BackPlayerMoney from the real embedded manifest at RVA 0x6CFDFE
@@ -128,7 +150,7 @@ public sealed class AgentPatchPayloadBuilderTests
             PatchAssembly: [],
             TrampolineTarget: null,
             ReturnLabel: "_BackPlayerMoney",
-            EnableFlags: ["Moeny"],
+            EnableFlags: ["Money"],
             OriginalAssembly: ["add edi,[eax+04]", "mov edx,[ecx]"]);
         return new TrainerManifest(
             GameTarget.ProcessName,

@@ -22,7 +22,6 @@ public sealed record TrainerFeature(
     IReadOnlyList<string> EnableFlags,
     string? DispatchTarget,
     string? ValueHint,
-    IReadOnlyList<TrainerFeatureBytePatch>? ToggleBytePatches = null,
     IReadOnlyList<string>? SupportedProfileIds = null,
     bool RequiresDirectGameApi = false,
     SelectionExecutionMode? SelectionMode = null)
@@ -31,11 +30,6 @@ public sealed record TrainerFeature(
         SupportedProfileIds is not { Count: > 0 } ||
         SupportedProfileIds.Contains(profileId, StringComparer.OrdinalIgnoreCase);
 }
-
-public sealed record TrainerFeatureBytePatch(
-    string Address,
-    byte[] EnabledBytes,
-    byte[] DisabledBytes);
 
 public sealed record PatchManifest(IReadOnlyList<PatchHook> Hooks);
 

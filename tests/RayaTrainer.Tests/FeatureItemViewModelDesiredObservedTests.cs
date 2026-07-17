@@ -110,7 +110,11 @@ public sealed class FeatureItemViewModelDesiredObservedTests
         public int SetToggleCalls;
         public bool ToggleState = true;
         public void SetToggle(TrainerFeature f, bool e) { SetToggleCalls++; ToggleState = e; }
-        public bool ReadToggleState(TrainerFeature f) => ToggleState;
+        public bool? ReadToggleState(TrainerFeature f) => ToggleState;
+        public bool? ReadPulseFired(TrainerFeature f) => null;
+        public bool IsPulseFeature(TrainerFeature f) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
         public void WriteTargetHealthValue(float h, float m = 0f) { }
         public void WriteResourceValues(ResourceValueSettings s) { }
         public void WriteReinforcementSettings(ReinforcementSettings s) { }

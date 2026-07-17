@@ -29,8 +29,16 @@ public static class AgentProtocol
     /// <c>UpgradeTemplateTypeOffset</c> (EntryCount 40 -> 41), and the dispatcher Values slot
     /// widening (8 -> 24). An already-injected v9 Agent must not be reused: the catalog count
     /// and command set are incompatible.
+    /// Bumped 10 -> 11 for the L1 wire protocol refactor. Commands 5/6/7 redefined:
+    /// <see cref="AgentCommand.SetToggle"/>→<see cref="AgentCommand.SetFeatureStates"/>,
+    /// <see cref="AgentCommand.TriggerAction"/>→<see cref="AgentCommand.SetRuntimePatchSet"/>,
+    /// <see cref="AgentCommand.WriteResourceValues"/>→<see cref="AgentCommand.GetFeatureStates"/>.
+    /// New capability bits <see cref="NativeRuntimeCapabilities.FeatureStateSnapshot"/> (0x8) and
+    /// <see cref="NativeRuntimeCapabilities.RuntimePatchSets"/> (0x10); required mask becomes 0x1F.
+    /// Removed contract entries for SetToggle, TriggerAction, WriteResourceValues, and
+    /// AgentMemoryWriteRequest. An already-injected v10 Agent must not be reused.
     /// </summary>
-    public const ushort Version = 10;
+    public const ushort Version = 11;
     public const int HeaderSize = 16;
     public const uint MaxPayloadLength = 64 * 1024;
 

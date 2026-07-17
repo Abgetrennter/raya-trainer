@@ -169,6 +169,52 @@ bool WriteCommandResultResponse(HANDLE pipe, const AgentProtocolHeader& request,
         FlushFileBuffers(pipe);
 }
 
+bool WriteFeatureStatesResponse(
+    HANDLE pipe,
+    const AgentProtocolHeader& request,
+    FeatureStateReadback* reads,
+    uint32_t entryCount)
+{
+    // Wire format:
+    //   uint16_t StatusCode       (AgentStatusCode::Ok = 0)
+    //   uint16_t AgentVersion     (kAgentProtocolVersion = 11)
+    //   uint32_t EntryCount
+    //   repeat EntryCount times:
+    //       uint32_t StateId
+    //       uint32_t Value
+    const auto payloadLength = sizeof(uint16_t) * 2 + sizeof(uint32_t) + entryCount * (sizeof(uint32_t) * 2);
+    std::vector<unsigned char> payload(payloadLength);
+    auto* cursor = payload.data();
+
+    const uint16_t statusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+    const uint16_t agentVersion = kAgentProtocolVersion;
+    std::memcpy(cursor, &statusCode, sizeof(statusCode));
+    cursor += sizeof(statusCode);
+    std::memcpy(cursor, &agentVersion, sizeof(agentVersion));
+    cursor += sizeof(agentVersion);
+    std::memcpy(cursor, &entryCount, sizeof(entryCount));
+    cursor += sizeof(entryCount);
+
+    for (uint32_t i = 0; i < entryCount; ++i)
+    {
+        std::memcpy(cursor, &reads[i].StateId, sizeof(reads[i].StateId));
+        cursor += sizeof(reads[i].StateId);
+        std::memcpy(cursor, &reads[i].Value, sizeof(reads[i].Value));
+        cursor += sizeof(reads[i].Value);
+    }
+
+    AgentProtocolHeader response = {};
+    response.Magic = kAgentMagic;
+    response.Version = kAgentProtocolVersion;
+    response.Command = request.Command;
+    response.SequenceId = request.SequenceId;
+    response.PayloadLength = static_cast<uint32_t>(payloadLength);
+
+    return WriteExact(pipe, &response, sizeof(response)) &&
+        WriteExact(pipe, payload.data(), static_cast<DWORD>(payload.size())) &&
+        FlushFileBuffers(pipe);
+}
+
 bool WriteMemoryReadResponse(
     HANDLE pipe,
     const AgentProtocolHeader& request,
@@ -208,17 +254,52 @@ bool WriteMemoryReadResponse(
 
 bool WriteMismatchDiagnosticsResponse(HANDLE pipe, const AgentProtocolHeader& request)
 {
-    PatchMismatchCapture capture;
-    const bool hasMismatch = TryGetLastMismatch(capture);
+    // Collect from both diagnostic sources (Hook/PatchSet mismatch + IP conflict) and
+    // select the most recent one based on the monotonic sequence counter.
+    PatchMismatchCapture mismatch;
+    PatchSetIpConflictCapture ipConflict;
+    const bool hasMismatch = TryGetLastMismatch(mismatch);
+    const bool hasIpConflict = TryGetLastIpConflict(ipConflict);
+
+    // Determine which diagnostic to report on the wire
+    const bool useIpConflict = hasIpConflict &&
+        (!hasMismatch || ipConflict.Sequence >= mismatch.Sequence);
 
     AgentMismatchDiagnosticsPayloadHeader payload = {};
-    payload.StatusCode = static_cast<uint16_t>(
-        hasMismatch ? AgentStatusCode::Ok : AgentStatusCode::InvalidCommand);
-    payload.AgentVersion = kAgentProtocolVersion;
-    payload.HookAddress = capture.HookAddress;
-    payload.ExpectedLength = static_cast<uint32_t>(capture.Expected.size());
-    payload.ActualLength = static_cast<uint32_t>(capture.Actual.size());
-    payload.DumpLength = static_cast<uint32_t>(capture.Dump.size());
+
+    if (useIpConflict)
+    {
+        payload.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        payload.AgentVersion = kAgentProtocolVersion;
+        payload.HookAddress = ipConflict.ConflictingEntryAddress;
+        payload.ExpectedLength = 0;
+        payload.ActualLength = 0;
+        payload.DumpLength = 0;
+        payload.MismatchKind = 2;       // PatchSetIpConflict
+        payload.SubjectId = ipConflict.PatchSetId;
+    }
+    else if (hasMismatch)
+    {
+        payload.StatusCode = static_cast<uint16_t>(AgentStatusCode::Ok);
+        payload.AgentVersion = kAgentProtocolVersion;
+        payload.HookAddress = mismatch.HookAddress;
+        payload.ExpectedLength = static_cast<uint32_t>(mismatch.Expected.size());
+        payload.ActualLength = static_cast<uint32_t>(mismatch.Actual.size());
+        payload.DumpLength = static_cast<uint32_t>(mismatch.Dump.size());
+        payload.MismatchKind = mismatch.OriginKind; // 0=Hook, 1=RuntimePatchSet
+        payload.SubjectId = mismatch.SubjectId;
+    }
+    else
+    {
+        payload.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        payload.AgentVersion = kAgentProtocolVersion;
+        payload.HookAddress = 0;
+        payload.ExpectedLength = 0;
+        payload.ActualLength = 0;
+        payload.DumpLength = 0;
+        payload.MismatchKind = 0;
+        payload.SubjectId = 0;
+    }
 
     AgentProtocolHeader response = {};
     response.Magic = kAgentMagic;
@@ -233,22 +314,26 @@ bool WriteMismatchDiagnosticsResponse(HANDLE pipe, const AgentProtocolHeader& re
         return false;
     }
 
-    if (payload.ExpectedLength > 0 &&
-        !WriteExact(pipe, capture.Expected.data(), payload.ExpectedLength))
+    // Only write variable-length byte regions for mismatch diagnostics (not IP conflicts)
+    if (!useIpConflict && hasMismatch)
     {
-        return false;
-    }
+        if (payload.ExpectedLength > 0 &&
+            !WriteExact(pipe, mismatch.Expected.data(), payload.ExpectedLength))
+        {
+            return false;
+        }
 
-    if (payload.ActualLength > 0 &&
-        !WriteExact(pipe, capture.Actual.data(), payload.ActualLength))
-    {
-        return false;
-    }
+        if (payload.ActualLength > 0 &&
+            !WriteExact(pipe, mismatch.Actual.data(), payload.ActualLength))
+        {
+            return false;
+        }
 
-    if (payload.DumpLength > 0 &&
-        !WriteExact(pipe, capture.Dump.data(), payload.DumpLength))
-    {
-        return false;
+        if (payload.DumpLength > 0 &&
+            !WriteExact(pipe, mismatch.Dump.data(), payload.DumpLength))
+        {
+            return false;
+        }
     }
 
     return FlushFileBuffers(pipe);
@@ -417,17 +502,32 @@ void HandleClient(HANDLE pipe)
         return;
     }
 
-    if (command == AgentCommand::SetToggle ||
-        command == AgentCommand::WriteResourceValues)
+    if (command == AgentCommand::SetFeatureStates)
     {
-        const auto status = ApplyNativeFeatureStatesFromPayload(payload.data(), header.PayloadLength);
+        const auto status = SetFeatureStatesFromPayload(payload.data(), header.PayloadLength);
         WriteCommandResultResponse(pipe, header, status);
         return;
     }
 
-    if (command == AgentCommand::TriggerAction)
+    if (command == AgentCommand::GetFeatureStates)
     {
-        const auto status = ApplyMemoryWritesFromPayload(payload.data(), header.PayloadLength);
+        constexpr uint32_t kExpectedCount = 30;
+        FeatureStateReadback reads[kExpectedCount];
+        uint32_t actualCount = 0;
+        const auto status = ReadAllFeatureStates(reads, kExpectedCount, actualCount);
+        if (status != AgentStatusCode::Ok || actualCount != kExpectedCount)
+        {
+            WriteCommandResultResponse(pipe, header, AgentStatusCode::InternalError);
+            return;
+        }
+        WriteFeatureStatesResponse(pipe, header, reads, actualCount);
+        ClearAllStickyPulseBits();
+        return;
+    }
+
+    if (command == AgentCommand::SetRuntimePatchSet)
+    {
+        const auto status = SetRuntimePatchSetFromPayload(payload.data(), header.PayloadLength);
         WriteCommandResultResponse(pipe, header, status);
         return;
     }

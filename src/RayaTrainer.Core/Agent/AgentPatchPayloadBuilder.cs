@@ -1,3 +1,4 @@
+using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
 using RayaTrainer.Core.Memory;
 using RayaTrainer.Core.Patching;
@@ -91,8 +92,26 @@ public static class AgentPatchPayloadBuilder
             })
             .ToArray();
 
+        // L5: Build runtime patch sets from catalog, filtered to current profile.
+        var moduleBase = status.ModuleBase;
+        // Runtime PatchSets select a verified binary layout using signature anchors.
+        // Unknown/signature-compatibility builds receive no fixed-RVA PatchSet.
+        var patchSets = RuntimePatchSetCatalog.ResolveForTarget(
+                profile.Id,
+                moduleBase,
+                scannedAddresses,
+                target.SignatureCompatibilityMode)
+            .Select(ps => new AgentPatchSetPayload(
+                (uint)ps.Id,
+                ps.Entries.Select(e => new AgentPatchSetEntry(
+                    ToUInt32(unchecked((nint)(moduleBase + e.Rva))),
+                    (byte)e.Kind,
+                    e.EnableBytes.ToArray(),
+                    e.DisableBytes.ToArray())).ToArray()))
+            .ToArray();
+
         return new AgentPatchPayloadBuildResult(
-            new AgentInstallPatchesRequest([], hooks),
+            new AgentInstallPatchesRequest(patchSets, hooks),
             planResult.SkippedHooks);
     }
 
@@ -129,19 +148,23 @@ public static class AgentPatchPayloadBuilder
         bool requireAttestedBytes,
         IReadOnlyDictionary<string, byte[]>? attestedOriginalBytes)
     {
-        if (!requireAttestedBytes)
+        if (attestedOriginalBytes is not null &&
+            attestedOriginalBytes.TryGetValue(key, out var attested))
         {
-            return plan.OriginalBytes.ToArray();
+            if (attested.Length != plan.OriginalBytes.Length)
+            {
+                throw new InvalidOperationException($"扫描命中的 Hook {key} 实时指令长度与 Patch 计划不一致，禁止安装。");
+            }
+
+            return attested.ToArray();
         }
 
-        if (attestedOriginalBytes is null ||
-            !attestedOriginalBytes.TryGetValue(key, out var attested) ||
-            attested.Length != plan.OriginalBytes.Length)
+        if (requireAttestedBytes)
         {
             throw new InvalidOperationException($"签名兼容候选缺少 Hook {key} 的实时指令证明，禁止安装。");
         }
 
-        return attested.ToArray();
+        return plan.OriginalBytes.ToArray();
     }
 
     private static string HookKey(PatchHookPlan plan)

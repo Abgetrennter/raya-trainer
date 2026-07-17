@@ -7,5 +7,7 @@ public enum NativeRuntimeCapabilities : uint
     GameThreadDispatcher = 1,
     NativeHooks = 2,
     InternalFeatureState = 4,
-    Required = GameThreadDispatcher | NativeHooks | InternalFeatureState
+    FeatureStateSnapshot = 8,
+    RuntimePatchSets = 16,
+    Required = GameThreadDispatcher | NativeHooks | InternalFeatureState | FeatureStateSnapshot | RuntimePatchSets
 }

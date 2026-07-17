@@ -9,8 +9,7 @@ public static class FeatureDispatchDefaults
     public static readonly TimeSpan PausedGracePeriod = TimeSpan.FromSeconds(60);
 
     public static bool IsToggle(TrainerFeature feature) =>
-        feature.ValueHint is null &&
-        (feature.EnableFlags.Count > 0 || feature.ToggleBytePatches is { Count: > 0 });
+        feature.ValueHint is null && feature.EnableFlags.Count > 0;
 
     public static bool IsAction(TrainerFeature feature) =>
         feature.ValueHint is not null;

@@ -1,4 +1,5 @@
 using RayaTrainer.Core.Agent;
+using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
 using RayaTrainer.Core.Runtime;
@@ -151,8 +152,8 @@ public sealed class AgentFeatureControllerTests
     }
 
     [Theory]
-    [InlineData("Clear Selected Attack Speed Effects", "清除所有单位的满攻速效果")]
-    [InlineData("Clear Selected Attack Range Effects", "清除所有单位的无限射程效果")]
+    [InlineData("Clear Selected Attack Speed Effects", "清空满攻速单位")]
+    [InlineData("Clear Selected Attack Range Effects", "清空无限射程单位")]
     public async Task TriggerActionRoutesClearSelectedAttackEffectsToGameApi(
         string rawName,
         string displayName)
@@ -248,34 +249,16 @@ public sealed class AgentFeatureControllerTests
 
         controller.WriteResourceValues(new ResourceValueSettings(123456, 234567, 9));
 
-        Assert.Equal(AgentCommand.SetToggle, client.LastWriteCommand);
-        Assert.NotNull(client.LastWriteRequest);
-        Assert.Collection(
-            client.LastWriteRequest!.Writes,
-            write =>
-            {
-                Assert.Equal((uint)NativeFeatureStateId.MoneyAmount, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal(BitConverter.GetBytes(123456u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal((uint)NativeFeatureStateId.PowerValue, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal(BitConverter.GetBytes(234567u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal((uint)NativeFeatureStateId.SecretProtocolPointValue, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal(BitConverter.GetBytes(9u), write.Bytes);
-            },
-            write =>
-            {
-                Assert.Equal((uint)NativeFeatureStateId.SelectedUnitMaxHealthBits, write.Address);
-                Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-                Assert.Equal(BitConverter.GetBytes(9999999f), write.Bytes);
-            });
+        // L4: SetFeatureStatesAsync should be called with resource value entries
+        Assert.Equal(AgentCommand.SetFeatureStates, client.LastWriteCommand);
+        Assert.True(client.LastSetFeatureStatesRequest.HasValue);
+        var resourceStates = client.LastSetFeatureStatesRequest.Value.States;
+        Assert.Contains(resourceStates,
+            s => s.StateId == (uint)NativeFeatureStateId.MoneyAmount && s.Value == 123456);
+        Assert.Contains(resourceStates,
+            s => s.StateId == (uint)NativeFeatureStateId.PowerValue && s.Value == 234567);
+        Assert.Contains(resourceStates,
+            s => s.StateId == (uint)NativeFeatureStateId.SecretProtocolPointValue && s.Value == 9);
     }
 
     [Fact]
@@ -287,34 +270,60 @@ public sealed class AgentFeatureControllerTests
 
         controller.SetToggle(feature, true);
 
-        Assert.Equal(AgentCommand.SetToggle, client.LastWriteCommand);
-        var write = Assert.Single(client.LastWriteRequest!.Writes);
-        Assert.Equal((uint)NativeFeatureStateId.GodMode, write.Address);
-        Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-        Assert.Equal(BitConverter.GetBytes(1u), write.Bytes);
+        // L4: SetFeatureStatesAsync should be called with GodMode=1
+        Assert.Equal(AgentCommand.SetFeatureStates, client.LastWriteCommand);
+        Assert.True(client.LastSetFeatureStatesRequest.HasValue);
+        var toggleStates = client.LastSetFeatureStatesRequest.Value.States;
+        Assert.Single(toggleStates);
+        Assert.Equal((uint)NativeFeatureStateId.GodMode, toggleStates[0].StateId);
+        Assert.Equal(1u, toggleStates[0].Value);
     }
 
     [Fact]
-    public void SetToggleAppliesConcreteAddressBytePatchesViaTriggerAction()
+    public void SetToggle_FrameRateUnlock_CallsSetRuntimePatchSet()
     {
         var client = new FakeAgentClient();
         var controller = new AgentFeatureController(client, 1234, AgentStatus);
         var feature = new TrainerFeature(
-            "Player God Mode",
-            "无敌",
+            "Frame Rate Unlock 60fps",
+            "60fps 帧率解锁",
             null,
-            [],
+            ["Frame Rate Unlock 60fps"],
             null,
-            null,
-            [new TrainerFeatureBytePatch("ra3_1.12.game+6CFDFE", [0xEB, 0x0C], [0x75, 0x0C])]);
+            null);
 
         controller.SetToggle(feature, true);
 
-        Assert.Equal(AgentCommand.TriggerAction, client.LastWriteCommand);
-        var write = Assert.Single(client.LastWriteRequest!.Writes);
-        Assert.Equal(0xACFDFEu, write.Address);
-        Assert.Equal(AgentMemoryAddressMode.Direct, write.AddressMode);
-        Assert.Equal([0xEB, 0x0C], write.Bytes);
+        // L5: state write (cmd 5) + PatchSet enable (cmd 6)
+        Assert.Equal(AgentCommand.SetFeatureStates, client.LastWriteCommand);
+        Assert.Equal((uint)NativeRuntimePatchSetId.FrameRateUnlock, client.LastSetRuntimePatchSetId);
+        Assert.True(client.LastSetRuntimePatchSetEnable!.Value);
+
+        controller.SetToggle(feature, false);
+
+        Assert.Equal((uint)NativeRuntimePatchSetId.FrameRateUnlock, client.LastSetRuntimePatchSetId);
+        Assert.False(client.LastSetRuntimePatchSetEnable!.Value);
+    }
+
+    [Fact]
+    public void SetToggle_FrameRateUnlock_WhenPatchSetFails_Throws()
+    {
+        var client = new FakeAgentClient
+        {
+            LastSetRuntimePatchSetResult = new AgentCommandResultPayload(AgentStatusCode.InternalError, AgentProtocol.Version, 0)
+        };
+        var controller = new AgentFeatureController(client, 1234, AgentStatus);
+        var feature = new TrainerFeature(
+            "Frame Rate Unlock 60fps",
+            "60fps 帧率解锁",
+            null,
+            ["Frame Rate Unlock 60fps"],
+            null,
+            null);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => controller.SetToggle(feature, true));
+        Assert.Contains("SetRuntimePatchSet", ex.Message);
+        Assert.Contains("InternalError", ex.Message);
     }
 
     [Fact]
@@ -476,14 +485,35 @@ public sealed class AgentFeatureControllerTests
         public Task<AgentCommandResultPayload> RestorePatchesAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<AgentCommandResultPayload> SetToggleAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default) =>
-            RecordWrite(AgentCommand.SetToggle, request);
+        // L4: wire to cmd 5 SetFeatureStates
+        public SetFeatureStatesRequest? LastSetFeatureStatesRequest { get; private set; }
+        public Task<AgentCommandResultPayload> SetFeatureStatesAsync(int processId, SetFeatureStatesRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            LastWriteCommand = AgentCommand.SetFeatureStates;
+            LastSetFeatureStatesRequest = request;
+            return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0));
+        }
 
-        public Task<AgentCommandResultPayload> TriggerActionAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default) =>
-            RecordWrite(AgentCommand.TriggerAction, request);
+        // L5: wire to cmd 6 SetRuntimePatchSet
+        public AgentCommandResultPayload? LastSetRuntimePatchSetResult { get; set; }
+        public uint? LastSetRuntimePatchSetId { get; private set; }
+        public bool? LastSetRuntimePatchSetEnable { get; private set; }
 
-        public Task<AgentCommandResultPayload> WriteResourceValuesAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default) =>
-            RecordWrite(AgentCommand.WriteResourceValues, request);
+        public Task<AgentCommandResultPayload> SetRuntimePatchSetAsync(int processId, uint patchSetId, bool enable, TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            LastSetRuntimePatchSetId = patchSetId;
+            LastSetRuntimePatchSetEnable = enable;
+            return Task.FromResult(LastSetRuntimePatchSetResult ?? new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0));
+        }
+
+        // L4: wire to cmd 7 GetFeatureStates
+        public Task<FeatureStatesResponse> GetFeatureStatesAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new FeatureStatesResponse(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                Array.Empty<FeatureStateEntry>()));
+        }
 
         public Task<AgentMemoryReadPayload> ReadMemoryAsync(int processId, AgentMemoryReadRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
@@ -496,7 +526,7 @@ public sealed class AgentFeatureControllerTests
         public Task<AgentCommandResultPayload> SetNativeCatalogAsync(int processId, IReadOnlyList<uint> rvas, TimeSpan timeout, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<AgentMismatchDiagnosticsPayload> GetMismatchDiagnosticsAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AgentMismatchDiagnosticsPayload(AgentStatusCode.InvalidCommand, AgentProtocol.Version, 0, [], [], []));
+            Task.FromResult(new AgentMismatchDiagnosticsPayload(AgentStatusCode.InvalidCommand, AgentProtocol.Version, 0, [], [], [], MismatchKind.Hook, 0));
 
         public Task<AgentSignatureScanPayload> ScanSignaturesAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default) =>
             Task.FromResult(new AgentSignatureScanPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0, 0, new Dictionary<string, uint>()));

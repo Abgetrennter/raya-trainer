@@ -160,6 +160,59 @@ public sealed class TrainerSessionManagerInjectedBackendTests
     }
 
     [Fact]
+    public void SteamLayoutRegistersFrameRateUnlockPatchSetAndKeepsHooks()
+    {
+        var signatureScan = TestAgentSignatureCatalog.CreateRa3112(
+            overrides: new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["_BackFrameRateUnlockGameUpdate"] = 0x665560,
+                ["_BackLogicTimeFreezeGate"] = 0x665555
+            });
+        var steamDefinitions = RuntimePatchSetCatalog.ResolveForTarget(
+            "ra3_1.12",
+            0x400000,
+            signatureScan.Addresses,
+            signatureCompatibilityMode: false);
+        var agentClient = new FakeAgentClient
+        {
+            SignatureScanPayload = signatureScan,
+            PatchSetDefinitions = steamDefinitions
+        };
+        agentClient.MemoryByAddress[0x665560] = [0x8B, 0x01, 0x8B, 0x90, 0x0C, 0x01, 0x00, 0x00];
+        agentClient.MemoryByAddress[0x665555] = [0xE8, 0xE6, 0x3A, 0xE7, 0xFF];
+        var manager = new TrainerSessionManager(
+            () => new InjectedAgentBackend(new FakeAgentInjector(), agentClient),
+            () => "C:/agent/RayaTrainer.Agent.dll");
+        var manifest = TestAssets.LoadManifest();
+        var target = new TrainerTarget(
+            "ra3_1.12.game",
+            0x400000,
+            Is32Bit: true,
+            VersionSupported: true,
+            ProcessId: 1234,
+            FileVersion: GameTarget.ExpectedVersion,
+            VersionProfileId: "ra3_1.12");
+
+        manager.AttachTarget(manifest, target);
+        var install = manager.InstallPatches(manifest, "diagnostics");
+
+        Assert.True(manager.ArePatchesInstalled);
+        Assert.NotNull(agentClient.InstallRequest);
+        var patchSet = Assert.Single(agentClient.InstallRequest.PatchSets);
+        Assert.Equal(29, patchSet.Entries.Count);
+        Assert.Contains(patchSet.Entries, entry => entry.Address == 0xCB4098);
+        Assert.Contains(patchSet.Entries, entry => entry.Address == 0xBC6420);
+        Assert.Contains(patchSet.Entries, entry => entry.Address == 0x71F457);
+        Assert.Equal(TestAssets.CurrentStandardHookCount, agentClient.InstallRequest.Hooks.Count);
+        Assert.DoesNotContain("安全禁用", install.StatusMessage, StringComparison.Ordinal);
+
+        var frameRateUnlock = TrainerFeatureCatalog.CreateGridFeatures(manifest.Features)
+            .Single(feature => feature.RawName == TrainerFeatureIds.FrameRateUnlock60fps);
+        var capability = manager.GetFeatureCapability(frameRateUnlock);
+        Assert.Equal(FeatureCapabilityState.Ready, capability.State);
+    }
+
+    [Fact]
     public void InjectedAgentBackendAcceptsUprising10Profile()
     {
         var agentClient = new FakeAgentClient
@@ -439,12 +492,15 @@ public sealed class TrainerSessionManagerInjectedBackendTests
     [Fact]
     public void InjectedAgentBackendInstallsEveryRa3113Hook()
     {
-        var agentClient = new FakeAgentClient();
+        var profile = Ra3VersionProfileRegistry.Ra3113;
+        var agentClient = new FakeAgentClient
+        {
+            SignatureScanPayload = TestAgentSignatureCatalog.CreateForProfile(profile)
+        };
         var manager = new TrainerSessionManager(
             () => new InjectedAgentBackend(new FakeAgentInjector(), agentClient),
             () => "C:/agent/RayaTrainer.Agent.dll");
         var manifest = TestAssets.LoadManifest();
-        var profile = Ra3VersionProfileRegistry.Ra3113;
         var target = new TrainerTarget(
             profile.ProcessName,
             0x400000,
@@ -794,6 +850,8 @@ public sealed class TrainerSessionManagerInjectedBackendTests
         public bool RejectInjectedAgentProtocol { get; set; }
         public uint StatusInstalledHookCount { get; set; }
         public Dictionary<uint, byte[]> MemoryByAddress { get; } = [];
+        public IReadOnlyList<RuntimePatchSetDefinition> PatchSetDefinitions { get; init; } =
+            RuntimePatchSetCatalog.All;
 
         public Task<AgentPingPayload> PingAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
@@ -840,32 +898,44 @@ public sealed class TrainerSessionManagerInjectedBackendTests
             return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0));
         }
 
-        public Task<AgentCommandResultPayload> SetToggleAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
+        public Task<AgentCommandResultPayload> SetFeatureStatesAsync(int processId, SetFeatureStatesRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 24));
         }
 
-        public Task<AgentCommandResultPayload> TriggerActionAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
+        public Task<AgentCommandResultPayload> SetRuntimePatchSetAsync(int processId, uint patchSetId, bool enable, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 24));
+            return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 0));
         }
 
-        public Task<AgentCommandResultPayload> WriteResourceValuesAsync(int processId, AgentMemoryWriteRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
+        public Task<FeatureStatesResponse> GetFeatureStatesAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(new AgentCommandResultPayload(AgentStatusCode.Ok, AgentProtocol.Version, 24));
+            return Task.FromResult(new FeatureStatesResponse(
+                AgentStatusCode.Ok,
+                AgentProtocol.Version,
+                Array.Empty<FeatureStateEntry>()));
         }
 
         public Task<AgentMemoryReadPayload> ReadMemoryAsync(int processId, AgentMemoryReadRequest request, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            if (FailRuntimeReads)
+            var bytes = MemoryByAddress.TryGetValue(request.Address, out var configured)
+                ? configured.ToArray()
+                : ResolvePatchSetBaseline(request);
+            if (FailRuntimeReads && bytes is null)
             {
                 throw new InvalidOperationException("runtime read failed");
             }
 
-            var bytes = MemoryByAddress.TryGetValue(request.Address, out var configured)
-                ? configured.ToArray()
-                : new byte[request.ByteCount];
+            bytes ??= new byte[request.ByteCount];
             return Task.FromResult(new AgentMemoryReadPayload(AgentStatusCode.Ok, AgentProtocol.Version, request.Address, bytes));
+        }
+
+        private byte[]? ResolvePatchSetBaseline(AgentMemoryReadRequest request)
+        {
+            return TestAssets.ResolveRuntimePatchSetDisableBytes(
+                request.Address,
+                request.ByteCount,
+                definitions: PatchSetDefinitions);
         }
 
         public Task<AgentCommandResultPayload> SetNativeCatalogAsync(int processId, IReadOnlyList<uint> rvas, TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -875,7 +945,7 @@ public sealed class TrainerSessionManagerInjectedBackendTests
 
         public Task<AgentMismatchDiagnosticsPayload> GetMismatchDiagnosticsAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(new AgentMismatchDiagnosticsPayload(AgentStatusCode.InvalidCommand, AgentProtocol.Version, 0, [], [], []));
+            return Task.FromResult(new AgentMismatchDiagnosticsPayload(AgentStatusCode.InvalidCommand, AgentProtocol.Version, 0, [], [], [], MismatchKind.Hook, 0));
         }
 
         public Task<AgentSignatureScanPayload> ScanSignaturesAsync(int processId, TimeSpan timeout, CancellationToken cancellationToken = default)

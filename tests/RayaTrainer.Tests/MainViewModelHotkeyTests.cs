@@ -16,7 +16,7 @@ public sealed class MainViewModelHotkeyTests
             {
               "SchemaVersion": 1,
               "Hotkeys": {
-                "Moeny": "Alt+F1",
+                "Money": "Alt+F1",
                 "ExecuteReinforcementQueue": "Ctrl+Insert"
               }
             }
@@ -55,7 +55,7 @@ public sealed class MainViewModelHotkeyTests
             {
               "SchemaVersion": 1,
               "Hotkeys": {
-                "Moeny": "Ctrl+F1"
+                "Money": "Ctrl+F1"
               }
             }
             """);
@@ -67,14 +67,14 @@ public sealed class MainViewModelHotkeyTests
         Assert.Equal("Ctrl+F1", money.Hotkey);
 
         // 运行时热重载：把资金热键改成 Alt+F9。
-        var newHotkeys = new Dictionary<string, string> { ["Moeny"] = "Alt+F9" };
+        var newHotkeys = new Dictionary<string, string> { ["Money"] = "Alt+F9" };
         viewModel.ReloadHotkeys(newHotkeys);
 
         Assert.Equal("Alt+F9", money.Hotkey);
         // 改动通过 Persistence 防抖协调器异步写文件，flush 确保持久化完毕。
         viewModel.Persistence.Flush();
         var savedText = File.ReadAllText(settingsPath);
-        Assert.Contains("\"Moeny\"", savedText);
+        Assert.Contains("\"Money\"", savedText);
         Assert.Contains("\"Alt+F9\"", savedText);
     }
 
@@ -105,7 +105,7 @@ public sealed class MainViewModelHotkeyTests
             {
               "SchemaVersion": 1,
               "Hotkeys": {
-                "Moeny": "Ctrl+F1"
+                "Money": "Ctrl+F1"
               }
             }
             """);
@@ -123,10 +123,10 @@ public sealed class MainViewModelHotkeyTests
         // 徽章显示即时刷新为占位。
         Assert.Null(moneyItem.Hotkey);
         Assert.False(moneyItem.ClearHotkeyCommand.CanExecute(null));
-        // 持久化到配置文件：Moeny 键值为空串（契约：空串=未分配）。
+        // 持久化到配置文件：Money 键值为空串（契约：空串=未分配）。
         viewModel.Persistence.Flush();
         var savedText = File.ReadAllText(settingsPath);
-        Assert.Contains("\"Moeny\"", savedText);
+        Assert.Contains("\"Money\"", savedText);
         Assert.Contains("\"\"", savedText);
     }
 

@@ -22,6 +22,14 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
     private readonly bool _supportsDirectGameApi;
     private readonly AddressResolver _moduleAddressResolver;
     private readonly Dictionary<NativeFeatureStateId, uint> _nativeFeatureStates = [];
+    private FeatureStatesResponse? _lastObserved;
+    private static readonly HashSet<NativeFeatureStateId> PulseStateIds = new()
+    {
+        NativeFeatureStateId.MoneyPulse,           // 1
+        NativeFeatureStateId.ChallengeMoneyPulse,  // 13
+        NativeFeatureStateId.AutoRepairPulse,      // 21
+        NativeFeatureStateId.RestoreOrePulse       // 23
+    };
     private ReinforcementSettings _reinforcementSettings = ReinforcementSettings.Default;
     private ResourceValueSettings _resourceValueSettings = ResourceValueSettings.Default;
     private SecretProtocolGrantSettings _secretProtocolGrantSettings = SecretProtocolGrantSettings.Empty;
@@ -51,7 +59,7 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
     {
         var stateId = GetNativeFeatureStateId(feature);
         WriteNativeFeatureState(stateId, enabled ? 1u : 0u);
-        ApplyToggleBytePatches(feature, enabled);
+        ApplyRuntimePatchSetForToggle(feature, enabled);
     }
 
     public void TriggerAction(TrainerFeature feature)
@@ -281,15 +289,8 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
         if (TryGetNativeFeatureStateId(feature, out var stateId))
         {
             WriteNativeFeatureState(stateId, 0);
-            ApplyToggleBytePatches(feature, enabled: false);
+            ApplyRuntimePatchSetForToggle(feature, enabled: false);
         }
-    }
-
-    public bool ReadToggleState(TrainerFeature feature)
-    {
-        return TryGetNativeFeatureStateId(feature, out var stateId) &&
-            _nativeFeatureStates.TryGetValue(stateId, out var value) &&
-            value != 0;
     }
 
     private static bool TryGetSelectedUnitHealthMode(TrainerFeature feature, out uint mode)
@@ -343,83 +344,125 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
         }
 
         var settings = reinforcementSettings ?? _reinforcementSettings;
-        return feature.RawName switch
+
+        // Catalog-based dispatch: NativeAction features route by ActionId
+        var behavior = TrainerFeatureBehaviorCatalog.TryGetBehavior(feature.RawName);
+        if (behavior is NativeActionFeatureBehavior action)
         {
-            "Select Unit Level UP" => TriggerLevelUp(timeout: timeout),
-            "Select Unit Super Speed" => SetSelectedUnitSpeed(1, timeout),
-            "Select Unit Slow Speed" => SetSelectedUnitSpeed(2, timeout),
-            "Select Unit Freeze" => SetSelectedUnitSpeed(3, timeout),
-            "Restore Select Unit Speed" => SetSelectedUnitSpeed(4, timeout),
-            "Select Unit Change ID" => CaptureSelectedUnits(timeout),
-            "Destory Select Unit" => KillUnit(timeout),
-            TrainerFeatureIds.GetBase => GetMeBase(timeout),
-            TrainerFeatureIds.Reinforcement => WeNeedBack(
-                settings.UnitId,
-                unchecked((uint)settings.Count),
-                unchecked((uint)settings.Rank),
-                timeout),
-            TrainerFeatureIds.CopySelectedUnit => CopyForMe(timeout) != 0
-                ? GameApiDispatchStatus.Completed
-                : GameApiDispatchStatus.Failed,
-            "Set Unit Support State" => SetUnitState(0, timeout),
-            TrainerFeatureIds.SecretProtocolBindingProbe => ExecuteSecretProtocolProbe(timeout),
-            "Soviet Orbital Refuse Rank 1 Probe" => GrantPlayerTech(0x3A7E2F69, timeout),
-            TrainerFeatureIds.GrantSecretProtocol => GrantSecretProtocol(
-                _secretProtocolGrantSettings.PlayerTechId,
-                _secretProtocolGrantSettings.UpgradeId,
-                timeout),
-            TrainerFeatureIds.GrantSelectedObjectUpgrade => GrantSelectedUpgrade(
-                RequireUpgradeId(),
-                timeout),
-            "Clear Player Tech Locks" => ClearPlayerTechLocks(timeout),
-            TrainerFeatureIds.ReplaceTemplateModel => ReplaceTemplateModel(
-                RequireModelReplacement().TargetUnitId,
-                RequireModelReplacement().DonorUnitId,
-                timeout),
-            TrainerFeatureIds.ReplaceTemplateWeapon => ReplaceTemplateWeapon(
-                RequireWeaponReplacement().TargetUnitId,
-                RequireWeaponReplacement().DonorUnitId,
-                timeout),
-            TrainerFeatureIds.SetSelectedUnitTargetHealth when _targetHealth > 0 =>
-                SetSelectedUnitHealth(HealthModeExplicit, _targetHealth, _targetMaxHealth, timeout),
-            TrainerFeatureIds.SetSelectedUnitTargetHealth => throw new InvalidOperationException(
-                "请先输入有效的目标生命值。"),
-            "Fill Selected Unit Ammo" => SetSelectedUnitAmmo(0x7FFFFFFF, timeout),
-            "Reset Selected Unit Ammo" => SetSelectedUnitAmmo(1, timeout),
-            "Toggle Selected Unit Attack Speed" => ToggleSelectedAttackSpeed(timeout),
-            "Toggle Selected Unit Attack Range" => ToggleSelectedAttackRange(timeout),
-            TrainerFeatureIds.ClearSelectedAttackSpeedEffects => ClearSelectedAttackSpeedEffects(timeout),
-            TrainerFeatureIds.ClearSelectedAttackRangeEffects => ClearSelectedAttackRangeEffects(timeout),
-            TrainerFeatureIds.Money or
-            "Challenge Money" or
-            "Danger Level MAX" or
-            "Danger Level MIN" or
-            "Restore Danger Level Normal" or
-            "Restore Select Ore Mine" or
-            "Free Build" => ExecuteLegacyPulse(feature, reinforcementSettings),
-            _ when feature.DispatchTarget is null && feature.EnableFlags.Count > 0 =>
-                ExecuteLegacyPulse(feature, reinforcementSettings),
-            _ => throw new InvalidOperationException($"{feature.DisplayName} 尚未配置 Native action 路由。")
+            return DispatchNativeAction(feature, action.Binding.ActionId, settings, timeout);
+        }
+
+        // Legacy fallthrough: pulse features, FreeBuild, EnableFlags-only toggles,
+        // and unknown features. Preserves exception message distinction:
+        // - EnableFlags-only features with no pulse mapping → "Native pulse 路由"
+        // - Truly unknown features → "Native action 路由"
+        return ExecuteLegacyPulse(feature, reinforcementSettings);
+    }
+
+    private GameApiDispatchStatus DispatchNativeAction(
+        TrainerFeature feature,
+        uint actionId,
+        ReinforcementSettings settings,
+        TimeSpan timeout)
+    {
+        switch (actionId)
+        {
+            case 11: return TriggerLevelUp(timeout: timeout);
+            case 13: return KillUnit(timeout);
+            case 14: return CopyForMe(timeout) != 0
+                    ? GameApiDispatchStatus.Completed
+                    : GameApiDispatchStatus.Failed;
+            case 15: return GetMeBase(timeout);
+            case 16: return WeNeedBack(
+                    settings.UnitId,
+                    unchecked((uint)settings.Count),
+                    unchecked((uint)settings.Rank),
+                    timeout);
+            case 17: return SetUnitState(0, timeout);
+            case 20: return GrantPlayerTech(0x3A7E2F69, timeout);
+            case 25: return GrantSecretProtocol(
+                    _secretProtocolGrantSettings.PlayerTechId,
+                    _secretProtocolGrantSettings.UpgradeId,
+                    timeout);
+            case 26: return GrantSelectedUpgrade(RequireUpgradeId(), timeout);
+            case 27: return ClearPlayerTechLocks(timeout);
+            case 28: return ExecuteSecretProtocolProbe(timeout);
+            case 29: return ReplaceTemplateModel(
+                    RequireModelReplacement().TargetUnitId,
+                    RequireModelReplacement().DonorUnitId,
+                    timeout);
+            case 30: return ReplaceTemplateWeapon(
+                    RequireWeaponReplacement().TargetUnitId,
+                    RequireWeaponReplacement().DonorUnitId,
+                    timeout);
+            case 32: // SetSelectedUnitTargetHealth
+                if (_targetHealth > 0)
+                    return SetSelectedUnitHealth(HealthModeExplicit, _targetHealth, _targetMaxHealth, timeout);
+                throw new InvalidOperationException("请先输入有效的目标生命值。");
+            case 39: return DispatchNativeSpeedAction(feature, timeout);
+            case 40: return CaptureSelectedUnits(timeout);
+            case 41: return DispatchNativeAmmoAction(feature, timeout);
+            case 42: return ToggleSelectedAttackSpeed(timeout);
+            case 43: return ToggleSelectedAttackRange(timeout);
+            case 44: return ClearSelectedAttackSpeedEffects(timeout);
+            case 45: return ClearSelectedAttackRangeEffects(timeout);
+            default:
+                throw new InvalidOperationException($"未知的 NativeAction ID: {actionId}。");
+        }
+    }
+
+    private GameApiDispatchStatus DispatchNativeSpeedAction(TrainerFeature feature, TimeSpan timeout)
+    {
+        var mode = feature.RawName switch
+        {
+            "Select Unit Super Speed" => 1u,
+            "Select Unit Slow Speed" => 2u,
+            "Select Unit Freeze" => 3u,
+            "Restore Select Unit Speed" => 4u,
+            _ => throw new InvalidOperationException($"未知的速度模式: {feature.RawName}。")
         };
+        return SetSelectedUnitSpeed(mode, timeout);
+    }
+
+    private GameApiDispatchStatus DispatchNativeAmmoAction(TrainerFeature feature, TimeSpan timeout)
+    {
+        var ammo = feature.RawName switch
+        {
+            "Fill Selected Unit Ammo" => 0x7FFFFFFFu,
+            "Reset Selected Unit Ammo" => 1u,
+            _ => throw new InvalidOperationException($"未知的弹药动作: {feature.RawName}。")
+        };
+        return SetSelectedUnitAmmo(ammo, timeout);
     }
 
     private GameApiDispatchStatus ExecuteLegacyPulse(
         TrainerFeature feature,
         ReinforcementSettings? reinforcementSettings)
     {
-        var (stateId, value) = feature.RawName switch
+        var behavior = TrainerFeatureBehaviorCatalog.TryGetBehavior(feature.RawName);
+
+        // Pulse features: write state from catalog binding
+        if (behavior is NativePulseFeatureBehavior pulse)
         {
-            TrainerFeatureIds.Money => (NativeFeatureStateId.MoneyPulse, 1u),
-            "Challenge Money" => (NativeFeatureStateId.ChallengeMoneyPulse, 1u),
-            "Danger Level MAX" => (NativeFeatureStateId.DangerLevelMode, 1u),
-            "Danger Level MIN" => (NativeFeatureStateId.DangerLevelMode, 2u),
-            "Restore Danger Level Normal" => (NativeFeatureStateId.DangerLevelMode, 0u),
-            "Restore Select Ore Mine" => (NativeFeatureStateId.RestoreOrePulse, 1u),
-            "Free Build" => (NativeFeatureStateId.FreeBuild, 1u),
-            _ => throw new InvalidOperationException($"{feature.DisplayName} 尚未配置 Native pulse 路由。")
-        };
-        WriteNativeFeatureState(stateId, value);
-        return GameApiDispatchStatus.Completed;
+            WriteNativeFeatureState((NativeFeatureStateId)pulse.Binding.StateId, pulse.Binding.DefaultValue);
+            return GameApiDispatchStatus.Completed;
+        }
+
+        // Free Build: NativeToggle that acts as pulse when TriggerAction is called
+        if (behavior is NativeToggleFeatureBehavior toggle && feature.RawName == TrainerFeatureIds.FreeBuild)
+        {
+            WriteNativeFeatureState((NativeFeatureStateId)toggle.Binding.StateId!.Value, 1);
+            return GameApiDispatchStatus.Completed;
+        }
+
+        // Preserve: EnableFlags-only features with no pulse mapping → throw "pulse 路由"
+        if (feature.DispatchTarget is null && feature.EnableFlags.Count > 0)
+        {
+            throw new InvalidOperationException($"{feature.DisplayName} 尚未配置 Native pulse 路由。");
+        }
+
+        // Preserve: truly unknown features → throw "action 路由"
+        throw new InvalidOperationException($"{feature.DisplayName} 尚未配置 Native action 路由。");
     }
 
     private static NativeFeatureStateId GetNativeFeatureStateId(TrainerFeature feature)
@@ -436,98 +479,153 @@ public sealed partial class AgentFeatureController : IAgentFeatureController
         TrainerFeature feature,
         out NativeFeatureStateId stateId)
     {
-        stateId = feature.RawName switch
+        var behavior = TrainerFeatureBehaviorCatalog.TryGetBehavior(feature.RawName);
+        if (behavior?.AsNativeToggle() is { } toggle && toggle.StateId.HasValue)
         {
-            TrainerFeatureIds.Power => NativeFeatureStateId.Power,
-            TrainerFeatureIds.SecretProtocolPoints => NativeFeatureStateId.SecretProtocolPoints,
-            "HAVE ALL SC" => NativeFeatureStateId.AllSecretProtocols,
-            "FAST BUILD" => NativeFeatureStateId.FastBuild,
-            TrainerFeatureIds.SuperPower => NativeFeatureStateId.SuperPower,
-            TrainerFeatureIds.DisableAllSecretProtocols => NativeFeatureStateId.DisableAllSuperPowers,
-            "Zoom" => NativeFeatureStateId.Zoom,
-            "MAP" => NativeFeatureStateId.RevealMap,
-            "Enemy Can't Build" => NativeFeatureStateId.EnemyCannotBuild,
-            "Player God Mode" => NativeFeatureStateId.GodMode,
-            "Player One Kill Mode" => NativeFeatureStateId.OneHitKill,
-            "Challenge Time" => NativeFeatureStateId.ChallengeTime,
-            "Free Build" => NativeFeatureStateId.FreeBuild,
-            TrainerFeatureIds.SecretProtocolDependencyBypass => NativeFeatureStateId.SecretProtocolDependencyBypass,
-            "Ignore Prerequisites" => NativeFeatureStateId.IgnorePrerequisites,
-            "Ignore Quantity Limit" => NativeFeatureStateId.IgnoreQuantityLimit,
-            "Run In Background" => NativeFeatureStateId.RunInBackground,
-            "Frame Rate Unlock 60fps" => NativeFeatureStateId.FrameRateUnlock,
-            "Logic Time Freeze" => NativeFeatureStateId.LogicTimeFreeze,
-            "Logic Time Slow Motion" => NativeFeatureStateId.SlowMotionMode,
-            _ => 0
-        };
-        return stateId != 0;
+            stateId = (NativeFeatureStateId)toggle.StateId.Value;
+            return true;
+        }
+
+        if (behavior?.AsNativePulse() is { } pulse)
+        {
+            stateId = (NativeFeatureStateId)pulse.StateId;
+            return true;
+        }
+
+        stateId = default;
+        return false;
     }
+
+    private static bool IsPulseFeature(NativeFeatureStateId stateId) =>
+        PulseStateIds.Contains(stateId);
 
     private void WriteNativeFeatureState(NativeFeatureStateId stateId, uint value)
     {
         WriteNativeFeatureStates([(stateId, value)]);
     }
 
+    // L4: wire to cmd 5 SetFeatureStates
     private void WriteNativeFeatureStates(
         IReadOnlyList<(NativeFeatureStateId StateId, uint Value)> states)
     {
-        var request = new AgentMemoryWriteRequest(
-            states.Select(state => new AgentMemoryWriteOperation(
-                (uint)state.StateId,
-                AgentMemoryAddressMode.Direct,
-                BitConverter.GetBytes(state.Value))));
-        var result = _client.SetToggleAsync(
+        var wireStates = states
+            .Select(s => ((uint)s.StateId, s.Value))
+            .ToArray();
+        var request = new SetFeatureStatesRequest(wireStates);
+        var result = _client.SetFeatureStatesAsync(
                 _processId,
                 request,
                 DefaultCommandTimeout,
                 CancellationToken.None)
             .GetAwaiter()
             .GetResult();
-        EnsureOk(result.StatusCode, AgentCommand.SetToggle);
 
-        foreach (var state in states)
+        if (result.StatusCode != AgentStatusCode.Ok)
         {
-            _nativeFeatureStates[state.StateId] = state.Value;
+            throw new InvalidOperationException(
+                $"Agent SetFeatureStates failed: {result.StatusCode}.");
+        }
+
+        // Update local cache on success
+        foreach (var (stateId, value) in states)
+        {
+            _nativeFeatureStates[stateId] = value;
         }
     }
 
-    private void ApplyToggleBytePatches(TrainerFeature feature, bool enabled)
+    private void ApplyRuntimePatchSetForToggle(TrainerFeature feature, bool enabled)
     {
-        if (feature.ToggleBytePatches is not { Count: > 0 })
+        var behavior = TrainerFeatureBehaviorCatalog.TryGetBehavior(feature.RawName);
+        if (behavior?.AsNativeToggle() is { } toggle && toggle.PatchSetId.HasValue)
         {
-            return;
+            var patchSetId = toggle.PatchSetId.Value;
+            var result = _client.SetRuntimePatchSetAsync(
+                    _processId,
+                    patchSetId,
+                    enabled,
+                    DefaultCommandTimeout,
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            if (result.StatusCode != AgentStatusCode.Ok && result.StatusCode != AgentStatusCode.Pending)
+            {
+                throw new InvalidOperationException(
+                    $"SetRuntimePatchSet({patchSetId}, {enabled}) failed: {result.StatusCode}.");
+            }
+        }
+        // Features without PatchSetId binding: no-op (toggle is just state-write, no runtime patch)
+    }
+
+    // L4: one-shot batch refresh from DLL
+    // Note: this is sync in practice (blocking on GetAwaiter) to match existing pattern.
+    public async Task<FeatureStatesResponse> RefreshRuntimeStateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _client.GetFeatureStatesAsync(
+                _processId,
+                DefaultCommandTimeout,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        _lastObserved = response;
+
+        // Update local cache from response
+        foreach (var entry in response.Entries)
+        {
+            _nativeFeatureStates[(NativeFeatureStateId)entry.StateId] = entry.Value;
         }
 
-        var writes = feature.ToggleBytePatches.Select(patch =>
+        return response;
+    }
+
+    // L4: nullable toggle state — null if no value has ever been written or refreshed
+    public bool? ReadToggleState(TrainerFeature feature)
+    {
+        // Pulse features must use ReadPulseFired regardless of toggle mapping
+        if (IsPulseFeature(feature))
         {
-            var expression = patch.Address.Trim();
-            var dereference = expression.StartsWith("[", StringComparison.Ordinal) &&
-                expression.EndsWith("]", StringComparison.Ordinal);
-            if (dereference)
-            {
-                expression = expression[1..^1].Trim();
-            }
+            throw new InvalidOperationException(
+                $"Pulse features must use ReadPulseFired: {feature.DisplayName}.");
+        }
 
-            var address = _moduleAddressResolver.Resolve(expression).ToInt64();
-            if (address is < 0 or > uint.MaxValue)
-            {
-                throw new InvalidOperationException($"Patch 地址 0x{address:X} 超出 x86 地址空间。 ");
-            }
+        if (!TryGetNativeFeatureStateId(feature, out var stateId))
+        {
+            return null;
+        }
 
-            return new AgentMemoryWriteOperation(
-                unchecked((uint)address),
-                dereference ? AgentMemoryAddressMode.DereferenceUInt32 : AgentMemoryAddressMode.Direct,
-                (enabled ? patch.EnabledBytes : patch.DisabledBytes).ToArray());
-        });
+        // Return null if we have never written or refreshed this state
+        if (!_nativeFeatureStates.TryGetValue(stateId, out var value))
+        {
+            return null;
+        }
 
-        var result = _client.TriggerActionAsync(
-                _processId,
-                new AgentMemoryWriteRequest(writes),
-                DefaultCommandTimeout,
-                CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
-        EnsureOk(result.StatusCode, AgentCommand.TriggerAction);
+        return value != 0;
+    }
+
+    // L4: read pulse sticky bit — null if no value has ever been written or refreshed
+    public bool? ReadPulseFired(TrainerFeature feature)
+    {
+        if (!TryGetNativeFeatureStateId(feature, out var stateId))
+        {
+            return null;
+        }
+
+        if (!IsPulseFeature(stateId))
+        {
+            return null;
+        }
+
+        if (!_nativeFeatureStates.TryGetValue(stateId, out var value))
+        {
+            return null;
+        }
+
+        return value != 0;
+    }
+
+    public bool IsPulseFeature(TrainerFeature feature)
+    {
+        return TryGetNativeFeatureStateId(feature, out var stateId) && PulseStateIds.Contains(stateId);
     }
 
     private uint RequireUpgradeId()

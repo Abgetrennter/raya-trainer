@@ -41,11 +41,19 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // (Version=10 << 16) | 1 = 0x000A0001.
 // v10 fingerprint low 16 bits bumped 1 -> 2 for per-GameObject weapon flags and the
 // GameLogic_RegisterObject initializer hook. The wire protocol remains v10.
-// v10 fingerprint low 16 bits bumped 2 -> 3 for the profile-aware StructureUnpackUpdate
-// fast-build field. An older Agent writes the wrong Uprising module field.
-inline constexpr uint16_t kAgentProtocolVersion = 10;
-inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000A0003ull;
-inline constexpr uint32_t kNativeRuntimeCapabilities = 0x00000007u;
+// v11: protocol bumped 10 -> 11 for L1 wire protocol refactor. Commands 5/6/7 redefined:
+//   SetToggle(5) -> SetFeatureStates(5)
+//   TriggerAction(6) -> SetRuntimePatchSet(6)
+//   WriteResourceValues(7) -> GetFeatureStates(7)
+// New capability bits: FeatureStateSnapshot = 0x8, RuntimePatchSets = 0x10.
+// Required capability mask becomes 0x1F.
+// Removed SetToggle, TriggerAction, WriteResourceValues, AgentMemoryWriteRequest contract
+// entries. An already-injected v10 Agent must not be reused.
+// v11 fingerprint low 16 bits bumped 1 -> 2 for DerivedStateReset PatchSet entries
+// and the Steam English 1.12 frame-rate layout. The wire version remains v11.
+inline constexpr uint16_t kAgentProtocolVersion = 11;
+inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000B0002ull;
+inline constexpr uint32_t kNativeRuntimeCapabilities = 0x0000001Fu;
 inline constexpr uint32_t kMaxPayloadLength = 64u * 1024u;
 
 enum class AgentCommand : uint16_t
@@ -54,9 +62,9 @@ enum class AgentCommand : uint16_t
     GetStatus = 2,
     InstallPatches = 3,
     RestorePatches = 4,
-    SetToggle = 5,
-    TriggerAction = 6,
-    WriteResourceValues = 7,
+    SetFeatureStates = 5,
+    SetRuntimePatchSet = 6,
+    GetFeatureStates = 7,
     ReadSelectedUnitCode = 8,
     ReadMemory = 9,
     SmokeGetThingClass = 10,
@@ -235,6 +243,10 @@ struct AgentMismatchDiagnosticsPayloadHeader
     uint32_t ExpectedLength;
     uint32_t ActualLength;
     uint32_t DumpLength;
+    // v11 extended fields (L6):
+    uint8_t  MismatchKind;      // 0=Hook, 1=RuntimePatchSet, 2=PatchSetIpConflict
+    uint8_t  Reserved[3];
+    uint32_t SubjectId;         // Hook: native hook id (0 if unknown); PatchSet/IP: PatchSetId
 };
 
 // Variable-length ScanSignatures response. Each entry header is followed immediately by
@@ -270,7 +282,7 @@ static_assert(sizeof(AgentStatusPayload) == 32);
 static_assert(sizeof(AgentCommandResultPayload) == 8);
 static_assert(sizeof(AgentMemoryReadRequest) == 8);
 static_assert(sizeof(AgentMemoryReadPayloadHeader) == 12);
-static_assert(sizeof(AgentMismatchDiagnosticsPayloadHeader) == 20);
+static_assert(sizeof(AgentMismatchDiagnosticsPayloadHeader) == 28);
 static_assert(sizeof(AgentSignatureScanPayloadHeader) == 12);
 static_assert(sizeof(AgentSignatureScanEntryHeader) == 8);
 static_assert(sizeof(AgentGameModePayload) == 8);

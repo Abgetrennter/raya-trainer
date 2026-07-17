@@ -629,7 +629,7 @@ internal static class SmokeDiagnostics
                 target,
                 status,
                 scannedAddresses: scannedAddresses);
-            Console.WriteLine($"  Install request: writes={request.Writes.Count}, hooks={request.Hooks.Count}");
+            Console.WriteLine($"  Install request: patchSets={request.PatchSets.Count}, hooks={request.Hooks.Count}");
 
             var install = await client.InstallPatchesAsync(target.ProcessId.Value, request, timeout, cancellationToken);
             Console.WriteLine($"  InstallPatches: status={install.StatusCode}, installedHookCount={install.InstalledHookCount}");
@@ -888,7 +888,7 @@ internal static class SmokeDiagnostics
                 target,
                 status,
                 scannedAddresses: scannedAddresses);
-            Console.WriteLine($"  Install request: writes={request.Writes.Count}, hooks={request.Hooks.Count}");
+            Console.WriteLine($"  Install request: patchSets={request.PatchSets.Count}, hooks={request.Hooks.Count}");
 
             var install = await client.InstallPatchesAsync(target.ProcessId.Value, request, timeout, cancellationToken);
             Console.WriteLine($"  InstallPatches: status={install.StatusCode}, installedHookCount={install.InstalledHookCount}");
@@ -1217,7 +1217,7 @@ internal static class SmokeDiagnostics
             var backgroundEnabled = controller.ReadToggleState(backgroundRun);
             Console.WriteLine(
                 $"  Runtime toggles: secretProtocol={secretEnabled}, backgroundRun={backgroundEnabled}");
-            if (!secretEnabled || !backgroundEnabled)
+            if (secretEnabled != true || backgroundEnabled != true)
             {
                 return false;
             }

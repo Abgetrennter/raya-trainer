@@ -8,6 +8,9 @@
 #include "../../src/RayaTrainer.Agent/AgentGameThreadDispatcher.h"
 
 extern int RunNativePointerSetTests();
+extern int RunAgentFeatureStateTests();
+extern int RunAgentPatchSetTests();
+extern int RunAgentGameApiCatalogTests();
 
 namespace
 {
@@ -188,6 +191,8 @@ int main()
     CompletedResultCopiesAllTwentyFourValueSlots();
     RunningTimeoutRecoversAndTouchesOnlyDispatcherStorage();
     g_failures += RunNativePointerSetTests();
+    g_failures += RunAgentFeatureStateTests();
+    g_failures += RunAgentGameApiCatalogTests();
     if (g_failures != 0)
     {
         return 1;

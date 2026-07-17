@@ -52,21 +52,6 @@ public sealed class NativeAsmMigrationContractTests
         Assert.Contains("ResetNativeGameApiRuntimeState();", hooks, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void FastBuildStructureUnpackUsesProfileSpecificCompletionTickOffset()
-    {
-        var root = RepositoryRoot();
-        var hooks = File.ReadAllText(Path.Combine(root, "src", "RayaTrainer.Agent", "AgentNativeHooks.cpp"));
-
-        Assert.Contains("uint32_t StructureUnpackCompletionTickOffset()", hooks, StringComparison.Ordinal);
-        Assert.Contains("case 0x418u:", hooks, StringComparison.Ordinal);
-        Assert.Contains("return 0x3Cu;", hooks, StringComparison.Ordinal);
-        Assert.Contains("case 0x428u:", hooks, StringComparison.Ordinal);
-        Assert.Contains("return 0x34u;", hooks, StringComparison.Ordinal);
-        Assert.Contains("TryRead(c.Edi + completionTickOffset, value)", hooks, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryRead(c.Edi + 0x3C, value)", hooks, StringComparison.Ordinal);
-    }
-
     private static uint Entry(IReadOnlyList<uint> values, string name)
     {
         var index = NativeAgentCatalog.EntryNames

@@ -73,5 +73,32 @@ public interface ITrainerFeatureController
 
     void Reset(TrainerFeature feature);
 
-    bool ReadToggleState(TrainerFeature feature);
+    /// <summary>
+    /// One-shot batch refresh from the DLL. Updates the internal observed cache
+    /// from a GetFeatureStates (cmd 7) response.
+    /// Returns the snapshot for caller convenience.
+    /// </summary>
+    Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the last observed toggle state from the local cache (populated by
+    /// <see cref="RefreshRuntimeStateAsync"/>). Returns null if no refresh has been
+    /// performed yet, or if the last refresh failed.
+    /// Throws <see cref="InvalidOperationException"/> if the feature maps to a pulse
+    /// state ID — use <see cref="ReadPulseFired"/> instead.
+    /// </summary>
+    bool? ReadToggleState(TrainerFeature feature);
+
+    /// <summary>
+    /// Reads the "fired since last refresh" sticky bit for pulse features.
+    /// Returns null if the feature is not a pulse feature, or if no refresh has
+    /// been performed yet.
+    /// </summary>
+    bool? ReadPulseFired(TrainerFeature feature);
+
+    /// <summary>
+    /// Returns true if the feature maps to a pulse state ID.
+    /// Pulse features use <see cref="ReadPulseFired"/> instead of <see cref="ReadToggleState"/>.
+    /// </summary>
+    bool IsPulseFeature(TrainerFeature feature);
 }

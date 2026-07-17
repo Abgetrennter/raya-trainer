@@ -23,21 +23,33 @@ public interface IAgentClient : IAgentGameApiClient
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
 
-    Task<AgentCommandResultPayload> SetToggleAsync(
+    /// <summary>
+    /// Cmd 5: SetFeatureStates — writes one or more native feature state values.
+    /// Replaces the old SetToggle/TriggerAction/WriteResourceValues commands.
+    /// </summary>
+    Task<AgentCommandResultPayload> SetFeatureStatesAsync(
         int processId,
-        AgentMemoryWriteRequest request,
+        SetFeatureStatesRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
 
-    Task<AgentCommandResultPayload> TriggerActionAsync(
+    /// <summary>
+    /// Cmd 6: SetRuntimePatchSet — enables or disables a named runtime patch set
+    /// (collection of byte patches applied as a single atomic unit).
+    /// </summary>
+    Task<AgentCommandResultPayload> SetRuntimePatchSetAsync(
         int processId,
-        AgentMemoryWriteRequest request,
+        uint patchSetId,
+        bool enable,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
 
-    Task<AgentCommandResultPayload> WriteResourceValuesAsync(
+    /// <summary>
+    /// Cmd 7: GetFeatureStates — reads a snapshot of all current native feature states
+    /// from the injected DLL. Returns the observed state map for client-side caching.
+    /// </summary>
+    Task<FeatureStatesResponse> GetFeatureStatesAsync(
         int processId,
-        AgentMemoryWriteRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
 

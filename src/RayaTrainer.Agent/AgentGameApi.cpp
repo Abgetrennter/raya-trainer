@@ -11,10 +11,9 @@ namespace RayaTrainer::agent
 {
 namespace
 {
-// Compile-time 1.12 defaults. The runtime native catalog (g_nativeCatalogRvas) starts as a
-// copy of these and is overwritten by SetNativeCatalog when the host delivers a per-profile
-// catalog. Kept as the fallback so 1.12 behavior is preserved without a catalog delivery.
-constexpr uint32_t kGameClientPointerRva = 0x8D8CE4u;
+// v11: no builtin 1.12 fallback. The runtime native catalog (g_nativeCatalogRvas) starts
+// zeroed; only SetNativeCatalog (cmd 33) populates it. All Native APIs fail closed with
+// InvalidCommand until catalog delivery completes.
 constexpr uint32_t kGameModeFieldOffset = 0x148u;
 constexpr int32_t kGameModeShell = 9;
 constexpr uint32_t kMaxGameApiSmokeTimeoutMilliseconds = 5000u;
@@ -77,52 +76,8 @@ constexpr GameApiFunctionSpec kGameApiCatalog[] = {
     }
 };
 
-// Default native catalog RVAs (1.12). Order matches NativeCatalogEntry and the C#
-// NativeAgentCatalog.EntryNames. g_nativeCatalogRvas is initialized from this on startup
-// and overwritten by SetNativeCatalog.
-constexpr uint32_t kDefaultNativeCatalogRvas[kNativeCatalogEntryCount] = {
-    kGameClientPointerRva,          // GameClientPointer
-    0x3E4230u,                      // GetThingClass
-    0x35C200u,                      // LevelUpSelected
-    0x205240u,                      // CreateUnit
-    0x39EA50u,                      // KillUnit
-    0x8E8C9Cu,                      // PlayerManager
-    0x4393E0u,                      // GetCurrentPlayer
-    0x8E6C58u,                      // ThingTemplateStore
-    0x8E9838u,                      // SelectedUnitCode
-    0x8DBBF0u,                      // ScienceStore
-    0x1456F0u,                      // ScienceStoreFindScience
-    0x147260u,                      // ScienceStoreFindUpgrade
-    0x43C300u,                      // ScienceManagerFindScience
-    0x44A2D0u,                      // PlayerGetUpgradeStore
-    0x44D7C0u,                      // ScienceManagerHasScience
-    0x454300u,                      // PlayerGrantScience
-    0x1320u,                        // PlayerScienceManagerOffset
-    0x8DB73Cu,                      // SelectionManager
-    0x50u,                          // SelectionListHeadOffset
-    0x5Cu,                          // SelectionCountOffset
-    0x8DAEFCu,                      // MouseWorldPointer
-    0x1ED4A0u,                      // MouseWorldToMapPosition
-    0x3E3D00u,                      // ObjectSetPosition
-    0x374u,                         // MovementModuleOffset
-    0x200u,                         // MovementContainerOffset
-    0x418u,                         // ObjectOwnerOffset
-    0x33Cu,                         // BodyOffset
-    0x3CCu,                         // VeterancyOffset
-    0x37Cu,                         // WeaponContainerOffset
-    0xBCu,                          // UnitStatePrimaryOffset
-    0xC8u,                          // UnitStateSecondaryOffset
-    0x0u,                           // OneHitDamageDeltaMode
-    0x3AD79Eu,                      // OneHitCaller1
-    0x3ADEE2u,                      // OneHitCaller2
-    0x38E651u,                      // OneHitCaller3
-    0x54u,                          // DestroySelectionListHeadOffset
-    0x310u,                         // ProductionModulesOffset
-    0x1360u,                        // LocalContextSiblingOffset
-    1u,                             // RestoreOreCapacityMode (1=EAX+8, 2=ECX+0x28)
-    0x379650u,                      // GameObjectAddUpgrade (RVA = IDA VA 0x779650 - base 0x400000)
-    0x24u,                          // UpgradeTemplateTypeOffset (Type field within UpgradeTemplateDefinition, via [tpl+0xC])
-};
+// v11: no builtin 1.12 fallback. Catalog starts zeroed; only SetNativeCatalog (cmd 33)
+// populates it. All Native APIs fail closed with InvalidCommand until delivery.
 
 uint32_t g_nativeCatalogRvas[kNativeCatalogEntryCount] = {};
 bool g_nativeCatalogReady = false;
@@ -1843,9 +1798,11 @@ uint32_t ResolveCurrentPlayerPointer()
 
 void InitializeNativeCatalog()
 {
+    // v11: no builtin 1.12 fallback. Catalog starts zeroed; only SetNativeCatalog
+    // (cmd 33) populates it. All Native APIs fail closed with InvalidCommand until then.
     for (uint32_t index = 0; index < kNativeCatalogEntryCount; ++index)
     {
-        g_nativeCatalogRvas[index] = kDefaultNativeCatalogRvas[index];
+        g_nativeCatalogRvas[index] = 0;
     }
     g_nativeCatalogReady = false;
 }
@@ -2043,6 +2000,12 @@ AgentStatusCode DispatchNativeAction(
 {
     result = {};
     result.AgentVersion = kAgentProtocolVersion;
+    if (!HasNativeCatalog())
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
+        return AgentStatusCode::InvalidCommand;
+    }
     if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi))
     {
         result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
@@ -2078,6 +2041,12 @@ AgentStatusCode DispatchNativeGetThingClass(
     result = {};
     result.AgentVersion = kAgentProtocolVersion;
     result.UnitTypeId = request.UnitTypeId;
+    if (!HasNativeCatalog())
+    {
+        result.StatusCode = static_cast<uint16_t>(AgentStatusCode::InvalidCommand);
+        result.DispatchStatus = static_cast<uint32_t>(GameApiDispatchStatus::Disabled);
+        return AgentStatusCode::InvalidCommand;
+    }
     if (!IsValidNativeRequest(request.TimeoutMilliseconds, request.EnableDirectGameApi) ||
         request.UnitTypeId == 0)
     {

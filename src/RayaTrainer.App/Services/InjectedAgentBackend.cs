@@ -1,5 +1,6 @@
 using System.IO;
 using RayaTrainer.Core.Agent;
+using RayaTrainer.Core.Diagnostics;
 using RayaTrainer.Core.Features;
 using RayaTrainer.Core.Manifest;
 using RayaTrainer.Core.Patching;
@@ -7,19 +8,6 @@ using RayaTrainer.Core.Runtime;
 using RayaTrainer.Core.Versions;
 
 namespace RayaTrainer.App.Services;
-
-public sealed class AgentCompatibilityException : InvalidOperationException
-{
-    public AgentCompatibilityException(string message)
-        : base(message)
-    {
-    }
-
-    public AgentCompatibilityException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
-}
 
 public sealed class InjectedAgentBackend
 {
@@ -47,6 +35,31 @@ public sealed class InjectedAgentBackend
 
     public IReadOnlyList<SkippedPatchHookPlan> LastSkippedHookPlans { get; private set; } = [];
 
+    /// <summary>
+    /// Native hook IDs that were successfully included in the last InstallPatchesAsync request.
+    /// Populated after a successful install. Empty before first install or after restore.
+    /// </summary>
+    public IReadOnlyCollection<uint> InstalledNativeHookIds { get; private set; } = Array.Empty<uint>();
+
+    /// <summary>
+    /// PatchSet IDs that were successfully registered in the last install.
+    /// L5 populates this. Currently a stub for L4 composite capability scaffolding.
+    /// </summary>
+    public IReadOnlyCollection<uint> PatchSetsRegistered { get; private set; } = Array.Empty<uint>();
+
+    /// <summary>
+    /// PatchSet IDs omitted from the install request because the live process did not
+    /// match their fixed-RVA disabled-byte baseline. Hooks remain independently installable.
+    /// </summary>
+    public IReadOnlyCollection<uint> SkippedPatchSetIds { get; private set; } = Array.Empty<uint>();
+
+    /// <summary>
+    /// Maximum time to wait for the native catalog delivery (SetNativeCatalogAsync)
+    /// to complete. Default is 5 seconds. Must be set before calling
+    /// <see cref="DeliverNativeCatalogAsync"/>.
+    /// </summary>
+    public TimeSpan CatalogDeliveryTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
     public AgentStatusPayload? LastStatus => _lastStatus;
 
     public AgentSignatureScanPayload? LastSignatureScan { get; private set; }
@@ -59,10 +72,18 @@ public sealed class InjectedAgentBackend
 
     public bool SignatureCompatibilityValidated { get; private set; }
 
+    /// <summary>
+    /// Whether the native address catalog was successfully delivered to the agent.
+    /// Set to true after <see cref="DeliverNativeCatalogAsync"/> completes successfully,
+    /// reset to false on <see cref="AttachAsync"/>.
+    /// </summary>
+    public bool IsNativeCatalogDelivered => _nativeCatalogDelivered;
+
     private AgentStatusPayload? _lastStatus;
     private bool _supportsDirectGameApi;
     private IReadOnlyDictionary<string, uint>? _scannedAddresses;
     private IReadOnlyDictionary<string, byte[]>? _attestedHookBytes;
+    private bool _nativeCatalogDelivered;
 
     public async Task<AgentStatusPayload> AttachAsync(
         TrainerTarget target,
@@ -96,6 +117,9 @@ public sealed class InjectedAgentBackend
 
         _supportsDirectGameApi = profile.SupportsDirectGameApi;
         SignatureCompatibilityValidated = false;
+        _nativeCatalogDelivered = false;
+        PatchSetsRegistered = Array.Empty<uint>();
+        SkippedPatchSetIds = Array.Empty<uint>();
 
         ReusedExistingAgent = false;
         var ping = await TryPingExistingAgentAsync(processId, cancellationToken).ConfigureAwait(false);
@@ -146,17 +170,18 @@ public sealed class InjectedAgentBackend
                 .ConfigureAwait(false);
             LastSignatureScan = signatureScan;
             _scannedAddresses = ValidateSignatureCatalog(profile, signatureScan, target.SignatureCompatibilityMode);
+            _attestedHookBytes = await ValidateScannedHookLayoutsAsync(
+                    manifest,
+                    profile,
+                    target,
+                    processId,
+                    _scannedAddresses,
+                    requireAllHooks: target.SignatureCompatibilityMode,
+                    timeout,
+                    cancellationToken)
+                .ConfigureAwait(false);
             if (target.SignatureCompatibilityMode)
             {
-                _attestedHookBytes = await ValidateSignatureCompatibilityLayoutAsync(
-                        manifest,
-                        profile,
-                        target,
-                        processId,
-                        _scannedAddresses,
-                        timeout,
-                        cancellationToken)
-                    .ConfigureAwait(false);
                 SignatureCompatibilityValidated = true;
             }
         }
@@ -238,15 +263,17 @@ public sealed class InjectedAgentBackend
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
+        if (!_nativeCatalogDelivered)
+        {
+            throw new InvalidOperationException(
+                "NATIVE_CATALOG_PENDING: Native catalog has not been delivered. " +
+                "Call DeliverNativeCatalogAsync before InstallPatchesAsync.");
+        }
+
         if (TargetProcessId is not int processId || _lastStatus is not AgentStatusPayload status)
         {
             throw new InvalidOperationException("Agent 尚未连接。");
         }
-
-        // Deliver the per-profile native catalog BEFORE installing hooks, so every native
-        // handler immediately sees the correct profile-specific RVAs. If catalog delivery
-        // fails there is nothing to roll back.
-        await DeliverNativeCatalogAsync(target, timeout, cancellationToken).ConfigureAwait(false);
 
         var buildResult = AgentPatchPayloadBuilder.BuildWithDiagnostics(
             manifest,
@@ -255,15 +282,96 @@ public sealed class InjectedAgentBackend
             _scannedAddresses,
             _attestedHookBytes);
         LastSkippedHookPlans = buildResult.SkippedHooks;
-        var result = await _client.InstallPatchesAsync(processId, buildResult.Request, timeout, cancellationToken)
+        var request = await FilterUnsupportedPatchSetsAsync(
+                processId,
+                buildResult.Request,
+                timeout,
+                cancellationToken)
+            .ConfigureAwait(false);
+        var result = await _client.InstallPatchesAsync(processId, request, timeout, cancellationToken)
             .ConfigureAwait(false);
         if (result.StatusCode != AgentStatusCode.Ok)
         {
+            if (result.StatusCode == AgentStatusCode.PatchMismatch)
+            {
+                // Silently query diagnostics for richer reporting downstream.
+                // This populates LastMismatchDiagnostic with kind/subject discrimination.
+                await GetMismatchDiagnosticsAsync(timeout, cancellationToken).ConfigureAwait(false);
+            }
+
             throw new InvalidOperationException($"Agent patch install failed: {result.StatusCode}.");
         }
 
+        // Track the native hook IDs that were successfully included in the install request
+        InstalledNativeHookIds = request.Hooks
+            .Select(h => h.NativeHookId)
+            .Order()
+            .ToArray();
+
+        // L5: record the PatchSet IDs that were registered with this install
+        PatchSetsRegistered = request.PatchSets
+            .Select(p => p.Id)
+            .Order()
+            .ToArray();
+
         _lastStatus = status with { InstalledHookCount = result.InstalledHookCount };
         return result;
+    }
+
+    private async Task<AgentInstallPatchesRequest> FilterUnsupportedPatchSetsAsync(
+        int processId,
+        AgentInstallPatchesRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        if (request.PatchSets.Count == 0)
+        {
+            SkippedPatchSetIds = Array.Empty<uint>();
+            return request;
+        }
+
+        var supported = new List<AgentPatchSetPayload>(request.PatchSets.Count);
+        var skipped = new List<uint>();
+        foreach (var patchSet in request.PatchSets)
+        {
+            var matchesDisabledBaseline = true;
+            foreach (var entry in patchSet.Entries)
+            {
+                var read = await _client.ReadMemoryAsync(
+                        processId,
+                        new AgentMemoryReadRequest(entry.Address, checked((uint)entry.DisableBytes.Length)),
+                        timeout,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (read.StatusCode != AgentStatusCode.Ok ||
+                    read.AgentVersion != AgentProtocol.Version ||
+                    read.Address != entry.Address ||
+                    read.Bytes.Length != entry.DisableBytes.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"无法验证当前游戏构建的可选 PatchSet {patchSet.Id}，已停止安装以避免写入未知地址。");
+                }
+
+                if (entry.Kind != (byte)PatchSetEntryKind.DerivedStateReset &&
+                    !read.Bytes.SequenceEqual(entry.DisableBytes))
+                {
+                    matchesDisabledBaseline = false;
+                    break;
+                }
+            }
+
+            if (matchesDisabledBaseline)
+            {
+                supported.Add(patchSet);
+            }
+            else
+            {
+                skipped.Add(patchSet.Id);
+            }
+        }
+
+        SkippedPatchSetIds = skipped.Order().ToArray();
+        return request with { PatchSets = supported };
     }
 
     public async Task<AgentCommandResultPayload> RestorePatchesAsync(
@@ -290,20 +398,28 @@ public sealed class InjectedAgentBackend
         return result;
     }
 
-    private async Task DeliverNativeCatalogAsync(
+    /// <summary>
+    /// Delivers the per-profile native agent catalog to the injected DLL.
+    /// Must be called after <see cref="AttachAsync"/> and before
+    /// <see cref="InstallPatchesAsync"/>. Uses <see cref="CatalogDeliveryTimeout"/>
+    /// as the maximum time to wait for the delivery to complete.
+    /// On success, sets <see cref="_nativeCatalogDelivered"/> to true.
+    /// On timeout or failure, throws <see cref="NativeCatalogDeliveryException"/>.
+    /// </summary>
+    public async Task DeliverNativeCatalogAsync(
         TrainerTarget target,
         TimeSpan timeout,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (TargetProcessId is not int processId)
         {
-            throw new InvalidOperationException("Agent 尚未连接。");
+            throw new NativeCatalogDeliveryException("Agent 尚未连接。");
         }
 
         var profile = Ra3VersionProfileRegistry.ResolveTargetProfile(target);
         if (profile is null)
         {
-            throw new InvalidOperationException("无法识别当前游戏版本，已停止安装以避免使用错误的 Native 地址。");
+            throw new NativeCatalogDeliveryException("无法识别当前游戏版本，已停止安装以避免使用错误的 Native 地址。");
         }
 
         var rvas = _scannedAddresses is not null
@@ -313,11 +429,34 @@ public sealed class InjectedAgentBackend
                 actualModuleBaseVa: checked((uint)target.ModuleBase.ToInt64()))
             : profile.BuildNativeAgentCatalogRvas();
 
-        var catalogResult = await _client.SetNativeCatalogAsync(processId, rvas, timeout, cancellationToken)
-            .ConfigureAwait(false);
-        if (catalogResult.StatusCode != AgentStatusCode.Ok)
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(CatalogDeliveryTimeout);
+
+        try
         {
-            throw new InvalidOperationException($"Agent native catalog delivery failed: {catalogResult.StatusCode}.");
+            var catalogResult = await _client
+                .SetNativeCatalogAsync(processId, rvas, timeout, timeoutCts.Token)
+                .ConfigureAwait(false);
+            if (catalogResult.StatusCode != AgentStatusCode.Ok)
+            {
+                throw new NativeCatalogDeliveryException(
+                    $"Agent native catalog delivery failed: {catalogResult.StatusCode}.");
+            }
+
+            _nativeCatalogDelivered = true;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new NativeCatalogDeliveryException(
+                "Agent 已注入但地址表未送达，请重新连接修改器。");
+        }
+        catch (Exception ex) when (ex is not NativeCatalogDeliveryException and not OperationCanceledException)
+        {
+            // Wrap unexpected exceptions from SetNativeCatalogAsync into
+            // NativeCatalogDeliveryException. Timeout/caller-triggered
+            // OperationCanceledException propagates as-is.
+            throw new NativeCatalogDeliveryException(
+                "Agent native catalog delivery failed.", ex);
         }
     }
 
@@ -406,12 +545,13 @@ public sealed class InjectedAgentBackend
         return addresses;
     }
 
-    private async Task<IReadOnlyDictionary<string, byte[]>> ValidateSignatureCompatibilityLayoutAsync(
+    private async Task<IReadOnlyDictionary<string, byte[]>> ValidateScannedHookLayoutsAsync(
         TrainerManifest manifest,
         Ra3VersionProfile profile,
         TrainerTarget target,
         int processId,
         IReadOnlyDictionary<string, uint> scannedAddresses,
+        bool requireAllHooks,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
@@ -421,7 +561,12 @@ public sealed class InjectedAgentBackend
             includeUnlistedHooks: false).Plans;
         if (plans.Count == 0)
         {
-            throw new AgentCompatibilityException("签名兼容校验没有可验证的 Hook，已停止安装。");
+            if (requireAllHooks)
+            {
+                throw new AgentCompatibilityException("签名兼容校验没有可验证的 Hook，已停止安装。");
+            }
+
+            return new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         }
 
         var actualModuleBase = checked((ulong)target.ModuleBase.ToInt64());
@@ -429,10 +574,21 @@ public sealed class InjectedAgentBackend
         foreach (var plan in plans)
         {
             var key = string.IsNullOrWhiteSpace(plan.ReturnLabel) ? plan.Address : plan.ReturnLabel;
-            if (!scannedAddresses.TryGetValue(key, out var scannedAddress) || scannedAddress == 0)
+            if (!profile.Hooks.TryGetValue(key, out var profileHook) || profileHook.Rva is not int expectedRva)
             {
                 throw new AgentCompatibilityException(
-                    $"签名兼容校验未通过：Hook {key} 未能唯一定位，未安装任何 Patch。");
+                    $"签名地址校验未通过：Hook {key} 缺少已知版本指令基线，未安装任何 Patch。");
+            }
+
+            if (!scannedAddresses.TryGetValue(key, out var scannedAddress) || scannedAddress == 0)
+            {
+                if (requireAllHooks)
+                {
+                    throw new AgentCompatibilityException(
+                        $"签名兼容校验未通过：Hook {key} 未能唯一定位，未安装任何 Patch。");
+                }
+
+                continue;
             }
 
             if (scannedAddress < actualModuleBase || scannedAddress - actualModuleBase >= MaximumModuleSpan)
@@ -441,10 +597,10 @@ public sealed class InjectedAgentBackend
                     $"签名兼容校验未通过：Hook {key} 的扫描地址超出目标模块，未安装任何 Patch。");
             }
 
-            if (!profile.Hooks.TryGetValue(key, out var profileHook) || profileHook.Rva is not int expectedRva)
+            var expectedLiveAddress = checked(actualModuleBase + (uint)expectedRva);
+            if (!requireAllHooks && scannedAddress == expectedLiveAddress)
             {
-                throw new AgentCompatibilityException(
-                    $"签名兼容校验未通过：Hook {key} 缺少已知版本指令基线，未安装任何 Patch。");
+                continue;
             }
 
             var read = await _client.ReadMemoryAsync(
@@ -459,7 +615,7 @@ public sealed class InjectedAgentBackend
                 read.Bytes.Length != plan.OriginalBytes.Length)
             {
                 throw new AgentCompatibilityException(
-                    $"签名兼容校验未通过：无法读取 Hook {key} 的完整原始指令，未安装任何 Patch。");
+                    $"签名地址校验未通过：无法读取 Hook {key} 的完整原始指令，未安装任何 Patch。");
             }
 
             var verification = SignatureCompatibilityVerifier.Verify(
@@ -472,7 +628,7 @@ public sealed class InjectedAgentBackend
             if (!verification.Compatible)
             {
                 throw new AgentCompatibilityException(
-                    $"签名兼容校验未通过：Hook {key} 的代码布局已变化（{verification.Reason}），未安装任何 Patch。");
+                    $"签名地址校验未通过：Hook {key} 的代码布局已变化（{verification.Reason}），未安装任何 Patch。");
             }
 
             attestedBytes[key] = read.Bytes.ToArray();
@@ -495,11 +651,19 @@ public sealed class InjectedAgentBackend
     }
 
     /// <summary>
-    /// Pulls the last hook mismatch captured by the DLL. Call this right after a failed
+    /// The last mismatch diagnostic fetched from the agent after a <c>PatchMismatch</c>
+    /// install result. Populated by <see cref="InstallPatchesAsync"/> when the agent
+    /// reports a non-Ok status; null when no mismatch has been captured yet.
+    /// </summary>
+    public TrainerMismatchDiagnostic? LastMismatchDiagnostic { get; private set; }
+
+    /// <summary>
+    /// Pulls the last mismatch diagnostic captured by the DLL. Call this right after a failed
     /// <see cref="InstallPatchesAsync"/> that threw with <see cref="AgentStatusCode.PatchMismatch"/>;
     /// the DLL retains the offending hook's expected/actual/dump bytes until the next install.
+    /// This method also populates <see cref="LastMismatchDiagnostic"/> on success.
     /// </summary>
-    public Task<AgentMismatchDiagnosticsPayload> GetMismatchDiagnosticsAsync(
+    public async Task<TrainerMismatchDiagnostic?> GetMismatchDiagnosticsAsync(
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
@@ -508,7 +672,27 @@ public sealed class InjectedAgentBackend
             throw new InvalidOperationException("Agent 尚未连接。");
         }
 
-        return _client.GetMismatchDiagnosticsAsync(processId, timeout, cancellationToken);
+        try
+        {
+            var payload = await _client
+                .GetMismatchDiagnosticsAsync(processId, timeout, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (payload.HasMismatch)
+            {
+                var diag = TrainerMismatchDiagnostic.FromPayload(payload);
+                LastMismatchDiagnostic = diag;
+                return diag;
+            }
+
+            LastMismatchDiagnostic = null;
+            return null;
+        }
+        catch
+        {
+            LastMismatchDiagnostic = null;
+            return null;
+        }
     }
 
     public ITrainerFeatureController CreateFeatureController(AgentStatusPayload status)

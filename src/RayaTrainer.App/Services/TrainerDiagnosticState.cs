@@ -27,6 +27,7 @@ internal sealed class TrainerDiagnosticState
     private bool _lastRuntimeReadAttempted;
     private bool _lastRuntimeReadSucceeded;
     private bool _lastRuntimeReadFailed;
+    private TrainerMismatchDiagnostic? _latestMismatchDiagnostic;
 
     public Action? OnChanged;
 
@@ -39,6 +40,12 @@ internal sealed class TrainerDiagnosticState
     public string? LastReportPath => _lastReportPath;
 
     public string? LastDiagnosticError => _lastDiagnosticError;
+
+    /// <summary>
+    /// The most recent mismatch diagnostic (Hook, RuntimePatchSet, or PatchSetIpConflict)
+    /// captured during patch installation. Null when no mismatch has been recorded.
+    /// </summary>
+    public TrainerMismatchDiagnostic? LatestMismatchDiagnostic => _latestMismatchDiagnostic;
 
     public void ResetForAttach()
     {
@@ -55,6 +62,7 @@ internal sealed class TrainerDiagnosticState
         _lastRuntimeReadAttempted = false;
         _lastRuntimeReadSucceeded = false;
         _lastRuntimeReadFailed = false;
+        _latestMismatchDiagnostic = null;
     }
 
     public void ClearDiagnosticState()
@@ -69,6 +77,7 @@ internal sealed class TrainerDiagnosticState
         _lastRuntimeReadAttempted = false;
         _lastRuntimeReadSucceeded = false;
         _lastRuntimeReadFailed = false;
+        _latestMismatchDiagnostic = null;
     }
 
     public void ClearRuntimeReadState()
@@ -136,13 +145,36 @@ internal sealed class TrainerDiagnosticState
         _lastReportPath = result.ReportPath;
         _lastDiagnosticErrorCode = null;
         _lastDiagnosticError = null;
-        RecordEvent(
-            result.SkippedHooks.Count == 0 ? DiagnosticEventSeverity.Info : DiagnosticEventSeverity.Warning,
-            result.SkippedHooks.Count == 0 ? "patch.installed" : "patch.installed_partial",
-            result.SkippedHooks.Count == 0
-                ? $"Patch 已安装，Hook={result.InstallResult.InstalledHookCount}。"
-                : $"Patch 已部分安装，跳过 {result.SkippedHooks.Count} 个 Hook。",
-            result.ReportPath);
+
+        // Track the latest mismatch diagnostic from the agent's extended cmd 34 payload.
+        _latestMismatchDiagnostic = result.AllDiagnostics?.FirstOrDefault();
+
+        // Emit kind-specific events when the agent reported a discriminated diagnostic.
+        if (_latestMismatchDiagnostic is not null && result.SkippedHooks.Count > 0)
+        {
+            var (code, message) = _latestMismatchDiagnostic.Kind switch
+            {
+                MismatchKind.RuntimePatchSet =>
+                    ("agent.patchset_install_mismatch",
+                     $"PatchSet {_latestMismatchDiagnostic.SubjectId} 入口字节不匹配。"),
+                MismatchKind.PatchSetIpConflict =>
+                    ("agent.patchset_codeflow_ip_conflict",
+                     $"PatchSet {_latestMismatchDiagnostic.SubjectId} 线程 IP 冲突。"),
+                _ => ("agent.hook_mismatch",
+                      $"Hook #{_latestMismatchDiagnostic.SubjectId} @ 0x{_latestMismatchDiagnostic.HookAddress:X8} 字节不匹配。")
+            };
+            RecordEvent(DiagnosticEventSeverity.Warning, code, message, result.ReportPath);
+        }
+        else
+        {
+            RecordEvent(
+                result.SkippedHooks.Count == 0 ? DiagnosticEventSeverity.Info : DiagnosticEventSeverity.Warning,
+                result.SkippedHooks.Count == 0 ? "patch.installed" : "patch.installed_partial",
+                result.SkippedHooks.Count == 0
+                    ? $"Patch 已安装，Hook={result.InstallResult.InstalledHookCount}。"
+                    : $"Patch 已部分安装，跳过 {result.SkippedHooks.Count} 个 Hook。",
+                result.ReportPath);
+        }
     }
 
     public void CaptureRuntimeState(ITrainerFeatureController? controller, bool arePatchesInstalled)
@@ -201,6 +233,18 @@ internal sealed class TrainerDiagnosticState
         _lastDiagnosticErrorCode = code;
         _lastDiagnosticError = message;
         RecordEvent(DiagnosticEventSeverity.Error, code, message, detail);
+    }
+
+    /// <summary>
+    /// Records a native catalog delivery failure event. Called when the per-profile
+    /// RVA table could not be delivered to the DLL before hook installation.
+    /// </summary>
+    public void CaptureNativeCatalogDeliveryFailure(Exception ex)
+    {
+        RecordFailure(
+            "agent.native_catalog_delivery_failed",
+            "Native 地址表未送达，请重新连接修改器。",
+            ex.Message);
     }
 
     public TrainerDiagnosticSnapshot GetSnapshot(

@@ -66,6 +66,8 @@ public static class TrainerManifestRepository
     private static string DisplayName(string rawName)
     {
         return rawName
+            // Retained for legacy manifest compatibility — any external stale
+            // "Moeny" references are corrected here. No-op on current data.
             .Replace("Moeny", "Money", StringComparison.Ordinal)
             .Replace("Destory", "Destroy", StringComparison.Ordinal);
     }

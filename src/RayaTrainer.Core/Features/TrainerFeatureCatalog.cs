@@ -15,7 +15,7 @@ public static class TrainerFeatureCatalog
     private static readonly IReadOnlyDictionary<string, FeatureOverride> SourceTrainerOverrides =
         new Dictionary<string, FeatureOverride>(StringComparer.Ordinal)
         {
-            ["Moeny"] = new("增加玩家战场资金", "Ctrl+F1", null, null, null, false),
+            ["Money"] = new("增加玩家战场资金", "Ctrl+F1", null, null, null, false),
             ["Power"] = new("无限电力", "Ctrl+F2", null, null, null, false, true),
             ["SC POINT"] = new("无限秘密协议点数", "Ctrl+F3", null, null, null, false),
             ["HAVE ALL SC"] = new("解开所有秘密协议技能", "Ctrl+F4", null, null, null, false),
@@ -203,7 +203,7 @@ public static class TrainerFeatureCatalog
     private static readonly TrainerFeature ClearSelectedAttackSpeedEffectsFeature =
         new(
             TrainerFeatureIds.ClearSelectedAttackSpeedEffects,
-            "清除所有单位的满攻速效果",
+            "清空满攻速单位",
             null,
             [],
             null,
@@ -215,7 +215,7 @@ public static class TrainerFeatureCatalog
     private static readonly TrainerFeature ClearSelectedAttackRangeEffectsFeature =
         new(
             TrainerFeatureIds.ClearSelectedAttackRangeEffects,
-            "清除所有单位的无限射程效果",
+            "清空无限射程单位",
             null,
             [],
             null,
@@ -311,15 +311,6 @@ public static class TrainerFeatureCatalog
             null,
             null);
 
-    private static readonly byte[] BezierAccelerationScaleCode =
-    [
-        0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00,
-        0xF3, 0x0F, 0x59, 0x0D, 0x20, 0x64, 0xBC, 0x00,
-        0xE9, 0x0A, 0xAC, 0xB1, 0xFF,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3E
-    ];
-
     private static readonly TrainerFeature FrameRateUnlockFeature =
         new(
             "Frame Rate Unlock 60fps",
@@ -328,45 +319,6 @@ public static class TrainerFeatureCatalog
             ["Frame Rate Unlock 60fps"],
             null,
             null,
-            [
-                new(GameTarget.ProcessName + "+8AD5F4", BitConverter.GetBytes(60), BitConverter.GetBytes(15)),
-                new(GameTarget.ProcessName + "+8AF9D0", BitConverter.GetBytes(30), BitConverter.GetBytes(15)),
-                new(GameTarget.ProcessName + "+8DBC4C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(15.0f * 0.001f)),
-                new(GameTarget.ProcessName + "+8DBC1C", BitConverter.GetBytes(1000.0f / 30.0f), BitConverter.GetBytes(1000.0f / 15.0f)),
-                new(GameTarget.ProcessName + "+8DBC58", BitConverter.GetBytes(30.0f), BitConverter.GetBytes(15.0f)),
-                new(GameTarget.ProcessName + "+8DBC50", BitConverter.GetBytes(60.0f), BitConverter.GetBytes(30.0f)),
-                new(GameTarget.ProcessName + "+8DBC54", BitConverter.GetBytes(1000.0f / 60.0f), BitConverter.GetBytes(1000.0f / 30.0f)),
-                new(GameTarget.ProcessName + "+8DBC94", BitConverter.GetBytes(1.0f / 30.0f), BitConverter.GetBytes(1.0f / 15.0f)),
-                new(GameTarget.ProcessName + "+8DBD34", BitConverter.GetBytes(1.0f / 60.0f), BitConverter.GetBytes(1.0f / 30.0f)),
-                new(GameTarget.ProcessName + "+8E5A5C", BitConverter.GetBytes(0), BitConverter.GetBytes(0)),
-                new(GameTarget.ProcessName + "+8E176C", BitConverter.GetBytes(16), BitConverter.GetBytes(33)),
-                new(GameTarget.ProcessName + "+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.03f)),
-                new(GameTarget.ProcessName + "+8DBC5C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
-                new(GameTarget.ProcessName + "+1FEC91", [0x10], [0x1D]),
-                new(GameTarget.ProcessName + "+1FECA3", [0x10], [0x1D]),
-                new(GameTarget.ProcessName + "+229853", [0xEB], [0x73]),
-                new(GameTarget.ProcessName + "+13E90A", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+1FFAD1", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+216257", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+2297C9", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+7B30D8", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+7B3108", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+7B3138", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+7B3C59", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+2C17CC", [0xD4, 0x63, 0xBC], [0x5C, 0xBC, 0xCD]),
-                new(GameTarget.ProcessName + "+8DBC5C", BitConverter.GetBytes(60.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
-                new(GameTarget.ProcessName + "+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.0f)),
-                new(GameTarget.ProcessName + "+1EB6F6", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(GameTarget.ProcessName + "+1EB6FC", [0xF4, 0xD5], [0xD4, 0xF9]),
-                new(
-                    GameTarget.ProcessName + "+7C6400",
-                    BezierAccelerationScaleCode,
-                    BezierAccelerationScaleCode),
-                new(
-                    GameTarget.ProcessName + "+2E1017",
-                    [0xE9, 0xE4, 0x53, 0x4E, 0x00, 0x90, 0x90, 0x90],
-                    [0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00])
-            ],
             SupportedProfileIds: ["ra3_1.12"]);
 
     public static IReadOnlyList<TrainerFeature> CreateUiFeatures(IEnumerable<TrainerFeature> features) => CreateGridFeatures(features);
@@ -459,7 +411,6 @@ public static class TrainerFeatureCatalog
             EnableFlags = featureOverride.EnableFlags ?? feature.EnableFlags,
             DispatchTarget = featureOverride.DispatchTarget ?? feature.DispatchTarget,
             ValueHint = featureOverride.HasValueHintOverride ? featureOverride.ValueHint : feature.ValueHint,
-            ToggleBytePatches = featureOverride.ToggleBytePatches,
             SelectionMode = ResolveSelectionMode(feature.RawName)
         };
     }
@@ -516,7 +467,6 @@ public static class TrainerFeatureCatalog
         string? ValueHint,
         bool Hide,
         bool HasValueHintOverride = false,
-        IReadOnlyList<TrainerFeatureBytePatch>? ToggleBytePatches = null,
         // HasHotkeyOverride=true 时强制使用 override 中的 Hotkey（含 null），
         // 用于主动清除 manifest 提供的默认快捷键。
         bool HasHotkeyOverride = false);

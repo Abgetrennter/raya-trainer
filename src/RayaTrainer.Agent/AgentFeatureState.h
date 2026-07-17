@@ -40,10 +40,32 @@ enum class NativeFeatureStateId : uint32_t
     SelectedUnitMaxHealthBits = 103
 };
 
+// DEPRECATED v11: replaced by SetFeatureStatesFromPayload
 AgentStatusCode ApplyNativeFeatureStatesFromPayload(
     const unsigned char* data,
     uint32_t length);
+
+struct FeatureStateReadback
+{
+    uint32_t StateId;
+    uint32_t Value;
+};
+
+// Strict v11 SetFeatureStates handler. Validates all rules before applying.
+AgentStatusCode SetFeatureStatesFromPayload(
+    const unsigned char* data,
+    uint32_t length);
+
 uint32_t ReadNativeFeatureState(NativeFeatureStateId id);
 uint32_t ConsumeNativeFeatureState(NativeFeatureStateId id);
 void ResetNativeFeatureStates();
+
+// Sticky-bit pulse tracking.
+void NotifyPulseFired(NativeFeatureStateId id);
+uint32_t ReadStickyPulseBit(NativeFeatureStateId id);
+void ClearAllStickyPulseBits();
+
+// Bulk readback for GetFeatureStates. Fills out with all declared state IDs in enum order.
+// Does NOT clear sticky bits — caller must call ClearAllStickyPulseBits after serializing.
+AgentStatusCode ReadAllFeatureStates(FeatureStateReadback* out, uint32_t capacity, uint32_t& outCount);
 }

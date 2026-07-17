@@ -26,18 +26,27 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel><SDLCheck>true</SDLCheck><ConformanceMode>true</ConformanceMode><LanguageStandard>stdcpp17</LanguageStandard><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>Level4</WarningLevel><SDLCheck>true</SDLCheck><ConformanceMode>true</ConformanceMode><LanguageStandard>stdcpp17</LanguageStandard><PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;RayaTrainer_AGENT;ZYCORE_WINDOWS;ZYCORE_STATIC_BUILD;ZYDIS_STATIC_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions><AdditionalIncludeDirectories>$(ProjectDir)..\..\src\RayaTrainer.Agent\vendor\zydis\include;$(ProjectDir)..\..\src\RayaTrainer.Agent\vendor\zydis\src;$(ProjectDir)..\..\src\RayaTrainer.Agent\vendor\zycore\include;$(ProjectDir)..\..\src\RayaTrainer.Agent\vendor\zasm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link><SubSystem>Console</SubSystem></Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AgentGameThreadDispatcherTests.cpp" />
+    <ClCompile Include="AgentFeatureStateTests.cpp" />
     <ClCompile Include="NativePointerSetTests.cpp" />
+    <ClCompile Include="AgentPatchSetTests.cpp" />
+    <ClCompile Include="AgentGameApiCatalogTests.cpp" />
     <ClCompile Include="..\..\src\RayaTrainer.Agent\AgentGameThreadDispatcher.cpp" />
+    <ClCompile Include="..\..\src\RayaTrainer.Agent\AgentFeatureState.cpp" />
+    <ClCompile Include="..\..\src\RayaTrainer.Agent\AgentPatchManager.cpp" />
+    <ClCompile Include="..\..\src\RayaTrainer.Agent\AgentGameApi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\RayaTrainer.Agent\AgentGameThreadDispatcher.h" />
+    <ClInclude Include="..\..\src\RayaTrainer.Agent\AgentFeatureState.h" />
     <ClInclude Include="..\..\src\RayaTrainer.Agent\NativePointerSet.h" />
+    <ClInclude Include="..\..\src\RayaTrainer.Agent\AgentPatchManager.h" />
+    <ClInclude Include="..\..\src\RayaTrainer.Agent\AgentGameApi.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

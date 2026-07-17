@@ -8,6 +8,18 @@ $ErrorActionPreference = 'Stop'
 $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 $utf8Encoding = New-Object Text.UTF8Encoding($false, $true)
 
+function Test-LineIsHistorical {
+    param([string]$Line)
+    # Lines starting with '|' (table rows) or '-' (bullet lists) that contain a YYYY-MM-DD date
+    # are treated as historical changelog entries and are exempt from drift checks.
+    if ($Line -match '^[\|\-]') {
+        if ($Line -match '\d{4}-\d{2}-\d{2}') {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Get-RelativeRepoPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -81,6 +93,28 @@ $nativeProtocolVersion = Read-RequiredProtocolVersion `
     -Pattern 'kAgentProtocolVersion\s*=\s*(?<version>\d+)\s*;' `
     -ContractName 'native'
 
+# Read API count dynamically from apis.json
+$apisJsonPath = Join-Path $resolvedRepoRoot 'src/RayaTrainer.Core/Agent/apis.json'
+if (-not (Test-Path -LiteralPath $apisJsonPath)) {
+    throw "Missing apis.json: $apisJsonPath"
+}
+$apisJson = Get-Content $apisJsonPath -Raw | ConvertFrom-Json
+$currentApiCount = $apisJson.apis.Count
+
+# Read fingerprint dynamically from AgentBuildIdentity.cs
+$buildIdentityPath = Join-Path $resolvedRepoRoot 'src/RayaTrainer.Core/Agent/AgentBuildIdentity.cs'
+if (-not (Test-Path -LiteralPath $buildIdentityPath)) {
+    throw "Missing AgentBuildIdentity.cs: $buildIdentityPath"
+}
+$buildIdentitySource = Get-Content $buildIdentityPath -Raw
+if ($buildIdentitySource -match 'Fingerprint\s*=\s*(?<fp>0x[0-9A-Fa-f]+)UL') {
+    $currentFingerprint = $matches['fp']
+} else {
+    throw "Could not extract Fingerprint from $buildIdentityPath"
+}
+
+Write-Host "Dynamic values: API count = $currentApiCount, Fingerprint = $currentFingerprint"
+
 $violations = @()
 if ($managedProtocolVersion -ne $nativeProtocolVersion) {
     $violations += [pscustomobject]@{
@@ -107,6 +141,12 @@ if (Test-Path -LiteralPath $analysisRoot) {
             $documents += $document.FullName
         }
     }
+}
+
+# Include backend-support-matrix.md (no atlas frontmatter, but an active capability reference)
+$backendMatrixPath = Join-Path $resolvedRepoRoot 'docs/backend-support-matrix.md'
+if (Test-Path -LiteralPath $backendMatrixPath) {
+    $documents += (Get-Item -LiteralPath $backendMatrixPath).FullName
 }
 
 $obsoleteIdentities = [ordered]@{
@@ -150,6 +190,39 @@ foreach ($documentPath in @($documents | Sort-Object -Unique)) {
                 }
             }
         }
+
+        # API count drift check — matches "35 个 native API", "30 native handler", "35 个 API" etc.
+        # Only flags when the asserted number differs from the current source count.
+        $apiCountPattern = [regex]'(?i)(?<count>\d{1,3})\s*(?:个\s*)?(?:native\s+)?(?:API|handler)\b'
+        foreach ($match in $apiCountPattern.Matches($line)) {
+            $docApiCount = [int]$match.Groups['count'].Value
+            if ($docApiCount -ne $currentApiCount) {
+                if (-not (Test-LineIsHistorical -Line $line)) {
+                    $violations += [pscustomobject]@{
+                        Path = $relativePath
+                        Line = $lineNumber
+                        Rule = 'api-count'
+                        Message = "API count is $docApiCount; current source has $currentApiCount."
+                    }
+                }
+            }
+        }
+
+        # Fingerprint drift check
+        $fingerprintPattern = [regex]'(?<fp>0x[0-9A-Fa-f]{16})\b'
+        foreach ($match in $fingerprintPattern.Matches($line)) {
+            $docFingerprint = $match.Groups['fp'].Value
+            if ($docFingerprint -ne $currentFingerprint) {
+                if (-not (Test-LineIsHistorical -Line $line)) {
+                    $violations += [pscustomobject]@{
+                        Path = $relativePath
+                        Line = $lineNumber
+                        Rule = 'fingerprint'
+                        Message = "References fingerprint $docFingerprint; current is $currentFingerprint."
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -162,4 +235,4 @@ if ($violations.Count -gt 0) {
     throw "Active documentation drift detected: $($violations.Count) violation(s)."
 }
 
-Write-Host ("Active documentation drift lint passed. Protocol: v{0}; scoped documents: {1}." -f $currentProtocolVersion, @($documents | Sort-Object -Unique).Count) -ForegroundColor Green
+Write-Host ("Active documentation drift lint passed. Protocol: v{0}; API count: {1}; Fingerprint: {2}; scoped documents: {3}." -f $currentProtocolVersion, $currentApiCount, $currentFingerprint, @($documents | Sort-Object -Unique).Count) -ForegroundColor Green

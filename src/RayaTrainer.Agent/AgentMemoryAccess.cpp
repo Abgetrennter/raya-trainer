@@ -97,6 +97,7 @@ bool ResolveWriteAddress(uint32_t address, AgentMemoryAddressMode mode, uint32_t
 }
 }
 
+// TODO(L3a/L5): replace with SetRuntimePatchSet handler
 AgentStatusCode ApplyMemoryWritesFromPayload(const unsigned char* payload, uint32_t length)
 {
     uint32_t offset = 0;

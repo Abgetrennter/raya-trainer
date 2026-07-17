@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Pipes;
 using System.Threading;
 
@@ -53,48 +54,54 @@ public sealed partial class AgentNamedPipeClient : IAgentClient
             cancellationToken);
     }
 
-    public Task<AgentCommandResultPayload> SetToggleAsync(
+    // L4: wire to cmd 5
+    public Task<AgentCommandResultPayload> SetFeatureStatesAsync(
         int processId,
-        AgentMemoryWriteRequest request,
+        SetFeatureStatesRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
         return SendCommandAsync(
             processId,
-            AgentCommand.SetToggle,
+            AgentCommand.SetFeatureStates,
             request.Encode(),
             timeout,
             AgentCommandResultPayload.ReadFrom,
             cancellationToken);
     }
 
-    public Task<AgentCommandResultPayload> TriggerActionAsync(
+    // L5: wire to cmd 6 — SetRuntimePatchSet
+    public Task<AgentCommandResultPayload> SetRuntimePatchSetAsync(
         int processId,
-        AgentMemoryWriteRequest request,
+        uint patchSetId,
+        bool enable,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
+        var payload = new byte[8];
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0, 4), patchSetId);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), enable ? 1u : 0u);
         return SendCommandAsync(
             processId,
-            AgentCommand.TriggerAction,
-            request.Encode(),
+            AgentCommand.SetRuntimePatchSet,
+            payload,
             timeout,
             AgentCommandResultPayload.ReadFrom,
             cancellationToken);
     }
 
-    public Task<AgentCommandResultPayload> WriteResourceValuesAsync(
+    // L4: wire to cmd 7
+    public Task<FeatureStatesResponse> GetFeatureStatesAsync(
         int processId,
-        AgentMemoryWriteRequest request,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
         return SendCommandAsync(
             processId,
-            AgentCommand.WriteResourceValues,
-            request.Encode(),
+            AgentCommand.GetFeatureStates,
+            [],
             timeout,
-            AgentCommandResultPayload.ReadFrom,
+            FeatureStatesResponse.ReadFrom,
             cancellationToken);
     }
 

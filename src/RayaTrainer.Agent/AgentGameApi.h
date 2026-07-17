@@ -70,11 +70,12 @@ bool IsGameApiInvocationAllowed(
 
 // --- Native agent catalog (runtime-injected game RVAs) ----------------------
 //
-// Replaces the compile-time 1.12 RVAs (kGameClientPointerRva, kGameApiCatalog[].Rva) with a
-// per-profile table delivered by the host via SetNativeCatalog. Before delivery the DLL uses
-// 1.12 defaults; after delivery a zero entry explicitly marks that capability unavailable.
+// v11: no builtin 1.12 fallback. Per-profile table delivered by the host via
+// SetNativeCatalog. Before delivery all entries are zero and HasNativeCatalog()
+// returns false; Native APIs fail closed with InvalidCommand. A zero entry
+// in a delivered catalog explicitly marks that capability unavailable.
 
-// Initializes the runtime catalog to the 1.12 compile-time defaults. Called once at startup.
+// Initializes the runtime catalog to all-zeros. Called once at startup.
 void InitializeNativeCatalog();
 
 // Returns true after a structurally complete SetNativeCatalog delivery. Individual entries
@@ -85,8 +86,8 @@ bool HasNativeCatalog();
 // structurally complete, well-formed catalog; otherwise leaves the catalog untouched.
 AgentStatusCode SetNativeCatalogFromPayload(const unsigned char* payload, uint32_t length);
 
-// Resolves a catalog entry RVA. Always returns a value: the runtime catalog entry when
-// present, otherwise the 1.12 compile-time default.
+// Resolves a catalog entry RVA. Returns 0 when the runtime catalog has not been delivered
+// or the entry is explicitly marked unavailable.
 uint32_t ResolveNativeCatalogRva(NativeCatalogEntry entry);
 uint32_t ResolveCurrentPlayerPointer();
 void ResetNativeGameApiRuntimeState();

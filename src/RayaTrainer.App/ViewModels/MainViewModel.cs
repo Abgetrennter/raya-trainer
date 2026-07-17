@@ -800,13 +800,35 @@ public sealed partial class MainViewModel : ViewModelBase, IFeatureHost, ITraine
         StartHotkeys();
         _autoRepair.Start();
         _gameSession.RefreshGameState();
-        // Sync toggle checkboxes with bootstrap-initialized flags (e.g. RunInBackground
-        // defaults to on via its defaultBytes initializer) so the UI matches live state.
-        FeatureToggle.RefreshToggleStates();
-        SelectedUnit.RefreshToggleStates();
-        // Agent Ready 后重放期望状态（desired=true 的 toggle 真正下发）
+
+        // L4: Session recovery per plan §2:
+        // 1. Initial readback from Agent (populates observed cache)
+        var controller = _sessionManager.FeatureController;
+        try
+        {
+            controller.RefreshRuntimeStateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Best-effort initial readback
+        }
+
+        // 2. Replay all explicit desired states (ReplayDesiredState only touches IsToggle items;
+        //    pulse features are excluded from replay per plan §2).
+        // 3. null Desired states are skipped by ReplayDesiredState.
         FeatureState.ReplayDesiredState();
-        // 重放后再次 refresh 以反映 Agent 实际状态
+
+        // 4. Re-readback after replay to confirm Agent state
+        try
+        {
+            controller.RefreshRuntimeStateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Best-effort re-readback
+        }
+
+        // 5. Update UI from observed cache
         FeatureToggle.RefreshToggleStates();
         SelectedUnit.RefreshToggleStates();
     }

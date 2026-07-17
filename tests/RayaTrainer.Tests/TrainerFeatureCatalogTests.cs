@@ -113,7 +113,6 @@ public sealed class TrainerFeatureCatalogTests
 
         var freeBuild = Assert.Single(features, feature => feature.RawName == "Free Build");
         Assert.Equal(new[] { "Free Build" }, freeBuild.EnableFlags);
-        Assert.Null(freeBuild.ToggleBytePatches);
         Assert.Null(freeBuild.ValueHint);
     }
 
@@ -127,7 +126,6 @@ public sealed class TrainerFeatureCatalogTests
         var ignorePrerequisites = Assert.Single(features, feature => feature.RawName == "Ignore Prerequisites");
         Assert.Equal("忽略建造前置条件", ignorePrerequisites.DisplayName);
         Assert.Equal(new[] { "Ignore Prerequisites" }, ignorePrerequisites.EnableFlags);
-        Assert.Null(ignorePrerequisites.ToggleBytePatches);
     }
 
     [Fact]
@@ -179,69 +177,18 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Equal(new[] { "Run In Background" }, runInBackground.EnableFlags);
         Assert.Null(runInBackground.DispatchTarget);
         Assert.Null(runInBackground.ValueHint);
-        Assert.Null(runInBackground.ToggleBytePatches);
     }
 
     [Fact]
-    public void CreateGridFeaturesExposesRa3112FrameRateUnlockBytePatches()
+    public void CreateGridFeaturesExposesRa3112FrameRateUnlockAsPatchSetOnly()
     {
         var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
-        byte[] bezierAccelerationScaleCode =
-        [
-            0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00,
-            0xF3, 0x0F, 0x59, 0x0D, 0x20, 0x64, 0xBC, 0x00,
-            0xE9, 0x0A, 0xAC, 0xB1, 0xFF,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x80, 0x3E
-        ];
 
         var frameRateUnlock = Assert.Single(features, feature => feature.RawName == "Frame Rate Unlock 60fps");
         Assert.Equal("60fps 帧率解锁", frameRateUnlock.DisplayName);
         Assert.Equal(new[] { "Frame Rate Unlock 60fps" }, frameRateUnlock.EnableFlags);
         Assert.Equal(new[] { "ra3_1.12" }, frameRateUnlock.SupportedProfileIds);
         Assert.Equal("渲染与性能", TrainerFeatureGroupCatalog.GetGroupName(frameRateUnlock));
-
-        Assert.Collection(
-            frameRateUnlock.ToggleBytePatches!,
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8AD5F4", BitConverter.GetBytes(60), BitConverter.GetBytes(15)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8AF9D0", BitConverter.GetBytes(30), BitConverter.GetBytes(15)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC4C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(15.0f * 0.001f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC1C", BitConverter.GetBytes(1000.0f / 30.0f), BitConverter.GetBytes(1000.0f / 15.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC58", BitConverter.GetBytes(30.0f), BitConverter.GetBytes(15.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC50", BitConverter.GetBytes(60.0f), BitConverter.GetBytes(30.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC54", BitConverter.GetBytes(1000.0f / 60.0f), BitConverter.GetBytes(1000.0f / 30.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC94", BitConverter.GetBytes(1.0f / 30.0f), BitConverter.GetBytes(1.0f / 15.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBD34", BitConverter.GetBytes(1.0f / 60.0f), BitConverter.GetBytes(1.0f / 30.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8E5A5C", BitConverter.GetBytes(0), BitConverter.GetBytes(0)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8E176C", BitConverter.GetBytes(16), BitConverter.GetBytes(33)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.03f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC5C", BitConverter.GetBytes(30.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+1FEC91", [0x10], [0x1D]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+1FECA3", [0x10], [0x1D]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+229853", [0xEB], [0x73]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+13E90A", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+1FFAD1", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+216257", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+2297C9", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7B30D8", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3108", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3138", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7B3C59", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+2C17CC", [0xD4, 0x63, 0xBC], [0x5C, 0xBC, 0xCD]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+8DBC5C", BitConverter.GetBytes(60.0f * 0.001f), BitConverter.GetBytes(30.0f * 0.001f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+7C63D4", BitConverter.GetBytes(0.03f), BitConverter.GetBytes(0.0f)),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+1EB6F6", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(patch, "ra3_1.12.game+1EB6FC", [0xF4, 0xD5], [0xD4, 0xF9]),
-            patch => AssertBytePatch(
-                patch,
-                "ra3_1.12.game+7C6400",
-                bezierAccelerationScaleCode,
-                bezierAccelerationScaleCode),
-            patch => AssertBytePatch(
-                patch,
-                "ra3_1.12.game+2E1017",
-                [0xE9, 0xE4, 0x53, 0x4E, 0x00, 0x90, 0x90, 0x90],
-                [0xF3, 0x0F, 0x10, 0x8A, 0xF0, 0x00, 0x00, 0x00]));
     }
 
     [Fact]
@@ -307,8 +254,8 @@ public sealed class TrainerFeatureCatalogTests
         Assert.Contains("选择的建筑物/单位无限生命值", names);
         Assert.Contains("摧毁选择的建筑物/单位", names);
         Assert.Contains("玩家全建筑/单位无敌", names);
-        Assert.Contains("清除所有单位的满攻速效果", names);
-        Assert.Contains("清除所有单位的无限射程效果", names);
+        Assert.Contains("清空满攻速单位", names);
+        Assert.Contains("清空无限射程单位", names);
         Assert.Equal(21, names.Count);
     }
 
@@ -332,7 +279,7 @@ public sealed class TrainerFeatureCatalogTests
         var hotkeys = TrainerFeatureCatalog.CreateDefaultHotkeys(features);
 
         // 配置字典的 key 必须是稳定的 RawName，而非可变的中文 DisplayName。
-        Assert.Equal("Ctrl+F1", hotkeys["Moeny"]);
+        Assert.Equal("Ctrl+F1", hotkeys["Money"]);
         Assert.Equal("O", hotkeys["Select Unit Change ID"]);
         // 矿脉储量重置与起义时刻两个功能的默认快捷键已主动清除（用户要求），不再生成默认值。
         Assert.DoesNotContain("Restore Select Ore Mine", hotkeys.Keys);
@@ -360,7 +307,7 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateUiFeatures(manifest.Features);
         var hotkeys = new Dictionary<string, string>
         {
-            ["Moeny"] = "Alt+F1",
+            ["Money"] = "Alt+F1",
             ["Power"] = "不是快捷键"
         };
 
@@ -591,7 +538,7 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
 
         var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Speed Effects");
-        Assert.Equal("清除所有单位的满攻速效果", clear.DisplayName);
+        Assert.Equal("清空满攻速单位", clear.DisplayName);
         Assert.Null(clear.Hotkey);
         Assert.True(clear.RequiresDirectGameApi);
         Assert.Null(clear.DispatchTarget);
@@ -608,7 +555,7 @@ public sealed class TrainerFeatureCatalogTests
         var features = TrainerFeatureCatalog.CreateGridFeatures(TestAssets.LoadManifest().Features);
 
         var clear = Assert.Single(features, f => f.RawName == "Clear Selected Attack Range Effects");
-        Assert.Equal("清除所有单位的无限射程效果", clear.DisplayName);
+        Assert.Equal("清空无限射程单位", clear.DisplayName);
         Assert.Null(clear.Hotkey);
         Assert.True(clear.RequiresDirectGameApi);
         Assert.Null(clear.DispatchTarget);
@@ -659,14 +606,4 @@ public sealed class TrainerFeatureCatalogTests
         Assert.DoesNotContain(features, f => f.RawName == TrainerFeatureIds.SelectedUnitObjectUpgrade);
     }
 
-    private static void AssertBytePatch(
-        TrainerFeatureBytePatch patch,
-        string address,
-        byte[] enabledBytes,
-        byte[] disabledBytes)
-    {
-        Assert.Equal(address, patch.Address);
-        Assert.Equal(enabledBytes, patch.EnabledBytes);
-        Assert.Equal(disabledBytes, patch.DisabledBytes);
-    }
 }

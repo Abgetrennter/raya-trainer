@@ -195,7 +195,11 @@ public sealed class FeatureStateCoordinatorTests
         public int SetToggleCalls;
         public bool LastToggleState;
         public void SetToggle(TrainerFeature f, bool e) { SetToggleCalls++; LastToggleState = e; }
-        public bool ReadToggleState(TrainerFeature f) => LastToggleState;
+        public bool? ReadToggleState(TrainerFeature f) => LastToggleState;
+        public bool? ReadPulseFired(TrainerFeature f) => null;
+        public bool IsPulseFeature(TrainerFeature f) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
         public void WriteTargetHealthValue(float h, float m = 0f) { }
         public void WriteResourceValues(ResourceValueSettings s) { }
         public void WriteReinforcementSettings(ReinforcementSettings s) => throw new NotImplementedException();

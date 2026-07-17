@@ -298,7 +298,11 @@ public sealed class QueueRunnerPauseTests
         public uint ReadGameThreadTick() => throw new NotImplementedException();
         public int ReadGameMode() => throw new NotImplementedException();
         public void Reset(TrainerFeature feature) => throw new NotImplementedException();
-        public bool ReadToggleState(TrainerFeature feature) => throw new NotImplementedException();
+        public bool? ReadToggleState(TrainerFeature feature) => throw new NotImplementedException();
+        public bool? ReadPulseFired(TrainerFeature feature) => throw new NotImplementedException();
+        public bool IsPulseFeature(TrainerFeature feature) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
     }
 
     /// <summary>
@@ -349,6 +353,10 @@ public sealed class QueueRunnerPauseTests
         public uint ReadGameThreadTick() => throw new NotImplementedException();
         public int ReadGameMode() => throw new NotImplementedException();
         public void Reset(TrainerFeature feature) => throw new NotImplementedException();
-        public bool ReadToggleState(TrainerFeature feature) => throw new NotImplementedException();
+        public bool? ReadToggleState(TrainerFeature feature) => throw new NotImplementedException();
+        public bool? ReadPulseFired(TrainerFeature feature) => throw new NotImplementedException();
+        public bool IsPulseFeature(TrainerFeature feature) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
     }
 }

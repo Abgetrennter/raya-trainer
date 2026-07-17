@@ -178,6 +178,10 @@ public sealed class SelectedUnitViewModelTargetHealthTests
         public uint ReadGameThreadTick() => throw new NotImplementedException();
         public int ReadGameMode() => throw new NotImplementedException();
         public void Reset(TrainerFeature f) => throw new NotImplementedException();
-        public bool ReadToggleState(TrainerFeature f) => throw new NotImplementedException();
+        public bool? ReadToggleState(TrainerFeature f) => throw new NotImplementedException();
+        public bool? ReadPulseFired(TrainerFeature f) => throw new NotImplementedException();
+        public bool IsPulseFeature(TrainerFeature f) => false;
+        public Task<FeatureStatesResponse> RefreshRuntimeStateAsync(CancellationToken ct = default) =>
+            Task.FromResult(new FeatureStatesResponse(AgentStatusCode.Ok, AgentProtocol.Version, Array.Empty<FeatureStateEntry>()));
     }
 }

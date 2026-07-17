@@ -16,7 +16,10 @@ public static class AgentBuildIdentity
     // dispatcher Values 8 -> 24). Sub-counter reset to 1 because the wire protocol changed.
     // v10 sub-counter 1 -> 2 for per-GameObject weapon flags and the object-registration
     // initializer hook. Wire protocol is unchanged, but an older injected Agent is incompatible.
-    // v10 sub-counter 2 -> 3 for the profile-aware StructureUnpackUpdate fast-build field.
-    // Wire protocol is unchanged, but an older injected Agent corrupts the Uprising field.
-    public const ulong Fingerprint = 0x52415941000A0003UL;
+    // v11: protocol bumped 10 -> 11 for L1 wire protocol refactor. Commands 5/6/7 redefined,
+    // new capability bits 0x8+0x10. Fingerprint low 32 bits reset to (Version=11 << 16) | 1
+    // = 0x000B0001.
+    // v11 sub-counter 1 -> 2 for the DerivedStateReset PatchSet entry semantics and
+    // Steam English 1.12 frame-rate layout. Older injected v11 Agents reject kind 2.
+    public const ulong Fingerprint = 0x52415941000B0002UL;
 }
