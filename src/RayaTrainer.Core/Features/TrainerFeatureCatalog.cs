@@ -203,7 +203,7 @@ public static class TrainerFeatureCatalog
     private static readonly TrainerFeature ClearSelectedAttackSpeedEffectsFeature =
         new(
             TrainerFeatureIds.ClearSelectedAttackSpeedEffects,
-            "清空满攻速单位",
+            "清除所有单位的满攻速效果",
             null,
             [],
             null,
@@ -215,7 +215,7 @@ public static class TrainerFeatureCatalog
     private static readonly TrainerFeature ClearSelectedAttackRangeEffectsFeature =
         new(
             TrainerFeatureIds.ClearSelectedAttackRangeEffects,
-            "清空无限射程单位",
+            "清除所有单位的无限射程效果",
             null,
             [],
             null,

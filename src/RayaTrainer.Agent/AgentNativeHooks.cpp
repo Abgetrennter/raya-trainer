@@ -85,6 +85,28 @@ uint32_t BodyOffset()
     return value == 0 ? 0x33Cu : value;
 }
 
+uint32_t StructureUnpackCompletionTickOffset()
+{
+    if (!HasNativeCatalog())
+    {
+        return 0;
+    }
+
+    // The equivalent StructureUnpackUpdate field is +0x3C in RA3 and +0x34
+    // in Uprising. ObjectOwnerOffset already distinguishes the two layouts
+    // across all four supported profiles; reject unknown layouts instead of
+    // writing an unrelated module field.
+    switch (ResolveNativeCatalogRva(NativeCatalogEntry::ObjectOwnerOffset))
+    {
+    case 0x418u:
+        return 0x3Cu;
+    case 0x428u:
+        return 0x34u;
+    default:
+        return 0;
+    }
+}
+
 // RA3 KindOf BitWord lives at ThingTemplate+0xC0 (9 DWORDs, 288 bits).
 // Verified via PartitionFilter_IsKindOf_6FE370:
 //   bit set  ==  (1 << (index & 31)) & template->kindOf[index >> 5]
@@ -309,13 +331,15 @@ uint32_t HandleHook(uint32_t hookId, NativeHookContext& c)
     case 9:
         if (IsEnabled(NativeFeatureStateId::FastBuild))
         {
+            const auto completionTickOffset = StructureUnpackCompletionTickOffset();
             uint32_t object = 0;
             uint32_t owner = 0;
             uint32_t value = 0;
-            if (TryRead(c.Edi + 8u, object) && object != 0 &&
+            if (completionTickOffset != 0 &&
+                TryRead(c.Edi + 8u, object) && object != 0 &&
                 TryRead(object + OwnerOffset(), owner) &&
                 owner == static_cast<uint32_t>(InterlockedCompareExchange(&g_playerObject, 0, 0)) &&
-                TryRead(c.Edi + 0x3C, value))
+                TryRead(c.Edi + completionTickOffset, value))
             {
                 TryWrite(c.Edi + 0x14, value + 1);
             }

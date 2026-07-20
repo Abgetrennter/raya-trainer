@@ -53,6 +53,17 @@ MSBuild.exe src/RayaTrainer.Agent/RayaTrainer.Agent.vcxproj /p:Configuration=Rel
 3. 训练器自动检测运行中的游戏 profile，注入 Agent DLL，启用功能面板。
 4. 按需切换功能。所有修改仅在内存中进行，不修改任何游戏文件。
 
+## 版本兼容与验证状态
+
+| 游戏版本 | 当前状态 |
+|---|---|
+| RA3 1.12 | 主链路与主要功能已实机验证；Steam English 帧率布局仍需完整 60fps 行为验收 |
+| RA3 1.13 | 签名、Hook 与 Agent 安装合同已静态验证；当前 v11 行为 smoke 待补 |
+| Uprising 1.0 | 签名、Hook 与 Agent 安装合同已静态验证；行为 smoke 待补 |
+| Uprising 1.1 | 快速建造已实机验证；其余跨版本功能仍需继续 smoke |
+
+v0.0.7 修正了 Uprising 快速建造完成时刻字段的版本差异，并轮换 Agent 构建身份。若从 v0.0.6 升级，请先彻底退出游戏再启动新版本，避免游戏进程继续保留旧版已注入 DLL。静态支持表示地址、签名、原字节和安装合同已验证，不代表所有功能都完成了对应版本的实机验收。
+
 ## 许可
 
 Apache 2.0 — 详见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。  

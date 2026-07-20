@@ -30,6 +30,8 @@ function New-FixtureRoot {
     $script:fixtureRoots += $root
 
     Write-FixtureFile -Root $root -RelativePath 'src/RayaTrainer.Core/Agent/AgentProtocol.cs' -Content 'public static class AgentProtocol { public const ushort Version = 9; }'
+    Write-FixtureFile -Root $root -RelativePath 'src/RayaTrainer.Core/Agent/apis.json' -Content '{"apis":[]}'
+    Write-FixtureFile -Root $root -RelativePath 'src/RayaTrainer.Core/Agent/AgentBuildIdentity.cs' -Content 'public static class AgentBuildIdentity { public const ulong Fingerprint = 0x5241594100090001UL; }'
     Write-FixtureFile -Root $root -RelativePath 'src/RayaTrainer.Agent/AgentProtocol.h' -Content 'inline constexpr uint16_t kAgentProtocolVersion = 9;'
     return $root
 }

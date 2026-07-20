@@ -41,6 +41,10 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // (Version=10 << 16) | 1 = 0x000A0001.
 // v10 fingerprint low 16 bits bumped 1 -> 2 for per-GameObject weapon flags and the
 // GameLogic_RegisterObject initializer hook. The wire protocol remains v10.
+// v10 fingerprint low 16 bits bumped 2 -> 3 for the profile-aware StructureUnpackUpdate
+// fast-build field. An older Agent writes the wrong Uprising module field. (Historical;
+// superseded by the v11 bump below. The profile-aware fast-build fix survives in
+// AgentNativeHooks.cpp via StructureUnpackCompletionTickOffset().)
 // v11: protocol bumped 10 -> 11 for L1 wire protocol refactor. Commands 5/6/7 redefined:
 //   SetToggle(5) -> SetFeatureStates(5)
 //   TriggerAction(6) -> SetRuntimePatchSet(6)
@@ -51,8 +55,11 @@ inline constexpr uint32_t kAgentMagic = 0x41594152u;
 // entries. An already-injected v10 Agent must not be reused.
 // v11 fingerprint low 16 bits bumped 1 -> 2 for DerivedStateReset PatchSet entries
 // and the Steam English 1.12 frame-rate layout. The wire version remains v11.
+// v11 fingerprint low 16 bits bumped 2 -> 3 because public v0.0.6 shipped without
+// the profile-aware Uprising fast-build handler while advertising the same fingerprint
+// as the fixed Agent. The wire version remains v11, but the native behavior is incompatible.
 inline constexpr uint16_t kAgentProtocolVersion = 11;
-inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000B0002ull;
+inline constexpr uint64_t kAgentBuildFingerprint = 0x52415941000B0003ull;
 inline constexpr uint32_t kNativeRuntimeCapabilities = 0x0000001Fu;
 inline constexpr uint32_t kMaxPayloadLength = 64u * 1024u;
 

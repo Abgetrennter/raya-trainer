@@ -68,9 +68,18 @@ public sealed class SettingsPersistenceCoordinatorTests
     {
         string? error = null;
         int call = 0;
+        var errorReported = new TaskCompletionSource<string?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         var coord = new SettingsPersistenceCoordinator(
             () => TrainerAppSettings.Default,
-            err => error = err,
+            err =>
+            {
+                error = err;
+                if (err is not null)
+                {
+                    errorReported.TrySetResult(err);
+                }
+            },
             debounceMs: 10,
             saveAction: _ =>
             {
@@ -79,8 +88,9 @@ public sealed class SettingsPersistenceCoordinatorTests
             });
 
         coord.MarkDirty();
-        await Task.Delay(100); // 第一次失败
-        Assert.NotNull(error);
+        var reportedError = await errorReported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("disk full", reportedError);
+        Assert.Equal("disk full", error);
 
         coord.MarkDirty();
         await coord.FlushAsync(); // 第二次成功

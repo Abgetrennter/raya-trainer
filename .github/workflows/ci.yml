@@ -36,12 +36,34 @@ jobs:
       - name: Validate repository (active-doc drift blocking)
         run: ./scripts/validate.ps1
 
-      - name: Preflight (source + namespace + dependency)
+      - name: Preflight private build outputs and dependencies
         shell: pwsh
         run: |
-          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel source
-          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel namespace
-          pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel dependency
+          foreach ($checkLevel in @('namespace', 'dependency')) {
+              & pwsh -File scripts/preflight-leak-check.ps1 -CheckLevel $checkLevel
+              $exitCode = $LASTEXITCODE
+              if ($exitCode -ne 0) {
+                  exit $exitCode
+              }
+          }
+
+      - name: Export public projection and audit source (private repository only)
+        if: ${{ hashFiles('scripts/migrate-to-public.ps1') != '' }}
+        shell: pwsh
+        run: |
+          $projectionRoot = Join-Path $env:RUNNER_TEMP 'raya-public-projection'
+          & pwsh -File scripts/migrate-to-public.ps1 -Mode Export -TargetDir $projectionRoot
+          $exportExitCode = $LASTEXITCODE
+          if ($exportExitCode -ne 0) {
+              exit $exportExitCode
+          }
+
+          $projectionPreflight = Join-Path $projectionRoot 'scripts/preflight-leak-check.ps1'
+          & pwsh -File $projectionPreflight -CheckLevel source -TargetDir $projectionRoot
+          $auditExitCode = $LASTEXITCODE
+          if ($auditExitCode -ne 0) {
+              exit $auditExitCode
+          }
 
       - name: Contract consistency lint
         run: dotnet run --project tools/RayaTrainer.ContractLint/RayaTrainer.ContractLint.csproj -c Release -- .
