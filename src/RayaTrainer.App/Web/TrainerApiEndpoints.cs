@@ -1,0 +1,436 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using RayaTrainer.Core.Diagnostics;
+using RayaTrainer.Core.Features;
+using RayaTrainer.App.Web.Auth;
+using RayaTrainer.App.Web.WebSockets;
+
+namespace RayaTrainer.App.Web;
+
+public static class TrainerApiEndpoints
+{
+    public static IEndpointRouteBuilder MapTrainerApiEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        var api = endpoints.MapGroup("/api");
+
+        api.MapPost("/pair", async (
+            TrainerPairingRequest request,
+            HttpContext context,
+            IDeviceApprovalService approvalService,
+            DevicePairingTokenStore tokenStore,
+            CancellationToken cancellationToken) =>
+        {
+            var approved = await approvalService.ApproveAsync(
+                    CreateApprovalRequest(request, context),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!approved)
+            {
+                return Results.Json(
+                    new TrainerPairingResponse(false, null, "设备未允许。"),
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var token = tokenStore.IssueToken();
+            return Results.Ok(new TrainerPairingResponse(true, token, "设备已配对。"));
+        });
+
+        api.MapGet("/status", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetStatus());
+        });
+
+        api.MapGet("/diagnostics", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetDiagnostics());
+        });
+
+        api.MapGet("/features", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetFeatures());
+        });
+
+        api.MapGet("/presets", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetPresets());
+        });
+
+        api.MapGet("/reinforcements/catalog", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetReinforcementCatalog());
+        });
+
+        api.MapGet("/secret-protocols/catalog", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetSecretProtocolCatalog());
+        });
+
+        api.MapGet("/ws", TrainerWebSocketEndpoint.HandleAsync);
+
+        api.MapPost("/toggles/{featureId}", async (
+            string featureId,
+            TrainerToggleStateRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.SetToggleAsync(
+                    new TrainerToggleRequest(featureId, request.Enabled),
+                    cancellationToken)
+                .ConfigureAwait(false));
+        });
+
+        api.MapPost("/resources", async (
+            TrainerResourceRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.WriteResourcesAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/reinforcements/execute", async (
+            TrainerReinforcementRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.ExecuteReinforcementAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/reinforcements/queue/execute", async (
+            TrainerReinforcementQueueRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.ExecuteReinforcementQueueAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/secret-protocols/grant", async (
+            TrainerSecretProtocolRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.GrantSecretProtocolAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/secret-protocols/queue/grant", async (
+            TrainerSecretProtocolQueueRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.GrantSecretProtocolQueueAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/actions/{featureId}", async (
+            string featureId,
+            TrainerActionRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.ExecuteActionAsync(
+                    featureId, request, cancellationToken)
+                .ConfigureAwait(false));
+        });
+
+        api.MapGet("/selected-unit", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            var result = handler.ReadSelectedUnit();
+            return result is not null
+                ? Results.Ok(result)
+                : Results.BadRequest(new TrainerWebCommandResult(false, "无法读取选中单位信息。"));
+        });
+
+        api.MapGet("/selected-unit/available-upgrades", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+
+            var capability = handler.GetObjectUpgradeCapability();
+            if (capability.State != FeatureCapabilityState.Ready)
+            {
+                return Results.Json(
+                    new TrainerWebCommandResult(false, capability.Reason, capability.ReasonCode),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var result = handler.ReadSelectedUnitUpgrades();
+            if (result is null)
+            {
+                return Results.Json(
+                    new TrainerWebCommandResult(false, "无法读取单位升级信息。请确认已选中一个单位。", "UNIT_UPGRADE_READ_FAILED"),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            return Results.Ok(result);
+        });
+
+        api.MapPost("/selected-unit/grant-object-upgrade", async (
+            TrainerGrantObjectUpgradeRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+
+            return ToHttpResult(await handler.GrantObjectUpgradeOnSelectedSameTypeAsync(
+                request.Hash, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/template/model", async (
+            TrainerTemplateModelReplacementRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.ReplaceTemplateModelAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/template/weapon", async (
+            TrainerTemplateWeaponReplacementRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null)
+            {
+                return unauthorized;
+            }
+
+            return ToHttpResult(await handler.ReplaceTemplateWeaponAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        // FeaturePresets
+        api.MapGet("/feature-presets", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetFeaturePresets(ct));
+        });
+
+        api.MapPost("/feature-presets", async (
+            FeaturePresetSaveRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+            return ToHttpResult(await handler.SaveFeaturePreset(request, ct).ConfigureAwait(false));
+        });
+
+        api.MapDelete("/feature-presets/{name}", async (
+            string name,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken ct) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            if (unauthorized is not null) return unauthorized;
+            return ToHttpResult(await handler.DeleteFeaturePreset(name, ct).ConfigureAwait(false));
+        });
+
+        // Product Control Plane (U4). Read/submit surface over the I4 IProductControlSession.
+        // Agent-offline / stale / expired are structured DTO fields, so every route returns 200
+        // with the classified body rather than throwing or reassembling a status string.
+        api.MapGet("/product-control/catalog", (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(handler.GetProductControlCatalog());
+        });
+
+        api.MapGet("/product-control/context", async (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(
+                await handler.GetProductControlContextAsync(cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapPost("/product-control/intents", async (
+            ProductControlSubmitRequest request,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(
+                await handler.SubmitProductIntentAsync(request, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapGet("/product-control/intents/{intentId}/result", async (
+            ulong intentId,
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(
+                await handler.GetProductResultAsync(intentId, cancellationToken).ConfigureAwait(false));
+        });
+
+        api.MapGet("/product-control/desired", async (
+            HttpContext context,
+            DevicePairingTokenStore tokenStore,
+            TrainerApiHandler handler,
+            CancellationToken cancellationToken,
+            uint offset = 0,
+            uint limit = 0) =>
+        {
+            var unauthorized = RequireAuthorized(context, tokenStore);
+            return unauthorized ?? Results.Ok(
+                await handler.GetProductDesiredAsync(offset, limit, cancellationToken).ConfigureAwait(false));
+        });
+
+        return endpoints;
+    }
+
+    private static DeviceApprovalRequest CreateApprovalRequest(
+        TrainerPairingRequest request,
+        HttpContext context)
+    {
+        var deviceName = string.IsNullOrWhiteSpace(request.DeviceName)
+            ? "未知设备"
+            : request.DeviceName.Trim();
+        return new DeviceApprovalRequest(
+            deviceName,
+            context.Request.Headers.UserAgent.ToString(),
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+    }
+
+    private static IResult? RequireAuthorized(
+        HttpContext context,
+        DevicePairingTokenStore tokenStore)
+    {
+        return tokenStore.ValidateBearer(context.Request.Headers.Authorization.ToString())
+            ? null
+            : Results.Unauthorized();
+    }
+
+    private static IResult ToHttpResult(TrainerWebCommandResult result)
+    {
+        return result.Success
+            ? Results.Ok(result)
+            : Results.BadRequest(result);
+    }
+
+    private static IResult ToHttpResult(TrainerWebQueueResult result)
+    {
+        return result.Success
+            ? Results.Ok(result)
+            : Results.BadRequest(result);
+    }
+}

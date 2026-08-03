@@ -1,0 +1,49 @@
+<UserControl x:Class="RayaTrainer.App.Controls.FeaturePresetCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border CornerRadius="10" Padding="16,12" Margin="0,0,0,16"
+            Background="{DynamicResource BrushCardBackground}">
+        <StackPanel>
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="功能预设" FontWeight="SemiBold" FontSize="14"
+                               Foreground="{DynamicResource BrushTextPrimary}" />
+                    <TextBlock Text="（保存当前开关与参数，一键切换）" FontSize="11"
+                               Foreground="{DynamicResource BrushTextDim}" Margin="8,0,0,0"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <ComboBox ItemsSource="{Binding PresetNames}"
+                              SelectedItem="{Binding SelectedPresetName}"
+                              MinWidth="140" Margin="0,0,8,0" />
+                    <Button Content="装载" Command="{Binding ApplyCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="12,5" Margin="4,0,0,0" />
+                    <Button Content="删除" Command="{Binding DeleteCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="12,5" Margin="4,0,0,0" />
+                </StackPanel>
+            </Grid>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding NewPresetName, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Margin="0,0,8,0"
+                         ToolTip="输入预设名，点击保存当前配置或重命名选中预设" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="保存当前" Command="{Binding SaveCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="12,5" Margin="4,0,0,0" />
+                    <Button Content="重命名" Command="{Binding RenameCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="12,5" Margin="4,0,0,0" />
+                </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding LastAppliedSummary}" FontSize="12"
+                       Foreground="{DynamicResource BrushTextDim}" FontStyle="Italic"
+                       Margin="0,8,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</UserControl>
