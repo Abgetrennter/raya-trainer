@@ -1,0 +1,26 @@
+<Application x:Class="RayaTrainer.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:RayaTrainer.App.Converters">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Themes/DarkTheme.xaml" />
+        <ResourceDictionary Source="Themes/Generic.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Global converters -->
+      <converters:BoolToVisibilityConverter x:Key="BoolVis" />
+      <converters:InverseBoolToVisibilityConverter x:Key="InvBoolVis" />
+      <converters:NullToCollapsedConverter x:Key="NullVis" />
+      <converters:PageIndexToVisibilityConverter x:Key="PageVis" />
+      <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+
+      <!-- Default styles for common controls -->
+      <Style TargetType="Button" BasedOn="{StaticResource ThemedButton}" />
+      <Style TargetType="TextBox" BasedOn="{StaticResource ThemedTextBox}" />
+      <Style TargetType="ComboBox" BasedOn="{StaticResource ThemedComboBox}" />
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBar}" />
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

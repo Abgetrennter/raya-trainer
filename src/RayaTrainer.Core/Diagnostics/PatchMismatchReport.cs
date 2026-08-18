@@ -1,0 +1,117 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Encodings.Web;
+using RayaTrainer.Core.Patching;
+using RayaTrainer.Core.Runtime;
+
+namespace RayaTrainer.Core.Diagnostics;
+
+public sealed record PatchMismatchReportOptions(int DumpBytesBefore = 16, int DumpBytesAfter = 96);
+
+public sealed record PatchMismatchReportResult(
+    PatchInstallResult InstallResult,
+    string? ReportPath)
+{
+    public IReadOnlyList<SkippedPatchHook> SkippedHooks => InstallResult.SkippedHooks;
+
+    /// <summary>
+    /// Unified mismatch diagnostics from the agent (Hook, RuntimePatchSet, or
+    /// PatchSetIpConflict kinds). Populated when the agent's extended cmd 34
+    /// payload was queried after a <c>PatchMismatch</c> status. Null/empty when the
+    /// diagnostic came from the external-memory backend (which only produces Hook-kind
+    /// reports through <see cref="SkippedHooks"/>).
+    /// </summary>
+    public IReadOnlyList<TrainerMismatchDiagnostic>? AllDiagnostics { get; init; }
+}
+
+public static class PatchMismatchReportWriter
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    public static string Write(
+        string diagnosticsDirectory,
+        TrainerTarget target,
+        PatchInstallResult installResult,
+        PatchMismatchReportOptions options,
+        IReadOnlyList<TrainerMismatchDiagnostic>? diagnostics = null)
+    {
+        Directory.CreateDirectory(diagnosticsDirectory);
+        var path = Path.Combine(
+            diagnosticsDirectory,
+            $"patch-mismatch-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.json");
+        var report = CreateReport(target, installResult, options, diagnostics);
+        using var stream = File.Create(path);
+        JsonSerializer.Serialize(stream, report, JsonOptions);
+        return path;
+    }
+
+    internal static object CreateReport(
+        TrainerTarget target,
+        PatchInstallResult installResult,
+        PatchMismatchReportOptions options,
+        IReadOnlyList<TrainerMismatchDiagnostic>? diagnostics = null)
+    {
+        var report = new Dictionary<string, object?>
+        {
+            ["target"] = new
+            {
+                processId = target.ProcessId,
+                processName = target.ProcessName,
+                modulePath = target.ModulePath,
+                moduleBase = FormatAddress(target.ModuleBase),
+                version = target.FileVersion
+            },
+            ["options"] = new
+            {
+                dumpBytesBefore = options.DumpBytesBefore,
+                dumpBytesAfter = options.DumpBytesAfter
+            },
+            ["summary"] = new
+            {
+                hookCount = installResult.HookCount,
+                installedHookCount = installResult.InstalledHookCount,
+                skippedCount = installResult.SkippedHooks.Count
+            },
+            ["reason"] = "Patch 点原始字节不匹配；可能原因：该位置已经被 patch 过、游戏版本不一致，或者 MOD 加载时修改了代码段。",
+            ["skippedHooks"] = installResult.SkippedHooks.Select(ToDto).ToArray()
+        };
+
+        // Include extended diagnostics when a mismatch report was built from the agent's
+        // v11 extended cmd 34 payload with kind/subject discrimination.
+        if (diagnostics is { Count: > 0 })
+        {
+            report["diagnostics"] = diagnostics.Select(d => new
+            {
+                kind = d.Kind.ToString(),
+                kindValue = (int)d.Kind,
+                subjectId = d.SubjectId,
+                hookAddress = FormatAddress(unchecked((nint)d.HookAddress)),
+                source = d.SourceSummary,
+                hasExpectedBytes = d.ExpectedBytes.Length > 0,
+                hasDumpBytes = d.DumpBytes.Length > 0
+            }).ToArray();
+        }
+
+        return report;
+    }
+
+    private static object ToDto(SkippedPatchHook skipped)
+    {
+        return new
+        {
+            name = skipped.Name,
+            reason = skipped.Reason
+        };
+    }
+
+    private static string FormatAddress(nint address)
+    {
+        return $"0x{address:X}";
+    }
+
+}
