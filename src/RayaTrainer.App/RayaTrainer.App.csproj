@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <!-- framework-dependent 版允许用户机器上任意 x86 .NET 8.x 运行库（不会绑死到构建次版本号）。
+         注意：32 位 apphost 不会 roll-forward 到 x64 运行库，架构必须严格匹配，见 README "运行库安装"。 -->
+    <RollForward>LatestMinor</RollForward>
+    <ApplicationIcon>..\..\RA3_modifier_icon.ico</ApplicationIcon>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+    <PublicProjection Condition="'$(SolutionFileName)' == 'RayaTrainer.Public.sln'">true</PublicProjection>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PublicProjection)' == 'true'">
+    <Compile Remove="Private\**\*.cs" />
+    <Page Remove="Private\**\*.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RayaTrainer.Core\RayaTrainer.Core.csproj" />
+    <ProjectReference Include="..\RayaTrainer.Host\RayaTrainer.Host.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RayaTrainer.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <NativeAgentArtifact>$(MSBuildProjectDirectory)\..\..\artifacts\native\$(Configuration)\Win32\RayaTrainer.Agent.dll</NativeAgentArtifact>
+  </PropertyGroup>
+
+  <Target Name="SynchronizeNativeAgent" AfterTargets="Build">
+    <Delete Files="$(TargetDir)RayaTrainer.Agent.dll" Condition="!Exists('$(NativeAgentArtifact)')" />
+    <Copy
+      SourceFiles="$(NativeAgentArtifact)"
+      DestinationFiles="$(TargetDir)RayaTrainer.Agent.dll"
+      SkipUnchangedFiles="false"
+      Condition="Exists('$(NativeAgentArtifact)')" />
+  </Target>
+</Project>
