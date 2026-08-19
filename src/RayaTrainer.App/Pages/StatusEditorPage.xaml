@@ -1,0 +1,150 @@
+<UserControl x:Class="RayaTrainer.App.Pages.StatusEditorPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="0,0,0,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{DynamicResource ActionCardBorder}">
+      <StackPanel>
+        <TextBlock Text="状态编辑器" FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,10" />
+        <TextBlock Text="{Binding StatusBitEditor.HelpText}"
+                   Foreground="{DynamicResource BrushTextSecondary}"
+                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="180" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="180" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="状态域" VerticalAlignment="Center"
+                     Foreground="{DynamicResource BrushTextSecondary}" FontSize="13" Margin="0,0,8,0" />
+          <ComboBox Grid.Column="1"
+                    ItemsSource="{Binding StatusBitEditor.DomainOptions}"
+                    SelectedItem="{Binding StatusBitEditor.SelectedDomain, UpdateSourceTrigger=PropertyChanged}"
+                    DisplayMemberPath="DisplayName"
+                    ToolTip="{Binding StatusBitEditor.HelpText}" />
+          <TextBlock Grid.Column="2" Text="分类" VerticalAlignment="Center"
+                     Foreground="{DynamicResource BrushTextSecondary}" FontSize="13" Margin="14,0,8,0" />
+          <ComboBox Grid.Column="3"
+                    ItemsSource="{Binding StatusBitEditor.CategoryOptions}"
+                    SelectedItem="{Binding StatusBitEditor.SelectedCategory, UpdateSourceTrigger=PropertyChanged}"
+                    DisplayMemberPath="DisplayName"
+                    ToolTip="{Binding StatusBitEditor.HelpText}" />
+          <TextBlock Grid.Column="4" Text="搜索" VerticalAlignment="Center"
+                     Foreground="{DynamicResource BrushTextSecondary}" FontSize="13" Margin="14,0,8,0" />
+          <TextBox Grid.Column="5"
+                   Text="{Binding StatusBitEditor.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                   ToolTip="{Binding StatusBitEditor.HelpText}" />
+          <CheckBox Grid.Column="6" Content="显示全部字段"
+                    IsChecked="{Binding StatusBitEditor.ShowAllStatusFields, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="{Binding StatusBitEditor.AllStatusFieldsHelpText}"
+                    Foreground="{DynamicResource BrushTextSecondary}"
+                    VerticalAlignment="Center" Margin="14,0,0,0" />
+        </Grid>
+        <TextBlock Text="{Binding StatusBitEditor.AvailabilityText}"
+                   Foreground="{DynamicResource BrushTextDim}" FontSize="12"
+                   Margin="0,10,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="1" Style="{DynamicResource ActionCardBorder}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="126" />
+            <ColumnDefinition Width="44" />
+            <ColumnDefinition Width="170" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="92" />
+            <ColumnDefinition Width="54" />
+            <ColumnDefinition Width="72" />
+            <ColumnDefinition Width="70" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="状态域" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="1" Text="Bit" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="2" Text="名称" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="3" Text="说明" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="4" Text="分类" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="5" Text="风险" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="6" Text="动作" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="7" Text="结果" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+          <TextBlock Grid.Column="8" Text="写入" Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+        </Grid>
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding StatusBitEditor.FilteredStatuses}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.CanContentScroll="True"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.ScrollUnit="Pixel">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="0" />
+              <Setter Property="Margin" Value="0" />
+              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="BorderThickness" Value="0" />
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="126" />
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="92" />
+                    <ColumnDefinition Width="54" />
+                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding DomainText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="1" Text="{Binding BitText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="2" Text="{Binding Definition.Name}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" />
+                  <TextBlock Grid.Column="3" Text="{Binding HelpText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"
+                             TextWrapping="Wrap" Margin="0,0,10,0" />
+                  <TextBlock Grid.Column="4" Text="{Binding Definition.Category}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" />
+                  <TextBlock Grid.Column="5" Text="{Binding RiskText}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+                  <TextBlock Grid.Column="6" Text="{Binding LastAction}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+                  <TextBlock Grid.Column="7" Text="{Binding LastResult}" VerticalAlignment="Center"
+                             Foreground="{DynamicResource BrushTextDim}" FontSize="12" />
+                  <StackPanel Grid.Column="8" Orientation="Horizontal">
+                    <Button Content="置 1" Command="{Binding SetCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="10,4" FontSize="12" />
+                    <Button Content="清 0" Command="{Binding ClearCommand}"
+                            Style="{DynamicResource SmallButton}" Padding="10,4" FontSize="12"
+                            Margin="8,0,0,0" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

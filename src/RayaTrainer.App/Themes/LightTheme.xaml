@@ -1,0 +1,117 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Surface -->
+  <Color x:Key="ColorWindowBackground">#F4F5F7</Color>
+  <Color x:Key="ColorSidebarBackground">#1F2937</Color>
+  <Color x:Key="ColorCardBackground">#FFFFFF</Color>
+  <Color x:Key="ColorCardBorder">#D7DAE0</Color>
+  <Color x:Key="ColorInputBackground">#FFFFFF</Color>
+  <Color x:Key="ColorInputBorder">#D1D5DB</Color>
+  <Color x:Key="ColorToolbarBackground">#FFFFFF</Color>
+  <Color x:Key="ColorHoverBackground">#E5E7EB</Color>
+  <Color x:Key="ColorSelectedBackground">#E0E7FF</Color>
+
+  <!-- Accent (Allied 蓝 = 主操作/常规) -->
+  <Color x:Key="ColorPrimary">#4FA8E0</Color>
+  <Color x:Key="ColorPrimaryHover">#3B95CF</Color>
+  <Color x:Key="ColorAccent">#4FA8E0</Color>
+  <Color x:Key="ColorSuccess">#36C46B</Color>
+  <Color x:Key="ColorWarning">#E8B84B</Color>
+  <Color x:Key="ColorError">#E2533A</Color>
+
+  <!-- Faction 语义色 (苏红=破坏性 / 旭日=计数；盟蓝=Primary 复用) -->
+  <Color x:Key="ColorFactionSoviet">#E2533A</Color>
+  <Color x:Key="ColorFactionImperial">#E8B84B</Color>
+  <!-- Soft 变体用于 chip 浅底 -->
+  <Color x:Key="ColorFactionSovietSoft">#FBE5E0</Color>
+  <Color x:Key="ColorFactionAlliedSoft">#E0F0FA</Color>
+  <Color x:Key="ColorFactionImperialSoft">#FBF0D8</Color>
+
+  <!-- Text -->
+  <Color x:Key="ColorTextPrimary">#111827</Color>
+  <Color x:Key="ColorTextSecondary">#4B5563</Color>
+  <Color x:Key="ColorTextDim">#6B7280</Color>
+  <Color x:Key="ColorTextDisabled">#9CA3AF</Color>
+
+  <!-- Sidebar text (always light on dark sidebar) -->
+  <Color x:Key="ColorSidebarTextPrimary">#FFFFFF</Color>
+  <Color x:Key="ColorSidebarTextSecondary">#CBD5E1</Color>
+  <Color x:Key="ColorSidebarTextDim">#94A3B8</Color>
+  <Color x:Key="ColorSidebarHoverBackground">#374151</Color>
+  <Color x:Key="ColorSidebarSelectedBackground">#374151</Color>
+  <Color x:Key="ColorSidebarNavBadgeBackground">#2563EB</Color>
+
+  <!-- Buttons -->
+  <Color x:Key="ColorButtonBackground">#F3F4F6</Color>
+  <Color x:Key="ColorButtonBorder">#D1D5DB</Color>
+  <Color x:Key="ColorButtonHoverBackground">#E5E7EB</Color>
+  <Color x:Key="ColorButtonPressedBackground">#D1D5DB</Color>
+  <Color x:Key="ColorButtonDisabledBackground">#F9FAFB</Color>
+
+  <!-- Toggle -->
+  <Color x:Key="ColorToggleOffTrack">#D1D5DB</Color>
+  <Color x:Key="ColorToggleOnTrack">#22C55E</Color>
+
+  <!-- KeyBadge -->
+  <Color x:Key="ColorKeyBadgeBackground">#F3F4F6</Color>
+  <Color x:Key="ColorKeyBadgeBorder">#D1D5DB</Color>
+  <Color x:Key="ColorKeyBadgeText">#6B7280</Color>
+
+  <!-- ScrollBar -->
+  <Color x:Key="ColorScrollBarBackground">#F4F5F7</Color>
+  <Color x:Key="ColorScrollBarThumb">#D1D5DB</Color>
+  <Color x:Key="ColorScrollBarThumbHover">#9CA3AF</Color>
+
+  <!-- Brushes -->
+  <SolidColorBrush x:Key="BrushWindowBackground" Color="{DynamicResource ColorWindowBackground}" />
+  <SolidColorBrush x:Key="BrushSidebarBackground" Color="{DynamicResource ColorSidebarBackground}" />
+  <SolidColorBrush x:Key="BrushCardBackground" Color="{DynamicResource ColorCardBackground}" />
+  <SolidColorBrush x:Key="BrushCardBorder" Color="{DynamicResource ColorCardBorder}" />
+  <SolidColorBrush x:Key="BrushInputBackground" Color="{DynamicResource ColorInputBackground}" />
+  <SolidColorBrush x:Key="BrushInputBorder" Color="{DynamicResource ColorInputBorder}" />
+  <SolidColorBrush x:Key="BrushToolbarBackground" Color="{DynamicResource ColorToolbarBackground}" />
+  <SolidColorBrush x:Key="BrushHoverBackground" Color="{DynamicResource ColorHoverBackground}" />
+  <SolidColorBrush x:Key="BrushSelectedBackground" Color="{DynamicResource ColorSelectedBackground}" />
+
+  <SolidColorBrush x:Key="BrushPrimary" Color="{DynamicResource ColorPrimary}" />
+  <SolidColorBrush x:Key="BrushPrimaryHover" Color="{DynamicResource ColorPrimaryHover}" />
+  <SolidColorBrush x:Key="BrushAccent" Color="{DynamicResource ColorAccent}" />
+  <SolidColorBrush x:Key="BrushSuccess" Color="{DynamicResource ColorSuccess}" />
+  <SolidColorBrush x:Key="BrushWarning" Color="{DynamicResource ColorWarning}" />
+  <SolidColorBrush x:Key="BrushError" Color="{DynamicResource ColorError}" />
+
+  <SolidColorBrush x:Key="BrushFactionSoviet" Color="{DynamicResource ColorFactionSoviet}" />
+  <SolidColorBrush x:Key="BrushFactionImperial" Color="{DynamicResource ColorFactionImperial}" />
+  <SolidColorBrush x:Key="BrushFactionSovietSoft" Color="{DynamicResource ColorFactionSovietSoft}" />
+  <SolidColorBrush x:Key="BrushFactionAlliedSoft" Color="{DynamicResource ColorFactionAlliedSoft}" />
+  <SolidColorBrush x:Key="BrushFactionImperialSoft" Color="{DynamicResource ColorFactionImperialSoft}" />
+
+  <SolidColorBrush x:Key="BrushTextPrimary" Color="{DynamicResource ColorTextPrimary}" />
+  <SolidColorBrush x:Key="BrushTextSecondary" Color="{DynamicResource ColorTextSecondary}" />
+  <SolidColorBrush x:Key="BrushTextDim" Color="{DynamicResource ColorTextDim}" />
+  <SolidColorBrush x:Key="BrushTextDisabled" Color="{DynamicResource ColorTextDisabled}" />
+
+  <SolidColorBrush x:Key="BrushButtonBackground" Color="{DynamicResource ColorButtonBackground}" />
+  <SolidColorBrush x:Key="BrushButtonBorder" Color="{DynamicResource ColorButtonBorder}" />
+  <SolidColorBrush x:Key="BrushButtonHoverBackground" Color="{DynamicResource ColorButtonHoverBackground}" />
+  <SolidColorBrush x:Key="BrushButtonPressedBackground" Color="{DynamicResource ColorButtonPressedBackground}" />
+  <SolidColorBrush x:Key="BrushButtonDisabledBackground" Color="{DynamicResource ColorButtonDisabledBackground}" />
+
+  <SolidColorBrush x:Key="BrushToggleOffTrack" Color="{DynamicResource ColorToggleOffTrack}" />
+  <SolidColorBrush x:Key="BrushToggleOnTrack" Color="{DynamicResource ColorToggleOnTrack}" />
+
+  <SolidColorBrush x:Key="BrushKeyBadgeBackground" Color="{DynamicResource ColorKeyBadgeBackground}" />
+  <SolidColorBrush x:Key="BrushKeyBadgeBorder" Color="{DynamicResource ColorKeyBadgeBorder}" />
+  <SolidColorBrush x:Key="BrushKeyBadgeText" Color="{DynamicResource ColorKeyBadgeText}" />
+
+  <SolidColorBrush x:Key="BrushScrollBarBackground" Color="{DynamicResource ColorScrollBarBackground}" />
+  <SolidColorBrush x:Key="BrushScrollBarThumb" Color="{DynamicResource ColorScrollBarThumb}" />
+  <SolidColorBrush x:Key="BrushScrollBarThumbHover" Color="{DynamicResource ColorScrollBarThumbHover}" />
+
+  <!-- Sidebar-specific brushes (light text on dark bg) -->
+  <SolidColorBrush x:Key="BrushSidebarTextPrimary" Color="{DynamicResource ColorSidebarTextPrimary}" />
+  <SolidColorBrush x:Key="BrushSidebarTextSecondary" Color="{DynamicResource ColorSidebarTextSecondary}" />
+  <SolidColorBrush x:Key="BrushSidebarTextDim" Color="{DynamicResource ColorSidebarTextDim}" />
+  <SolidColorBrush x:Key="BrushSidebarHoverBackground" Color="{DynamicResource ColorSidebarHoverBackground}" />
+  <SolidColorBrush x:Key="BrushSidebarSelectedBackground" Color="{DynamicResource ColorSidebarSelectedBackground}" />
+</ResourceDictionary>

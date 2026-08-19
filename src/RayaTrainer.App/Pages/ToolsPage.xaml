@@ -1,0 +1,37 @@
+<UserControl x:Class="RayaTrainer.App.Pages.ToolsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="0,0,0,16">
+
+      <!-- 手机遥控（已拆分为独立可选组件 WebMini） -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="手机遥控" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <TextBlock Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" TextWrapping="Wrap"
+                     Margin="0,0,0,8"
+                     Text="Web 遥控已改为独立可选组件 WebMini：主程序不再内置网页服务，默认不监听任何网络端口。" />
+          <TextBlock Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" TextWrapping="Wrap"
+                     Text="需要局域网手机遥控时，单独运行发布包中附带的 RayaTrainer.WebMini.exe，它会自动附加游戏并启动遥控面板（窗口内显示配对二维码，配对审批在其窗口弹窗完成）。" />
+        </StackPanel>
+      </Border>
+
+      <!-- 版本更新 -->
+      <Border Style="{DynamicResource ActionCardBorder}">
+        <StackPanel>
+          <TextBlock Text="版本更新" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14" />
+          <TextBlock Text="{Binding CurrentVersionText}" Foreground="{DynamicResource BrushTextSecondary}"
+                     FontSize="12" TextWrapping="Wrap" Margin="0,0,0,14" />
+          <Button Content="检查更新"
+                  Command="{Binding CheckForUpdatesCommand}"
+                  ToolTip="{Binding CheckForUpdatesHelpText}"
+                  Style="{DynamicResource PrimaryButton}"
+                  HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
