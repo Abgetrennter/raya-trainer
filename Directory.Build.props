@@ -1,0 +1,29 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)..\..\env\Ra3Code.paths.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\..\env\Ra3Code.paths.props')" />
+
+  <!--
+    Repository-wide defaults for managed (SDK-style .csproj) projects.
+
+    The condition scopes every setting to .csproj only, so the classic C++
+    projects (src/RayaTrainer.Agent/RayaTrainer.Agent.vcxproj and
+    tests/RayaTrainer.Agent.Tests/*.vcxproj) that also auto-import this file
+    are left completely untouched.
+
+    Project-specific settings (UseWPF, RuntimeIdentifier, OutputType, Release
+    PDB stripping on shipped binaries, package references, etc.) stay in the
+    individual .csproj files.
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Warning gate: keep every managed build warning-clean. A warning that
+         slips in fails the build instead of silently accumulating. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
