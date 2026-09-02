@@ -1,0 +1,484 @@
+using System.Windows.Input;
+using RayaTrainer.App.Services;
+using RayaTrainer.Host.Services;
+using RayaTrainer.Core.Diagnostics;
+using RayaTrainer.Core.Features;
+using RayaTrainer.Core.Manifest;
+
+namespace RayaTrainer.App.ViewModels;
+
+public sealed class FeatureItemViewModel : ViewModelBase
+{
+    private readonly IFeatureHost _owner;
+    private readonly IFeatureSoundPlayer _soundPlayer;
+    private bool? _desiredEnabled;
+    private bool? _observedEnabled;
+    private bool? _observedPulseFired;
+    private bool _isExecuting;
+    private string _status = "未启用";
+    // 运行时热重载用此覆盖替换 Feature.Hotkey。null 表示未设置覆盖（回退 Feature.Hotkey）；
+    // 空串是 sentinel，表示显式清除（Hotkey getter 返回 null），避免回退到原始默认值。
+    private string? _hotkeyOverride;
+
+    public FeatureItemViewModel(
+        TrainerFeature feature,
+        IFeatureHost owner,
+        IFeatureSoundPlayer? soundPlayer = null)
+    {
+        Feature = feature;
+        _owner = owner;
+        _soundPlayer = soundPlayer ?? SystemFeatureSoundPlayer.Shared;
+        Command = new RelayCommand(() => _ = ExecuteAsync(), () => _owner.ArePatchesInstalled && IsAvailable && !_isExecuting);
+        OpenHotkeySettingsCommand = new RelayCommand(() => _owner.OpenHotkeySettings(Feature.RawName));
+    }
+
+    public TrainerFeature Feature { get; }
+
+    public string DisplayName => Feature.DisplayName;
+
+    public string? Hotkey => _hotkeyOverride is null ? Feature.Hotkey : NormalizeOverride(_hotkeyOverride);
+
+    private static string? NormalizeOverride(string? overrideValue) =>
+        string.IsNullOrWhiteSpace(overrideValue) ? null : overrideValue;
+
+    /// <summary>徽章显示文本：无热键时显示空字符串，避免「＋」误导为已分配的按键。</summary>
+    public string HotkeyDisplay => string.IsNullOrWhiteSpace(Hotkey) ? "" : Hotkey;
+
+    /// <summary>
+    /// 运行时热重载入口：用新解析出的热键文本刷新徽章显示，无需重建整个 Feature 列表。
+    /// 传入 null 或空串表示该功能已被清除（不再绑定快捷键）；此时用空串 sentinel 覆盖原始 Feature.Hotkey。
+    /// </summary>
+    public void RefreshHotkey(string? hotkey)
+    {
+        // 热重载传入的 null/空串统一表示「清除」，用空串 sentinel 覆盖，避免回退到 Feature.Hotkey 默认值。
+        _hotkeyOverride = string.IsNullOrWhiteSpace(hotkey) ? string.Empty : hotkey;
+        OnPropertyChanged(nameof(Hotkey));
+        OnPropertyChanged(nameof(HotkeyDisplay));
+        OnPropertyChanged(nameof(HelpText));
+    }
+
+    public bool? DesiredEnabled => _desiredEnabled;
+    public bool? ObservedEnabled => _observedEnabled;
+    public bool? ObservedPulseFired => _observedPulseFired;
+
+    public bool IsFeatureEnabled =>
+        IsToggle && _observedEnabled == true;
+
+    public bool IsToggle => FeatureDispatchDefaults.IsToggle(Feature);
+
+    /// <summary>
+    /// 参数行判别键（稳定 RawName 派生，供 XAML 数据触发切换参数输入 UI）。
+    /// 不要改回用 DisplayName 匹配——显示名是文案，改名会静默丢失参数输入。
+    /// </summary>
+    public string ParameterKind => Feature.RawName switch
+    {
+        TrainerFeatureIds.Money => "Money",
+        TrainerFeatureIds.Power => "Power",
+        TrainerFeatureIds.SecretProtocolPoints => "ScPoint",
+        TrainerFeatureIds.ProductVeterancyGrant => "Veterancy",
+        TrainerFeatureIds.ProductSpawnOreNode => "OreNode",
+        _ => string.Empty,
+    };
+
+    public bool IsPulse
+    {
+        get
+        {
+            var controller = _owner.FeatureController;
+            return controller?.IsPulseFeature(Feature) ?? false;
+        }
+    }
+
+    public bool IsPulseTriggered => IsPulse && _observedPulseFired == true;
+
+    public bool IsPulseReady => IsPulse && _observedPulseFired != true;
+
+    /// <summary>
+    /// ActionText：
+    /// - Pulse features → "触发"
+    /// - observed=true → "关闭"（用户可关）
+    /// - desired=true, observed=null → "关闭"（待连接，但可取消期望）
+    /// - desired=true, observed=false → "关闭"（应用失败但期望在）
+    /// - 其余 → "开启"
+    /// </summary>
+    public string ActionText
+    {
+        get
+        {
+            if (IsPulse) return "触发";
+            if (!IsToggle) return "执行";
+            var effective = _observedEnabled ?? _desiredEnabled;
+            return effective == true ? "关闭" : "开启";
+        }
+    }
+
+    public FeatureCapabilitySnapshot Capability => _owner.GetFeatureCapability(Feature);
+
+    public FeatureCapabilityState CapabilityState => Capability.State;
+
+    public string CapabilityLabel => Capability.State switch
+    {
+        FeatureCapabilityState.Ready => "就绪",
+        FeatureCapabilityState.Waiting when Capability.ReasonCode == "NO_TARGET" => "待连接",
+        FeatureCapabilityState.Waiting when Capability.ReasonCode == "PATCH_NOT_INSTALLED" => "待安装",
+        FeatureCapabilityState.Waiting => "等待中",
+        _ when Capability.ReasonCode == "DIRECT_GAME_API_REQUIRED" => "需要 Agent",
+        _ => "不可用"
+    };
+
+    public string CapabilityReason => Capability.Reason;
+
+    public bool IsAvailable => Capability.State == FeatureCapabilityState.Ready;
+
+    public string HelpText => string.Join(Environment.NewLine, CreateHelpLines());
+
+    public string Status
+    {
+        get => _status;
+        private set
+        {
+            _status = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public RelayCommand Command { get; }
+
+    /// <summary>从功能列表徽章跳转到快捷键设置页并定位到本功能行（集中改键入口）。</summary>
+    public RelayCommand OpenHotkeySettingsCommand { get; }
+
+    public void RaiseCommandState() => Command.RaiseCanExecuteChanged();
+
+    public void RaiseAvailabilityChanged()
+    {
+        if (Capability.State == FeatureCapabilityState.Unavailable)
+        {
+            Status = "不可用";
+        }
+        OnPropertyChanged(nameof(IsAvailable));
+        OnPropertyChanged(nameof(Capability));
+        OnPropertyChanged(nameof(CapabilityState));
+        OnPropertyChanged(nameof(CapabilityLabel));
+        OnPropertyChanged(nameof(CapabilityReason));
+        OnPropertyChanged(nameof(HelpText));
+        Command.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>断线/恢复 Patch：只清 Observed，保留 Desired。</summary>
+    public void ResetToggleState()
+    {
+        if (!IsToggle) return;
+        _observedEnabled = null;
+        Status = _desiredEnabled == true ? "已保存，待连接" : "未启用";
+        OnPropertyChanged(nameof(ObservedEnabled));
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(IsFeatureEnabled));
+    }
+
+    /// <summary>从 Agent readback 更新 Observed/Pulse 状态。不反向覆盖 Desired。</summary>
+    public void RefreshToggleState()
+    {
+        // Skip features that are neither toggles nor pulses
+        if (!IsToggle && !IsPulse) return;
+
+        var controller = _owner.FeatureController;
+        if (controller is null) return;
+        try
+        {
+            if (IsPulse)
+            {
+                var state = controller.ReadPulseFired(Feature);
+                _observedPulseFired = state;
+                Status = state switch
+                {
+                    null => "未读取",
+                    true => "已触发",
+                    false => "就绪"
+                };
+                OnPropertyChanged(nameof(ObservedPulseFired));
+                OnPropertyChanged(nameof(IsPulseTriggered));
+                OnPropertyChanged(nameof(IsPulseReady));
+            }
+            else
+            {
+                var state = controller.ReadToggleState(Feature);
+                _observedEnabled = state;
+                Status = ResolveStatus();
+                OnPropertyChanged(nameof(ObservedEnabled));
+                OnPropertyChanged(nameof(ActionText));
+                OnPropertyChanged(nameof(IsFeatureEnabled));
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>启动/预设装载时设定期望。suppressApply=true 仅记 desired 不调 controller。</summary>
+    public void SetDesired(bool enabled, bool suppressApply)
+    {
+        if (!IsToggle) return;
+        _desiredEnabled = enabled;
+        if (suppressApply)
+        {
+            _observedEnabled = null;
+            Status = "已保存，待连接";
+        }
+        else
+        {
+            var controller = _owner.FeatureController;
+            if (controller is null)
+            {
+                _observedEnabled = null;
+                Status = "已保存，待连接";
+            }
+            else
+            {
+                if (enabled) { _owner.WriteResourceValuesIfNeeded(Feature); _owner.WriteTargetHealthIfNeeded(Feature); }
+                controller.SetToggle(Feature, enabled);
+                _observedEnabled = enabled;
+                _soundPlayer.Play(FeatureSoundCueResolver.ForToggleState(enabled));
+                Status = enabled ? "已启用" : "已关闭";
+            }
+            _owner.OnFeatureToggleChanged(Feature, enabled);
+        }
+        OnPropertyChanged(nameof(DesiredEnabled));
+        OnPropertyChanged(nameof(ObservedEnabled));
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(IsFeatureEnabled));
+    }
+
+    public void ClearObserved()
+    {
+        _observedEnabled = null;
+        Status = _desiredEnabled == true ? "已保存，待连接" : "未启用";
+        OnPropertyChanged(nameof(ObservedEnabled));
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(IsFeatureEnabled));
+    }
+
+    /// <summary>测试用别名：RefreshObserved = RefreshToggleState。</summary>
+    public void RefreshObserved() => RefreshToggleState();
+
+    private string ResolveStatus()
+    {
+        if (!IsToggle) return Status;
+        if (_observedEnabled == true) return "已启用";
+        if (_desiredEnabled == true) return _observedEnabled == false ? "应用失败" : "已保存，待连接";
+        return "未启用";
+    }
+
+    public void ExecuteFromHotkey()
+    {
+        if (!Command.CanExecute(null))
+        {
+            return;
+        }
+
+        _ = ExecuteAsync();
+    }
+
+    /// <summary>
+    /// Maps a pause-aware wait status to a short user-facing status string.
+    /// R2c: surfaces "waiting for resume" feedback while the trainer holds
+    /// a dispatch open during a paused game.
+    /// </summary>
+    private static string DispatchWaitStatusText(DispatchWaitStatus status)
+    {
+        return status switch
+        {
+            DispatchWaitStatus.PausedWaiting => "游戏已暂停，等待恢复…",
+            DispatchWaitStatus.Resumed => "游戏已恢复，继续执行…",
+            DispatchWaitStatus.GraceExpired => "等待超时，已放弃当前操作。",
+            _ => "执行中…"
+        };
+    }
+
+    private async Task ExecuteAsync()
+    {
+        try
+        {
+            if (IsToggle)
+            {
+                var nextEnabled = !(_observedEnabled ?? _desiredEnabled ?? false);
+                SetDesired(nextEnabled, suppressApply: false);
+                return;
+            }
+
+            var controller = _owner.FeatureController;
+            if (controller is null)
+            {
+                Status = "未连接";
+                _owner.StatusMessage = "请先检测进程并安装 patch。";
+                return;
+            }
+
+            if (!IsAvailable)
+            {
+                Status = Capability.State == FeatureCapabilityState.Waiting ? "等待中" : "不可用";
+                _owner.StatusMessage = Capability.Reason;
+                return;
+            }
+
+            // ProductIntent 行为：不走 Direct GameApi，而是经产品控制会话提交同一
+            // Product Intent（与 Overlay/Web 同一执行路由，统一属性修改体系阶段 D）。
+            var productBinding = TrainerFeatureBehaviorCatalog.TryGetBehavior(Feature.RawName)?.AsProductIntent();
+            if (productBinding is not null)
+            {
+                _isExecuting = true;
+                Command.RaiseCanExecuteChanged();
+                Status = "下发中…";
+                var (productOk, productMessage) = await _owner.ExecuteProductIntentFeatureAsync(Feature);
+                Status = productOk ? "已执行" : "失败";
+                _owner.StatusMessage = productMessage;
+                if (productOk)
+                {
+                    var productCue = FeatureSoundCueResolver.ForActionResult(ActionDispatchResult.Consumed);
+                    if (productCue is not null)
+                    {
+                        _soundPlayer.Play(productCue.Value);
+                    }
+                }
+                return;
+            }
+
+            _owner.WriteResourceValuesIfNeeded(Feature);
+            _owner.WriteTargetHealthIfNeeded(Feature);
+            _isExecuting = true;
+            Command.RaiseCanExecuteChanged();
+            Status = Feature.DispatchTarget is null ? "已触发" : "触发中";
+
+            var result = IsReinforcementFeature
+                ? await controller.TriggerActionAndWaitForConsumptionAsync(
+                    Feature,
+                    _owner.GetReinforcementSettings(),
+                    onWaitStatusChanged: status =>
+                    {
+                        Status = DispatchWaitStatusText(status);
+                        _owner.StatusMessage = DispatchWaitStatusText(status);
+                    })
+                : await controller.TriggerActionAndWaitForConsumptionAsync(
+                    Feature,
+                    onWaitStatusChanged: status =>
+                    {
+                        Status = DispatchWaitStatusText(status);
+                        _owner.StatusMessage = DispatchWaitStatusText(status);
+                    });
+
+            if (result == ActionDispatchResult.Consumed)
+            {
+                Status = "已执行";
+            }
+            else if (result == ActionDispatchResult.TimedOut)
+            {
+                Status = "超时";
+                _owner.StatusMessage = "动作已写入但尚未被游戏循环消费。";
+            }
+            else if (result == ActionDispatchResult.AbortedDueToPause)
+            {
+                Status = "已放弃";
+                _owner.StatusMessage = "游戏保持暂停状态，已放弃当前操作。";
+            }
+            else
+            {
+                Status = "已触发";
+            }
+
+            _owner.CompleteActionIfNeeded(Feature, result);
+
+            var cue = FeatureSoundCueResolver.ForActionResult(result);
+            if (cue is not null)
+            {
+                _soundPlayer.Play(cue.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Status = "失败";
+            try
+            {
+                _owner.StatusMessage = ex.Message;
+            }
+            catch
+            {
+                // ViewModel may have been disposed during async execution.
+            }
+        }
+        finally
+        {
+            _isExecuting = false;
+            try
+            {
+                Command.RaiseCanExecuteChanged();
+            }
+            catch
+            {
+                // ViewModel may have been disposed during async execution.
+            }
+        }
+    }
+
+    private bool IsReinforcementFeature =>
+        Feature.RawName.Equals(TrainerFeatureIds.Reinforcement, StringComparison.Ordinal);
+
+    private IEnumerable<string> CreateHelpLines()
+    {
+        yield return DisplayName;
+        yield return $"能力：{CapabilityLabel} — {CapabilityReason}";
+        yield return $"快捷键：{(string.IsNullOrWhiteSpace(Hotkey) ? "未分配" : Hotkey)}";
+        yield return $"类型：{(IsToggle ? "开关功能" : "一次性功能")}";
+        yield return CreateFeatureDescription();
+        if (Capability.State != FeatureCapabilityState.Ready)
+        {
+            yield return Capability.Reason;
+        }
+    }
+
+    private string CreateFeatureDescription()
+    {
+        return Feature.RawName switch
+        {
+            "Money" => "执行一次资金增量写入，金额来自顶部 Money 输入框。",
+            "Power" => "把可用电力维持在顶部 Power 输入框指定值，并压低用电量读数。",
+            "SC POINT" => "把秘密协议点数维持在顶部 SC Point 输入框指定值。",
+            "HAVE ALL SC" => "把秘密协议解锁进度写满，直接开放协议技能树。",
+            "FAST BUILD" => "把建造、训练和帝国展开计时推进到快速完成状态。",
+            "SUPER POWER" => "压缩玩家超级武器与秘密协议技能冷却计时。",
+            "Disable ALL SP" => "阻止非本地玩家的技能进入可用状态。",
+            "Zoom" => "解除镜头缩放上下限，允许更大范围拉近或拉远。",
+            "MAP" => "把战争迷雾视野值写到高值，持续显示地图。",
+            "Enemy Can't Build" => "压制非玩家建造进度，限制电脑生产建筑和单位。",
+            "Player God Mode" => "把玩家阵营生命值写到高值并保持。",
+            "Player One Kill Mode" => "把敌方可伤害目标生命值压低，一次攻击即可摧毁。",
+            "Select Unit Level UP" => "把目标经验/等级推进到升级状态。",
+            "Select Unit HP MAX" => "把目标当前生命值和上限写到高值。",
+            "Select Unit HP MIN" => "把目标生命值写到最低生存值，方便捕获或快速击毁。",
+            "Restore Select Unit Normal HP" => "从目标最大生命值字段恢复当前生命值。",
+            "Select Unit Ammo MAX" => "持续把弹药/炸弹计数写到极高值，避免装填耗尽（作用范围为全部己方单位）。",
+            "Fill Selected Unit Ammo" => "一次性把选中单位全部武器的弹药写到极大值。引擎不会自动压回上限，效果会一直保留到正常消耗。",
+            "Reset Selected Unit Ammo" => "一次性把选中单位全部武器的弹药归为 1，可用来恢复正常装填状态（也用于撤销\"弹药填满\"）。",
+            "Destory Select Unit" => "经产品意图路由摧毁点击时选中的目标。",
+            "Danger Level MAX" => "把威胁等级写到高值，让目标更容易吸引火力。",
+            "Danger Level MIN" => "把威胁等级归零，降低目标被优先攻击的概率。",
+            "Restore Danger Level Normal" => "取消威胁等级强制值，交回游戏正常计算。",
+            "Restore Select Ore Mine" => "重置矿点剩余采集量，让矿车继续采集。",
+            "Free Build" => "取消建筑放置位置校验，可在通常不可建造的位置落建筑。",
+            "Expand Production Queue" => "仅限 DLL Agent：选中建造场后执行，把当前阵营建造场的主建筑与防御建筑队列上限扩展为 999。",
+            "Restore Production Queue" => "仅限 DLL Agent：选中建造场后执行，把当前阵营建造场的主建筑与防御建筑队列上限恢复为 1。",
+            "Teleport Selected Units To Mouse" => "仅限 DLL Agent：把当前选中的可移动单位整体瞬移到鼠标地图位置；多选时保持相对队形，无移动器的建筑会被跳过。仅建议在单机或遭遇战使用。",
+            "Get Me Base" => "在鼠标地图坐标为玩家生成三阵营基地车。",
+            "We Need Back" => "按支援面板里的单位代码、数量和等级发起一次增援请求。",
+            "Select Unit Copy For Me" => "以目标类型为模板，在鼠标地图坐标为玩家生成副本。",
+            "Set Unit Support State" => "把目标状态写成伪装标记，用于触发游戏内伪装/潜伏状态。",
+            "Set Selected Unit Target Health" => "把目标当前生命值设置为输入框指定的浮点数值，不修改最大生命值上限。",
+            "Secret Protocol Binding Probe" => "进入对局后执行；固定授予盟军 AirPower 作为同阵营正控，并授予日本 EnhancedKamikaze 观察跨阵营被动绑定。",
+            "Soviet Orbital Refuse Rank 1 Probe" => "进入对局后执行；固定授予 PlayerTech_Soviet_OrbitalRefuse_Rank1，用于验证跨阵营主动协议是否出现在协议面板并可释放。",
+            "Clear Player Tech Locks" => "清空地图脚本 Lock Player Tech 写入的玩家科技锁 bitmask，并兼容清理当前玩家 PlayerTechManager 锁表。",
+            "Logic Time Freeze" => "开启后游戏里的所有单位、战斗、生产和计时都会完全冻结，但你的鼠标和按键照常反应，可以慢慢下命令。再按一次解冻，冻结期间下的命令会一起执行。仅限单机/遭遇战，联机会不同步。",
+            "Logic Time Slow Motion" => "开启后游戏速度降为一半（50%），单位移动和战斗都变慢，方便精细操作。鼠标和按键照常反应，不影响你的操作速度。再按一次恢复正常速度。仅限单机/遭遇战，联机会不同步。",
+            "Product Veterancy Grant" => "在当前鼠标位置生成隐形精兵学院载体，新生产单位自动获得老兵等级（1=老兵/2=精英/3=英雄）。",
+            "Product Healing Aura Enable" => "在当前鼠标位置生成隐形车库载体，提供覆盖载具/舰船/空军/步兵/建筑的五合一治疗光环（重复执行先清除旧车库再生成）。",
+            "Product Healing Aura Disable" => "扫描销毁当前玩家的全部隐形治疗光环载体，停止治疗。",
+            "Product Spawn Mecha King" => "在当前鼠标位置生成一个将军刽子手（战役单位放入遭遇战，娱乐生成，每次执行生成一个）。",
+            _ => "按原版修改器动作表执行该功能。"
+        };
+    }
+}
