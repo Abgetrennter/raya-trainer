@@ -19,45 +19,29 @@ Command & Conquer: Red Alert 3（含 Uprising）单机关卡沙盒修改器。�
 5. **默认完全离线，不主动联网。**
    本工具启动时不会监听任何网络端口，不建立出站网络连接，不上传遥测；主程序也不再依赖 ASP.NET Core 运行库（仅需 .NET 8 x86 Desktop Runtime）。网页/手机遥控是一项**独立可选组件**：不再内置于主程序，需要时单独运行同一 Release 附带的 `RayaTrainer.WebMini.exe`（可选附件包，framework-dependent 版需另装 ASP.NET Core Runtime x86，Windows Desktop Runtime 与主程序共用，self-contained 版无需），它会自动附加游戏并创建本地 HTTP 服务（默认端口 8787，可在窗口修改），窗口内显示配对二维码与连接地址，支持修改端口与绑定网卡；供同一局域网的手机浏览器访问，首次连接需在其窗口内确认设备配对。该组件仅在局域网被动监听，不向 EA 或任何外部服务上报数据。详见透明度报告与 ADR 0033。
 
-## 仓库结构
-
-本仓库是私有主仓，同时挂载一个逆向分析知识库子模块，并通过投影生成公开仓的发布产物。三者关系如下：
-
-- **私有主仓（本仓）**：完整真相源，包含 App、Core、Native Agent、生成器、全量测试和发布工具。
-- **`RA3_Analysis/`（子模块）**：挂载的私有逆向分析知识库（`RA3-Engine-Atlas`，固定 commit gitlink），独立维护修改器使用的运行时地址、Hook 语义和引擎机制证据。它可独立 clone、审计和测试，但普通构建与发布不依赖它。
-- **公开投影**：经 `scripts/migrate-to-public.ps1` 从本仓投影到公开仓，只包含 Managed 外壳、公共测试和法律文件。Native Agent 源码与知识库子模块不进入投影，编译后的 Agent 仅以二进制形式随 Release 发布。
-
-下方的「仓库内容」描述的是私有主仓目录。
-
 ## 仓库内容
 
 | 目录 | 说明 |
 |------|------|
 | `src/RayaTrainer.Core/` | 托管库：训练器功能、协议定义、资产包加载 |
 | `src/RayaTrainer.App/` | WPF 桌面 UI |
-| `src/RayaTrainer.Agent/` | x86 C++ Agent DLL（注入到游戏进程） |
-| `tests/` | xUnit 托管测试和原生测试 |
-| `tools/` | 构建时代码生成器和验证工具 |
-| `scripts/` | 构建、发布、验证和公开迁移脚本 |
-| `Assets/Catalogs/` | 版本化、哈希验证的资产包（Corona 模组数据、参考注释） |
+| `src/RayaTrainer.WebMini/` | 独立可选的 Web 遥控组件 |
+| `src/RayaTrainer.Host/` | 会话链与宿主库 |
+| `tests/` | 公共契约测试 |
+| `scripts/` | 运行库校验与发布包验证脚本 |
+| `docs/` | 透明度报告、运行时资产说明与 ADR |
 
-## 构建
+注入到游戏进程的 Agent 以编译后的 DLL 形式随 Release 发布，源码不在本仓库中。
 
-环境要求：
-- Windows 10+ (x64)
-- .NET 8 SDK
-- Visual Studio 2022 含 C++ 桌面工作负载（用于 x86 Agent DLL）
+## 从源码构建
+
+环境要求：Windows 10+ (x64)、.NET 8 SDK。
 
 ```powershell
-# 构建托管解决方案 + x86 Agent
-.\scripts\publish.ps1
-
-# 或分步执行：
-dotnet build RayaTrainer.sln -c Release
-MSBuild.exe src/RayaTrainer.Agent/RayaTrainer.Agent.vcxproj /p:Configuration=Release /p:Platform=Win32
+dotnet build RayaTrainer.Public.sln -c Release
 ```
 
-构建产物位于 `artifacts/` 目录。
+普通使用无需从源码构建：直接下载 Release 附带的 zip 包即可。
 
 ## 使用
 
@@ -65,13 +49,6 @@ MSBuild.exe src/RayaTrainer.Agent/RayaTrainer.Agent.vcxproj /p:Configuration=Rel
 2. 启动训练器（`RayaTrainer.App.exe`）。
 3. 训练器自动检测运行中的游戏 profile，注入 Agent DLL，启用功能面板。
 4. 按需切换功能。所有修改仅在内存中进行，不修改任何游戏文件。
-
-### Operation Explorer（实验性）
-
-- 普通模式只显示已经完成实机验收的 `Productized` Operation。
-- 高级模式允许直接查看和调用 `Executable` / `Verified` Operation，并按当前游戏动态生成参数表单；`Executable` 只表示参数、ABI 与 Route 已解码，不保证效果、恢复或游戏稳定性。
-- 结果页会分别显示派发状态、引擎返回值与 Effect Evidence；没有读回证据时保持 `Unknown`，不会显示成“已验证成功”。
-- Custom RecipePlan 只接受有界的类型化 JSON（Literal、PlanInput、StepOutput、显式 compensation），不接受 Lua 文本、循环、等待或 Route override。
 
 ## 版本兼容与验证状态
 
@@ -82,7 +59,7 @@ MSBuild.exe src/RayaTrainer.Agent/RayaTrainer.Agent.vcxproj /p:Configuration=Rel
 | Uprising 1.0 | 签名、Hook 与 Agent 安装合同已静态验证；行为 smoke 待补 |
 | Uprising 1.1 | 快速建造已实机验证；其余跨版本功能仍需继续 smoke |
 
-v0.0.7 修正了 Uprising 快速建造完成时刻字段的版本差异，并轮换 Agent 构建身份。若从旧版本升级，请先彻底退出游戏再启动新版本，避免游戏进程继续保留旧版已注入 DLL。静态支持表示地址、签名、原字节和安装合同已验证，不代表所有功能都完成了对应版本的实机验收。
+静态支持表示地址、签名、原字节和安装合同已验证，不代表所有功能都完成了对应版本的实机验收。跨版本升级时请先彻底退出游戏再启动新版本，避免游戏进程继续保留旧版已注入 DLL。
 
 ## 许可
 
