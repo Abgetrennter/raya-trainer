@@ -1,0 +1,26 @@
+name: Public shell CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Validate public shell
+        shell: pwsh
+        run: ./scripts/validate-public.ps1 -Configuration Release
+
+      - name: Audit projected source
+        shell: pwsh
+        run: ./scripts/preflight-leak-check.ps1 -CheckLevel source

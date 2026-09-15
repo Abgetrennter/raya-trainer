@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- 无 UI 会话宿主库：承载 Web 遥控所需的会话链/产品管线/诊断与 ASP.NET Core
+         Web 宿主。主程序（App）与可选控制台组件（WebMini）都引用本库。
+         本库不启用 WPF，必须保持对 WPF 零依赖。 -->
+    <PublicProjection Condition="'$(SolutionFileName)' == 'RayaTrainer.Public.sln'">true</PublicProjection>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PublicProjection)' == 'true'">
+    <Compile Remove="Private\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RayaTrainer.Core\RayaTrainer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RayaTrainer.App" />
+    <InternalsVisibleTo Include="RayaTrainer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PrivateAssets=all：阻止框架引用传递给引用方（App 的 runtimeconfig 不得带入
+         Microsoft.AspNetCore.App）；需要 Web 宿主的消费方（WebMini/测试）必须自行声明。 -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
