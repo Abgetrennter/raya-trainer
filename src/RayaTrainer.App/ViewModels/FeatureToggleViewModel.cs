@@ -1,0 +1,206 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
+using RayaTrainer.Core.Features;
+using RayaTrainer.Core.Manifest;
+using RayaTrainer.Core.Runtime;
+
+namespace RayaTrainer.App.ViewModels;
+
+/// <summary>
+/// 功能开关域：Groups（功能分组 + 折叠/搜索）、资源值输入框、资源值写入。
+/// FeaturesPage 全部内容归本 VM。分组折叠通过 FeatureGroupViewModel.IsExpanded + ActionCard 原生支持。
+/// 目标生命值写入已移至 SelectedUnitViewModel。
+/// </summary>
+public sealed class FeatureToggleViewModel : ViewModelBase
+{
+    private readonly IFeatureHost _host;
+    private readonly ObservableCollection<FeatureGroupViewModel> _groups;
+    private string _searchText = string.Empty;
+    private string _moneyAmountText;
+    private string _powerValueText;
+    private string _scPointValueText;
+
+    public FeatureToggleViewModel(
+        IFeatureHost host,
+        IEnumerable<TrainerFeature> configuredFeatures,
+        TrainerAppSettings settings)
+    {
+        _host = host;
+        _moneyAmountText = settings.ResourceValues.MoneyAmount.ToString();
+        _powerValueText = settings.ResourceValues.PowerValue.ToString();
+        _scPointValueText = settings.ResourceValues.ScPointValue.ToString();
+        _groups = new ObservableCollection<FeatureGroupViewModel>(CreateGroups(configuredFeatures));
+        FilteredGroups = CollectionViewSource.GetDefaultView(_groups);
+        FilteredGroups.Filter = FilterGroup;
+    }
+
+    /// <summary>原始分组数据，供 AllFeatureItems / 测试访问。</summary>
+    public ObservableCollection<FeatureGroupViewModel> Groups => _groups;
+
+    /// <summary>过滤后的分组视图，FeaturesPage.xaml ItemsSource 绑定此属性。</summary>
+    public ICollectionView FilteredGroups { get; }
+
+    public string MoneyAmountText { get => _moneyAmountText; set { _moneyAmountText = value; OnPropertyChanged(); } }
+    public string PowerValueText { get => _powerValueText; set { _powerValueText = value; OnPropertyChanged(); } }
+    public string ScPointValueText { get => _scPointValueText; set { _scPointValueText = value; OnPropertyChanged(); } }
+
+    /// <summary>生产升星授予（精兵学院）的等级输入；惰性读取，点击执行时由 MainViewModel 校验。</summary>
+    public string VeterancyLevelText { get; set; } = "1";
+
+    public string VeterancyLevelHelpText => "生产升星等级：1=老兵（VETERAN）/2=精英（ELITE）/3=英雄（HEROIC）。";
+
+    /// <summary>生成矿脉的开口方向预设（互斥单选：1=东北/3=西北/5=西南/7=东南），提交时由 MainViewModel 校验。</summary>
+    private int _oreNodeAnglePreset = 1;
+    public int OreNodeAnglePreset
+    {
+        get => _oreNodeAnglePreset;
+        set
+        {
+            if (_oreNodeAnglePreset == value)
+            {
+                return;
+            }
+            _oreNodeAnglePreset = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(OreNodePresetIsNortheast));
+            OnPropertyChanged(nameof(OreNodePresetIsNorthwest));
+            OnPropertyChanged(nameof(OreNodePresetIsSouthwest));
+            OnPropertyChanged(nameof(OreNodePresetIsSoutheast));
+        }
+    }
+
+    public string OreNodeAngleHelpText => "开口方向（互斥单选）：1=东北、3=西北、5=西南、7=东南（45° 奇数倍，对齐地图原生角度集合）。已知限制：停靠几何存在对局级共享烘焙缓存，同局混用方向会错位，请固定一个方向使用（详见 docs/project-status.md 悬挂工作）。";
+
+    public bool OreNodePresetIsNortheast
+    {
+        get => _oreNodeAnglePreset == 1;
+        set { if (value) OreNodeAnglePreset = 1; }
+    }
+    public bool OreNodePresetIsNorthwest
+    {
+        get => _oreNodeAnglePreset == 3;
+        set { if (value) OreNodeAnglePreset = 3; }
+    }
+    public bool OreNodePresetIsSouthwest
+    {
+        get => _oreNodeAnglePreset == 5;
+        set { if (value) OreNodeAnglePreset = 5; }
+    }
+    public bool OreNodePresetIsSoutheast
+    {
+        get => _oreNodeAnglePreset == 7;
+        set { if (value) OreNodeAnglePreset = 7; }
+    }
+
+    public string MoneyAmountHelpText => "资金功能每次执行时增加的金额；默认 100000。";
+    public string PowerValueHelpText => "无限电力开启后写入的可用电力值；默认 100000。";
+    public string ScPointValueHelpText => "秘密协议点数功能写入的点数值，范围 0-15。";
+
+    /// <summary>搜索过滤文本。变化时自动刷新 Groups 视图。</summary>
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText == value)
+            {
+                return;
+            }
+
+            _searchText = value;
+            OnPropertyChanged();
+            FilteredGroups.Refresh();
+        }
+    }
+
+    public ResourceValueSettings GetResourceValueSettings() =>
+        ResourceValueSettings.Parse(MoneyAmountText, PowerValueText, ScPointValueText);
+
+    public void WriteResourceValuesIfNeeded(TrainerFeature feature)
+    {
+        if (IsResourceValueFeature(feature) && _host.FeatureController is not null)
+        {
+            _host.FeatureController.WriteResourceValues(GetResourceValueSettings());
+        }
+    }
+
+    /// <summary>返回本 VM 持有的所有 FeatureItemViewModel（Groups 内的 Features）。供 AllFeatureItems 跨 VM 聚合。</summary>
+    public IEnumerable<FeatureItemViewModel> AllFeatureItems() =>
+        _groups.SelectMany(g => g.Features);
+
+    /// <summary>刷新所有 toggle 和 pulse 功能的状态。供 RefreshFeatureStates 委托。</summary>
+    public void RefreshToggleStates()
+    {
+        foreach (var item in AllFeatureItems())
+        {
+            if (item.IsToggle || item.IsPulse)
+            {
+                item.RefreshToggleState();
+            }
+        }
+    }
+
+    /// <summary>断开/恢复 patch 时把所有 toggle/pulse 功能状态重置为"未启用"，避免显示陈旧的已启用状态。</summary>
+    public void ResetToggleStates()
+    {
+        foreach (var item in AllFeatureItems())
+        {
+            if (item.IsToggle || item.IsPulse)
+            {
+                item.ResetToggleState();
+            }
+        }
+    }
+
+    /// <summary>刷新所有功能命令的 CanExecute。供 MainVM.RaiseCommandStates() 遍历。</summary>
+    public void RaiseFeatureCommandStates()
+    {
+        foreach (var item in AllFeatureItems())
+        {
+            item.RaiseCommandState();
+        }
+    }
+
+    public void RaiseCommandStates()
+    {
+        // FeatureToggleVM 没有自己的 RelayCommand，但保留供 MainVM 统一调用
+    }
+
+    private bool FilterGroup(object item)
+    {
+        if (item is not FeatureGroupViewModel group)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            return true;
+        }
+
+        return group.Features.Any(f => f.DisplayName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private IReadOnlyList<FeatureGroupViewModel> CreateGroups(IEnumerable<TrainerFeature> features)
+    {
+        var items = features.Select(feature => new FeatureItemViewModel(feature, _host)).ToArray();
+        return TrainerFeatureGroupCatalog.Groups.Select(g =>
+            new FeatureGroupViewModel(g.GroupId, g.Name, SelectItems(items, g.FeatureRawNames), g.IsExpanded)
+        ).ToArray();
+    }
+
+    private static IReadOnlyList<FeatureItemViewModel> SelectItems(
+        IReadOnlyList<FeatureItemViewModel> items, IReadOnlyList<string> rawNames)
+    {
+        return rawNames
+            .Select(rawName => items.FirstOrDefault(item => item.Feature.RawName == rawName))
+            .Where(item => item is not null)
+            .Cast<FeatureItemViewModel>()
+            .ToArray();
+    }
+
+    private static bool IsResourceValueFeature(TrainerFeature feature) =>
+        feature.RawName is "Money" or "Power" or "SC POINT";
+
+}

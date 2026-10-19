@@ -1,0 +1,1340 @@
+{
+  "DESTROYED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被摧毁",
+    "Category": "Basic 基础状态",
+    "Description": "物体死后超出SlowDeath中的DestructionDelay后获得，工兵进驻占领或修复、间谍进驻渗透建筑后也有此状态，代表此物体已被移除游戏，无法与外界产生任何互动"
+  },
+  "UNSELECTABLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不可选择",
+    "Category": "Basic 基础状态",
+    "Description": "无法被选中，物体被超时空时有此状态。该状态施加到具有SELECTABLE标签的单位上时，赋予其特殊的\"半选中\"模式：鼠标覆盖会显示血条，可以成为攻击等指令的目标，但无法真正选中"
+  },
+  "NO_COLLISIONS": {
+    "IsHiddenByDefault": false,
+    "Condition": "无碰撞",
+    "Category": "Basic 基础状态",
+    "Description": "单位从容器内撤离一段时间内，帽子在蜘蛛洞内没有攻击时，被内爆弹所吸引时"
+  },
+  "NOT_IN_WORLD": {
+    "IsHiddenByDefault": false,
+    "Condition": "不在世界中",
+    "Category": "Basic 基础状态",
+    "Description": "被裂缝物体有这条状态"
+  },
+  "INAUDIBLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "无音效",
+    "Category": "Basic 基础状态",
+    "Description": "被裂缝物体有这条状态，该物体任何声音都会被屏蔽"
+  },
+  "NO_SHADOW": {
+    "IsHiddenByDefault": false,
+    "Condition": "无阴影",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "IN_STASIS": {
+    "IsHiddenByDefault": false,
+    "Condition": "处于停滞状态",
+    "Category": "Basic 基础状态",
+    "Description": "通过虫群物体attr加给虫群内物体，可能没什么作用"
+  },
+  "OUT_OF_PHASE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "TAGGED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "PLACED_BY_PLAYER": {
+    "IsHiddenByDefault": false,
+    "Condition": "游戏开始后放置生产或建造的",
+    "Category": "Basic 基础状态",
+    "Description": "玩家既包括Human也包括AI，建筑不包括因WallBuilderBehavior而生成的围墙片段"
+  },
+  "LOADED_FROM_MAP": {
+    "IsHiddenByDefault": false,
+    "Condition": "通过加载地图生成",
+    "Category": "Basic 基础状态",
+    "Description": "提前布置在地图的单位会获得该状态"
+  },
+  "DO_NOT_SCORE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不计分",
+    "Category": "Basic 基础状态",
+    "Description": "不被纳入战后统计"
+  },
+  "INHERITED_FROM_ALLY_TEAM": {
+    "IsHiddenByDefault": false,
+    "Condition": "继承给友军",
+    "Category": "Basic 基础状态",
+    "Description": "友军退出以后所继承的单位与建筑会拥有该状态"
+  },
+  "GENERIC_TOGGLE_STATE": {
+    "IsHiddenByDefault": true,
+    "Condition": "通用切换状态",
+    "Category": "Basic 基础状态",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "CLONED": {
+    "IsHiddenByDefault": false,
+    "Condition": "克隆",
+    "Category": "Basic 基础状态",
+    "Description": "CloneStoredObjectsSpecialPowerUpdate生成的单位，此状态物体不可使用按钮、死亡不触发任何死亡模块、使用FX_DecoyDeath作为死亡特效、武器DamageContainedNugget无伤害"
+  },
+  "SHRUNK": {
+    "IsHiddenByDefault": true,
+    "Condition": "被缩小",
+    "Category": "Basic 基础状态",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "COMMAND_BUTTON_TOGGLED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "DO_NOT_PICK_ME": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "CAN_NOT_WALK_ON": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "CHANTING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "BOOKENDING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "RIDER_IS_PILOT": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Basic 基础状态",
+    "Description": ""
+  },
+  "CAN_ATTACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "可以攻击",
+    "Category": "Attack 攻击状态",
+    "Description": "碉堡被驻守时获得，可通过指挥碉堡来为内部成员指定开火目标"
+  },
+  "NO_ATTACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "不可攻击",
+    "Category": "Attack 攻击状态",
+    "Description": "该物体无法使用主动攻击武器，进入无特殊设置的运输容器后会自动获得以阻止单位朝外攻击"
+  },
+  "IS_FIRING_WEAPON": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用武器",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "IS_RELOADING_WEAPON": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在装填武器",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "IS_ATTACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在攻击",
+    "Category": "Attack 攻击状态",
+    "Description": "实际单位攻击时并没有这个状态？"
+  },
+  "IS_AIMING_WEAPON": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器瞄准时",
+    "Category": "Attack 攻击状态",
+    "Description": "单位已进入武器射程，单位炮塔正在转向、或自身转向目标时"
+  },
+  "IS_MELEE_ATTACKING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "ENRAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在处于攻击状态",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "FORCE_ATTACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在强制攻击中",
+    "Category": "Attack 攻击状态",
+    "Description": "使用强制攻击指令攻击物体时，攻击地面并无效果，此时武器忽略敌我检测"
+  },
+  "FORCE_ATTACK_MOVING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在行进攻击中",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "CHARGING_WEAPON": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器充能中",
+    "Category": "Attack 攻击状态",
+    "Description": "需配合ChargeWeaponUpdate，处于ChargeTime时"
+  },
+  "OVERCHARGING_WEAPON": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器过充能",
+    "Category": "Attack 攻击状态",
+    "Description": "需配合ChargeWeaponUpdate，达到OverChargeTime时"
+  },
+  "PREEMPT_PRE_ATTACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "抢先瞄准开火",
+    "Category": "Attack 攻击状态",
+    "Description": "物体使用PrematureDischargeSpecialPower技能后到下次开火前，EA官方：This object status is used by the Premature Discharge Special Power"
+  },
+  "END_FIRE_STATE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "SWITCHED_WEAPONS": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Attack 攻击状态",
+    "Description": "无实际作用，仅作为标注，铁锤坦克有使用"
+  },
+  "NO_AUTO_ACQUIRE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不可自动索敌",
+    "Category": "Attack 攻击状态",
+    "Description": "战机停靠于机场或双刃降落时获得，单位前去使用技能时也有，阻止当前物体自动寻找目标来进行攻击"
+  },
+  "NON_AUTOACQUIRABLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不被主动索敌",
+    "Category": "Attack 攻击状态",
+    "Description": "取消对该单位的索敌并且不被周围主动索敌"
+  },
+  "NO_ATTACK_FROM_AI": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "IS_ENGAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "攻击中",
+    "Category": "Attack 攻击状态",
+    "Description": ""
+  },
+  "ATTACKING_GARRISONED_STRUCTURE": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在或者准备攻击可以被驻军的建筑",
+    "Category": "Attack 攻击状态",
+    "Description": "攻击被驻军的建筑时会获得该状态"
+  },
+  "UNDER_CONSTRUCTION": {
+    "IsHiddenByDefault": false,
+    "Condition": "建筑展开时",
+    "Category": "Construction 建造/部署",
+    "Description": "特指使用ReplaceSelfSpecialAbility中NewObjectUnpackTime大于0秒技能的单位所展开成的建筑，原版为核心、盟军矿车、苏联扩展车"
+  },
+  "DEPLOYED": {
+    "IsHiddenByDefault": false,
+    "Condition": "已部署",
+    "Category": "Construction 建造/部署",
+    "Description": "若是由DeployStyleAIUpdate部署则强制获得，然而在ra3此AI只在默认状态机下生效，原版被用于盟军工兵部署"
+  },
+  "DEPLOYING": {
+    "IsHiddenByDefault": false,
+    "Condition": "部署中",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "UNPACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "单位或者建筑展开中",
+    "Category": "Construction 建造/部署",
+    "Description": "同样也是技能前摇期"
+  },
+  "PENDING_CONSTRUCTION": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "BUILD_BEING_CANCELED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "PHANTOM_STRUCTURE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "IS_LEAVING_FACTORY": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在出厂中",
+    "Category": "Construction 建造/部署",
+    "Description": "新出场单位从UnitCreatePoint到NaturalRallyPoint期间"
+  },
+  "DONT_CLEAR_FOR_BUILD": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "IN_FORMATION_TEMPLATE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Construction 建造/部署",
+    "Description": ""
+  },
+  "STEALTHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "隐形状态",
+    "Category": "Stealth 隐形/潜行",
+    "Description": ""
+  },
+  "HIDDEN": {
+    "IsHiddenByDefault": false,
+    "Condition": "",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "单位拥有该模型状态时并不会隐藏模型"
+  },
+  "DETECTED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Stealth 隐形/潜行",
+    "Description": ""
+  },
+  "CAN_STEALTH": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Stealth 隐形/潜行",
+    "Description": ""
+  },
+  "IGNORING_STEALTH": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Stealth 隐形/潜行",
+    "Description": ""
+  },
+  "INVISIBLE_DETECTED_BY_FRIEND": {
+    "IsHiddenByDefault": false,
+    "Condition": "隐形被友军发现",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "单位的InvisibilityTemplate的Options中有DETECTED_BY_FRIENDLIES，且被友军的StealthDetectorUpdate模块发现时获得该状态"
+  },
+  "INVISIBLE_DETECTED": {
+    "IsHiddenByDefault": false,
+    "Condition": "隐形被发现",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "隐形单位被敌方有StealthDetectorUpdate模块单位发现"
+  },
+  "CAN_STEALTH_FROM_PRODUCER": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Stealth 隐形/潜行",
+    "Description": ""
+  },
+  "GARRISON_CAN_STEALTH": {
+    "IsHiddenByDefault": false,
+    "Condition": "进驻隐形",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "根据InvisibilityTemplate，可进驻建筑拥有此状态可激活建筑的隐形模块让该建筑隐形"
+  },
+  "CAN_ATTACK_WHILE_STEALTHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "在隐形时依然可以主动攻击",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "如果在隐形里设置了该效果则单位自动获得该状态"
+  },
+  "BROADCASTING_INVISIBILITY": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在制造隐形力场",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "被用于幻影裂缝产生器以防此幻影被其他幻影所隐形"
+  },
+  "SCRAMBLED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被干扰",
+    "Category": "Stealth 隐形/潜行",
+    "Description": "无法使用技能，除非此技能有CAN_NOT_BE_SCRAMBLED这条Flag，被用于水翼船武器干扰装置"
+  },
+  "INSIDE_GARRISON": {
+    "IsHiddenByDefault": false,
+    "Condition": "在驻扎建筑或者载具内",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "GARRISONED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被进驻",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "当建筑被单位进驻时获得该状态"
+  },
+  "ENCLOSED": {
+    "IsHiddenByDefault": false,
+    "Condition": "与外界隔绝",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "被用于单位进入容器后提供给单位，或蜘蛛谭雅吸附物体，若不给容器内单位添加此状态并安排进驻骨骼组则可让此单位显露出来(如双刃吊载具)"
+  },
+  "TRANSPORT_MOVING_TO_CONTAIN": {
+    "IsHiddenByDefault": false,
+    "Condition": "运输载具移动至乘客中",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "当有单位要进驻拥有TransportHelicopterAIStateMachine的单位时，被进驻单位会获得该状态"
+  },
+  "CONTAINER_OCCUPIED": {
+    "IsHiddenByDefault": true,
+    "Condition": "容器已被占用",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "被用作容器内部有其他物体时所赋予的容器状态，仅作为标记，无实际作用"
+  },
+  "CAN_ENTER_ANYTHING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "ENTERING_GOAL": {
+    "IsHiddenByDefault": false,
+    "Condition": "进入目标",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "单位进驻目标但又因为种种原因走到目标上却进不去时出现于自身，以及单位正在进入载具时获得"
+  },
+  "CANNOT_LAND_AT_AIRFIELD": {
+    "IsHiddenByDefault": false,
+    "Condition": "无法降落在机场",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "双刃内部装载乘员时被添加，拥有该状态的单位无法降落在机场，然而现版本双刃本身已无法降落停靠于机场"
+  },
+  "CLEARED_FOR_LANDING": {
+    "IsHiddenByDefault": false,
+    "Condition": "允许着陆",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "飞行器在返航以及降落于机场时"
+  },
+  "PARKED_AT_AIRFIELD": {
+    "IsHiddenByDefault": false,
+    "Condition": "停在机场上",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "返回式装填飞机必须完全装满弹才可获得此状态，单位获得该状态时会禁止使用停止"
+  },
+  "AIRCRAFT_IGNORE_SAMEPLAYER_HANGAR_RULE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "UNIT_WANTS_TO_REGARRISON": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "DELAYED_ENTER_STRUCTURE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "DEPART_FROM_BOARDING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "WAITING_FOR_BOARDING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": ""
+  },
+  "CARRYING_FLAG": {
+    "IsHiddenByDefault": false,
+    "Condition": "",
+    "Category": "Container/Transport 容器/运输",
+    "Description": "该物体无法使用技能，无法进入容器，无法按q选中，仍然可以正常框选"
+  },
+  "IMMOBILE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不可移动",
+    "Category": "Movement 移动状态",
+    "Description": "原版激活某物体ShieldSphereUpdate时，天启通过GrapplingHookUpdate拖拽物体时出现"
+  },
+  "IMMOBILE_ALLOW_ROTATE": {
+    "IsHiddenByDefault": false,
+    "Condition": "不可移动但可以转向",
+    "Category": "Movement 移动状态",
+    "Description": "矿车在矿场倒矿时出现过"
+  },
+  "NEXT_MOVE_IS_REVERSE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "IS_BRAKING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "FOLLOWING_THROUGH": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "LEASHED_RETURNING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "FLEE_OFF_MAP": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在离开地图中",
+    "Category": "Movement 移动状态",
+    "Description": "召唤物在完成任务后飞离地图"
+  },
+  "MOVING_TO_DISMOUNT": {
+    "IsHiddenByDefault": false,
+    "Condition": "移动以下车",
+    "Category": "Movement 移动状态",
+    "Description": "使飞行单位降落在地上并停止盘旋，原用于空中飞行单位指定地点的滑翔降落"
+  },
+  "MATCH_TARGETS_SPEED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "IS_MOVING_TO_RALLY_POINT": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在前往集结点",
+    "Category": "Movement 移动状态",
+    "Description": "此处指玩家自行设定的集结点"
+  },
+  "NEXT_MOVE_IS_FORCE_ATTACK_MOVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Movement 移动状态",
+    "Description": ""
+  },
+  "EXCEEDED_PATH_NEIGHBOR_COUNT": {
+    "IsHiddenByDefault": false,
+    "Condition": "重新获取寻路路径（暂定）",
+    "Category": "Movement 移动状态",
+    "Description": "获取该状态的单位会重新进行寻路并继续移动到指定位置（暂定），EA官方：flag to mark the fact we've failed to find a path"
+  },
+  "SURFACED_IMMOBILE": {
+    "IsHiddenByDefault": false,
+    "Condition": "在水面上无法移动",
+    "Category": "Movement 移动状态",
+    "Description": "EA官方：objects that are IMMOBILE and have been placed on the sea surface"
+  },
+  "WATER_LOCOMOTOR_ACTIVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "水中运动器激活",
+    "Category": "Movement 移动状态",
+    "Description": "原版单位搭配LocomotorTemplate使用，无实际作用，仅作为标注"
+  },
+  "GROUND_LOCOMOTOR_ACTIVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "陆地运动器激活",
+    "Category": "Movement 移动状态",
+    "Description": "通常单位搭配LocomotorTemplate使用，无实际作用，仅作为标注"
+  },
+  "AIR_LOCOMOTOR_ACTIVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "空中运动器激活",
+    "Category": "Movement 移动状态",
+    "Description": "通常单位搭配LocomotorTemplate使用，无实际作用，仅作为标注"
+  },
+  "DAMAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "黄血",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "基于ActiveBody定义当前生命值百分比处于MaxHealthDamagedPercentage和MaxHealthReallyDamagedPercentage之间"
+  },
+  "REALLYDAMAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "红血",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "基于ActiveBody定义当前生命值百分比处于MaxHealthReallyDamagedPercentage之下"
+  },
+  "RUBBLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "废墟状态",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "当前生命值在0以下但未移出游戏时，如slow death的步兵尸体"
+  },
+  "AFLAME": {
+    "IsHiddenByDefault": false,
+    "Condition": "在燃烧",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": ""
+  },
+  "BURNED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": ""
+  },
+  "IRRADIATED": {
+    "IsHiddenByDefault": true,
+    "Condition": "被辐射的",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "毒质腐蚀，无实际作用，仅作为标注"
+  },
+  "HEALTH_PERCENT_0": {
+    "IsHiddenByDefault": true,
+    "Condition": "当前血量百分比(0%)",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "HEALTH_PERCENT_25": {
+    "IsHiddenByDefault": true,
+    "Condition": "当前血量百分比(25%)",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "HEALTH_PERCENT_50": {
+    "IsHiddenByDefault": true,
+    "Condition": "当前血量百分比(50%)",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "HEALTH_PERCENT_75": {
+    "IsHiddenByDefault": true,
+    "Condition": "当前血量百分比(75%)",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "HEALTH_PERCENT_100": {
+    "IsHiddenByDefault": true,
+    "Condition": "当前血量百分比(100%)",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "HAS_SECONDARY_DAMAGE": {
+    "IsHiddenByDefault": false,
+    "Condition": "被冷冻中",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "当前物体所含SecondaryDamage大于0，并不一定完全冻结"
+  },
+  "ABSORBED_DAMAGE": {
+    "IsHiddenByDefault": false,
+    "Condition": "吸收伤害",
+    "Category": "Damage/Health 伤害/血量",
+    "Description": "出现于帝国套。需要区分AttachUpdate的\"ABSORB_ALL_DAMAGE\"：该flag可以让吸附单位的血条成为被吸附单位的护盾条。\"LEECH_DAMAGE_FROM_PARENT\"使母体在能被武器攻击的前提下不掉血"
+  },
+  "HIJACKED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被劫持",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "曾为被劫持犯劫持载具所拥有状态，ra3疑似无特殊效果"
+  },
+  "TEMPORARILY_DEFECTED": {
+    "IsHiddenByDefault": false,
+    "Condition": "暂时叛变",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "出现于娜塔莎狙击驾驶的载具上，拥有此状态单位无法进入容器"
+  },
+  "BOOBY_TRAPPED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被安放诡雷",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "ra3则用于蜘蛛吸附了载具，可变更"
+  },
+  "BOOBY_TRAP_EXPLODE": {
+    "IsHiddenByDefault": false,
+    "Condition": "诡雷爆炸",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "被用于cc3诡雷BoobyTrapUpdate对工兵进驻的PreventEnteringSetStatusOnParent检测"
+  },
+  "EXPLOSIVES_ATTACHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "引爆吸附",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "被用于谭雅吸附"
+  },
+  "EXPLOSIVES_DETONATING": {
+    "IsHiddenByDefault": false,
+    "Condition": "引爆爆破",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "被用于谭雅爆破"
+  },
+  "STEAL_NEXT_UNIT_TRAPPED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": ""
+  },
+  "MAGNETIZED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被磁化",
+    "Category": "Infiltration 渗透/劫持",
+    "Description": "被黑洞装甲所偏转吸引的抛射体防止被双重偏转，可更改"
+  },
+  "NO_SPECIAL_ABILITY": {
+    "IsHiddenByDefault": false,
+    "Condition": "禁止使用技能",
+    "Category": "Special Ability 技能相关",
+    "Description": "无法使用任何技能，被用于起义百合子战役心灵抑制装置"
+  },
+  "USING_ABILITY": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用技能",
+    "Category": "Special Ability 技能相关",
+    "Description": ""
+  },
+  "SPECIAL_ABILITY_PACKING_UNPACKING_OR_USING": {
+    "IsHiddenByDefault": false,
+    "Condition": "技能正在使用或技能前摇或后摇",
+    "Category": "Special Ability 技能相关",
+    "Description": ""
+  },
+  "SPECIALABILITY_ACTIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "",
+    "Category": "Special Ability 技能相关",
+    "Description": "原版用于让未来坦克在释放技能的时候通过禁止炮塔旋转来使炮塔归位"
+  },
+  "TRANSFORMATION_TOGGLE_STATE": {
+    "IsHiddenByDefault": false,
+    "Condition": "变形切换状态",
+    "Category": "Special Ability 技能相关",
+    "Description": "可切换当前物体的图标文本，需配合TRANSFORMER使用"
+  },
+  "IGNORE_AI_COMMAND": {
+    "IsHiddenByDefault": false,
+    "Condition": "无视AI指令",
+    "Category": "Special Ability 技能相关",
+    "Description": "拥有此状态物体将无视此期间被下达的各种指令直到状态被移除，被动获得的例子很多"
+  },
+  "RUNNING_DOWN_FROM_BEHIND": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Special Ability 技能相关",
+    "Description": ""
+  },
+  "AIRBORNE_TARGET": {
+    "IsHiddenByDefault": false,
+    "Condition": "空中状态",
+    "Category": "Combat Status 战斗状态",
+    "Description": "大部分单位在距离地面或者水面高度为30时获得"
+  },
+  "PARACHUTING": {
+    "IsHiddenByDefault": false,
+    "Condition": "伞降状态",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "RAMPAGING": {
+    "IsHiddenByDefault": false,
+    "Condition": "横冲直撞",
+    "Category": "Combat Status 战斗状态",
+    "Description": "拥有此状态时可碾压友军"
+  },
+  "STAND_GROUND": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "UNCONTROLLABLY_SCARED": {
+    "IsHiddenByDefault": false,
+    "Condition": "惊恐万分",
+    "Category": "Combat Status 战斗状态",
+    "Description": "被百合子举起的步兵还差最后两击死亡时"
+  },
+  "IN_COVER": {
+    "IsHiddenByDefault": false,
+    "Condition": "建筑占据",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "CONTESTED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "CONTESTING_BUILDING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "CHARGING_BASE_DEFENSES": {
+    "IsHiddenByDefault": false,
+    "Condition": "充能防御塔",
+    "Category": "Combat Status 战斗状态",
+    "Description": "被用于原版磁暴单位受线圈召唤而充能线圈，疑似无特殊作用"
+  },
+  "HORDE_MEMBER": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Combat Status 战斗状态",
+    "Description": ""
+  },
+  "DEFLECT_INCOMING_FIRE": {
+    "IsHiddenByDefault": false,
+    "Condition": "偏转来袭火力",
+    "Category": "Combat Status 战斗状态",
+    "Description": "抛射体飞向拥有该状态的单位时会发生偏移"
+  },
+  "UNATTACKABLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "无法被攻击",
+    "Category": "Combat Status 战斗状态",
+    "Description": "依然可以被LinearDamage、CircularDamage、LineDamage和WeaponScatterEffectUpdate所发射的武器攻击，属于原版引擎bug"
+  },
+  "SOLD": {
+    "IsHiddenByDefault": false,
+    "Condition": "出售状态",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": ""
+  },
+  "CANNOT_BE_SOLD": {
+    "IsHiddenByDefault": false,
+    "Condition": "无法被出售",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": ""
+  },
+  "UNDERGOING_REPAIR": {
+    "IsHiddenByDefault": true,
+    "Condition": "被维修时",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": "出现于工兵IFV或维修蜂修理载具时，配合AttachUpdate模块可让吸附于此单位的蜘蛛或毒质腐蚀物体死亡，无实际作用，仅作为标注"
+  },
+  "TARGETED_FOR_REPAIR": {
+    "IsHiddenByDefault": false,
+    "Condition": "确定为维修目标",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": "原版用来帮助维修蜂锁定需修复的目标，在维修蜂未接触时就出现"
+  },
+  "RECONSTRUCTING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": ""
+  },
+  "CAN_CONTEST_GARRISON": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": ""
+  },
+  "WALL_SEGMENT": {
+    "IsHiddenByDefault": false,
+    "Condition": "围墙片段",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": "同ModelState相同词条，由WallBuilderBehavior所建立的中间片段会获得此状态，在拉出新墙时消失，可变更"
+  },
+  "TOPPLING": {
+    "IsHiddenByDefault": false,
+    "Condition": "倒塌中",
+    "Category": "Deploy/Capture 部署/占领",
+    "Description": "拥有ToppledUpdate模块时被压倒"
+  },
+  "HARVESTING": {
+    "IsHiddenByDefault": false,
+    "Condition": "采矿中",
+    "Category": "Economic 经济相关",
+    "Description": "特指采集散矿时"
+  },
+  "DOCKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "倒矿中",
+    "Category": "Economic 经济相关",
+    "Description": "特指卸载散矿时"
+  },
+  "IS_BEING_HARVESTED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被采集中",
+    "Category": "Economic 经济相关",
+    "Description": "特指散矿被采集时"
+  },
+  "NO_REFUND": {
+    "IsHiddenByDefault": false,
+    "Condition": "不退款",
+    "Category": "Economic 经济相关",
+    "Description": "拥有此效果单位死亡时不触发钱套返钱，可变更；间谍工兵进入对应容器可获得，可变更"
+  },
+  "RESET_GOAL_POSITION": {
+    "IsHiddenByDefault": false,
+    "Condition": "重置目标位置",
+    "Category": "Economic 经济相关",
+    "Description": "矿车不在矿场矿脉附近前去采矿倒矿时"
+  },
+  "HAS_TIBERIUM_GROWTH_MOD": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Economic 经济相关",
+    "Description": ""
+  },
+  "HAS_TIBERIUM_UPGRADE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Economic 经济相关",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "DOES_CONTAIN_TIBERIUM": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Economic 经济相关",
+    "Description": ""
+  },
+  "UPDATING_AI": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "AI 相关",
+    "Description": ""
+  },
+  "SKIRMISH_AI_DO_NOT_ATTACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "AI不去攻击这个状态的单位",
+    "Category": "AI 相关",
+    "Description": ""
+  },
+  "SKIRMISH_AI_DO_NOT_TAKE": {
+    "IsHiddenByDefault": false,
+    "Condition": "AI不去占领该状态的单位",
+    "Category": "AI 相关",
+    "Description": "EA官方：Can be applied to Ore Nodes and Tech Buildings to tell the Skirmish AI not to capture or expand to them"
+  },
+  "EXECUTING_STORED_COMMAND": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "AI 相关",
+    "Description": ""
+  },
+  "UNDER_FROZEN": {
+    "IsHiddenByDefault": true,
+    "Condition": "被冻结",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": "无实际作用，仅作为标记"
+  },
+  "UNDER_IRON_CURTAIN": {
+    "IsHiddenByDefault": false,
+    "Condition": "铁幕状态",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": "此状态配合`<Modifier Type=\"INVULNERABLE\" Value=\"100%\"/>`可以吸收除了HEALING和UNRESISTABLE外的一切伤害"
+  },
+  "POWERED_DOWN_EMP": {
+    "IsHiddenByDefault": false,
+    "Condition": "被EMP瘫痪",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": ""
+  },
+  "USER_PARALYZED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被瘫痪",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": "该物体有USER_PARALYZED类DisabledType时，原版SecondaryDamageTracker达到指定值后OnEnterDisable，或被超时空后会获得此状态"
+  },
+  "USER_POWERED_DOWN": {
+    "IsHiddenByDefault": false,
+    "Condition": "电力不足断电",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": "Kindof中拥有POWER的单位在电力不足时会获得该状态"
+  },
+  "IGNORING_POWER_DOWN": {
+    "IsHiddenByDefault": false,
+    "Condition": "忽视电力不足",
+    "Category": "Frost/Ice/Iron Curtain 冰冻/铁幕",
+    "Description": "可让让拥有POWERED物体在玩家断电时也运作"
+  },
+  "LIFTED_INTO_AIR": {
+    "IsHiddenByDefault": false,
+    "Condition": "升到空中",
+    "Category": "Yuriko/Lift 百合子/升空",
+    "Description": "特指受百合子的LiftObjectUpdate模块所影响的物体，被百合子攻击过后将永久拥有该效果，一般单位在落地时会释放软着陆武器来移除此状态。EA官方：set by Yuriko when she lifts a ground target into the air, so that she properly differentiates units she has lifted into the air from natural airborne_targets"
+  },
+  "SHIELDBODY_ENABLED": {
+    "IsHiddenByDefault": false,
+    "Condition": "开启护盾模块",
+    "Category": "Shield 护盾相关",
+    "Description": "配合ShieldBodyUpdate可激活ShieldBody的Shield相关条目，但本身不代表当前物体有护盾值"
+  },
+  "IN_SHIELD_SPHERE": {
+    "IsHiddenByDefault": false,
+    "Condition": "在球体护盾内",
+    "Category": "Shield 护盾相关",
+    "Description": "SecondaryDamageNugget对此类物体无效"
+  },
+  "HIT_SHIELD_SPHERE": {
+    "IsHiddenByDefault": false,
+    "Condition": "击中球体护盾",
+    "Category": "Shield 护盾相关",
+    "Description": "未找到出现于何处"
+  },
+  "RIOT_SHIELDED": {
+    "IsHiddenByDefault": true,
+    "Condition": "防爆盾",
+    "Category": "Shield 护盾相关",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "GRAPPLE_UPDATE_ACTIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "拖拽模块激活",
+    "Category": "Grapple 拖拽相关",
+    "Description": "特指天启使用武器里的GrapplingHookNugget激活了行为段的GrapplingHookUpdate模块正在拖拽物体时"
+  },
+  "IS_BEING_DRAGGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被拖拽中",
+    "Category": "Grapple 拖拽相关",
+    "Description": "特指被天启的GrapplingHookUpdate模块作为目标的物体"
+  },
+  "GRAPPLE_UPDATE_BEING_MOVED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被拖拽模块拖动",
+    "Category": "Grapple 拖拽相关",
+    "Description": "天启在使用GrapplingHookUpdate模块拖拽物体因自身碾压等级未完全大于目标或拖拽目标为建筑而导致的自己的移动时出现"
+  },
+  "UNDER_RUSH_ATTACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "冲锋攻击",
+    "Category": "Grapple 拖拽相关",
+    "Description": "原版只有鬼王，工程师冲锋时使用了，以防止被天启鱼叉拖拽，获得该状态后碰撞到被冷冻的物体会将其击杀。EA官方：used by Bull Rush special power, be able to crush frozen objects"
+  },
+  "VEHICLE_ATTACHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "吸附载具中",
+    "Category": "Grapple 拖拽相关",
+    "Description": "原版被用于蜻蜓和蜘蛛的吸附，以控制只能一对一吸附"
+  },
+  "ATTACHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "吸附中",
+    "Category": "Grapple 拖拽相关",
+    "Description": "该物体通过AttachUpdate吸附于另一物体时"
+  },
+  "COMBINED_PARENT": {
+    "IsHiddenByDefault": false,
+    "Condition": "已经被组合的母体",
+    "Category": "Clone 克隆相关",
+    "Description": ""
+  },
+  "COMBINED_CHILD": {
+    "IsHiddenByDefault": false,
+    "Condition": "已经组合的子体",
+    "Category": "Clone 克隆相关",
+    "Description": ""
+  },
+  "COMBINED_ATTACHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "组合状态",
+    "Category": "Clone 克隆相关",
+    "Description": ""
+  },
+  "EXITING_COMBINED": {
+    "IsHiddenByDefault": false,
+    "Condition": "离开组合中",
+    "Category": "Clone 克隆相关",
+    "Description": ""
+  },
+  "REPULSOR": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "SINKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "下沉中",
+    "Category": "Misc 其他杂项",
+    "Description": "物体死后超出SlowDeath中的SinkDelay但还没到DestructionDelay后获得，表现为物体坐标下沉"
+  },
+  "PAUSING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "NO_SQUISHCOLLIDE_DELAY": {
+    "IsHiddenByDefault": false,
+    "Condition": "无碾压延迟",
+    "Category": "Misc 其他杂项",
+    "Description": "出现于将军刽子手常态与鬼王、将军舰使用技能时，碾压载具可以无视碾压延迟，立刻击杀。（碾压延迟定义在被碾压单位的SquishCollide行为模块下，默认车辆是1.5s，步兵是0s）"
+  },
+  "IS_HIDEOUT": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "BRIDGE_IMPASSABLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "桥梁不可通过",
+    "Category": "Misc 其他杂项",
+    "Description": "获得该状态后单位无法通过该桥梁"
+  },
+  "RIFT_OCCUPIED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "OVER_WATER": {
+    "IsHiddenByDefault": false,
+    "Condition": "在水上",
+    "Category": "Misc 其他杂项",
+    "Description": "原版单位搭配LocomotorTemplate使用，如果是建筑则需要展开获得，影响武器AntiMask的判断"
+  },
+  "POINT_DEFENSE_DRONE_ATTACHED": {
+    "IsHiddenByDefault": true,
+    "Condition": "点防御无人机吸附中",
+    "Category": "Misc 其他杂项",
+    "Description": "被用于确保一个载具只能同时添加一个点防御无人机，无实际作用，仅作为标注"
+  },
+  "IN_NANOHIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "纳米虫巢内",
+    "Category": "Misc 其他杂项",
+    "Description": "在虫群内自动获得"
+  },
+  "SHROUD_REVEAL_TO_ALL": {
+    "IsHiddenByDefault": false,
+    "Condition": "将自身清雾暴露给所有玩家",
+    "Category": "Misc 其他杂项",
+    "Description": "基洛夫使用技能时会获得该状态"
+  },
+  "SURFACED": {
+    "IsHiddenByDefault": false,
+    "Condition": "上浮状态",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "SUBMERGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "潜水状态",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "SPECIAL_ARMOR_ACTIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "特殊装甲激活",
+    "Category": "Misc 其他杂项",
+    "Description": "原版被用于苏联矿车开壳防止被蜘蛛钻"
+  },
+  "ANTI_GARRISON": {
+    "IsHiddenByDefault": false,
+    "Condition": "反驻军",
+    "Category": "Misc 其他杂项",
+    "Description": "鼠标指针对敌对有驻军的驻守/竞争驻守容器则使用ClearGarrisonCursor指针"
+  },
+  "IN_SPIDER_HOLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "蜘蛛洞内",
+    "Category": "Misc 其他杂项",
+    "Description": "当物体拥有此状态时关联其行为段的SpiderHoleUpdate和护甲的Conditions=\"IN_SPIDER_HOLE\"并检测当前物体是否有攻击意向以决定是否移除无碰撞状态"
+  },
+  "TIBERIUM_VIBRATING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "OCLMONITOR_COMPLETED_TASK": {
+    "IsHiddenByDefault": false,
+    "Condition": "OCL监测器任务已完成",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "OCLMONITOR_MONITOR_RELEASED": {
+    "IsHiddenByDefault": false,
+    "Condition": "OCL监测器监测器被释放",
+    "Category": "Misc 其他杂项",
+    "Description": "袋狸因娜塔莎OCLMonitorUpdate内Options在master切换目标时被释放"
+  },
+  "SCARED_CIVILIAN_CAR": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "NO_HERO_PROPERTIES": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "ENABLE_TRACER_DRAW": {
+    "IsHiddenByDefault": true,
+    "Condition": "激活子弹绘制",
+    "Category": "Misc 其他杂项",
+    "Description": "疑似无实际作用"
+  },
+  "LINE_SEGMENT_DAMAGE_ACTIVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "ADVANCED_MISSILE_PACKS": {
+    "IsHiddenByDefault": true,
+    "Condition": "先进火箭匣",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "LEECHED_TARGET_ACTIVE": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "PLAYER_POWER_1": {
+    "IsHiddenByDefault": true,
+    "Condition": "玩家能力1",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "PLAYER_POWER_2": {
+    "IsHiddenByDefault": true,
+    "Condition": "玩家能力2",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "PLAYER_POWER_3": {
+    "IsHiddenByDefault": true,
+    "Condition": "玩家能力3",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "PLAYER_POWER_4": {
+    "IsHiddenByDefault": true,
+    "Condition": "玩家能力4",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "PLAYER_POWER_5": {
+    "IsHiddenByDefault": true,
+    "Condition": "玩家能力5",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "DO_NOT_AVOID_TALLBUILDING": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "WEAPON_UPGRADED_01": {
+    "IsHiddenByDefault": true,
+    "Condition": "武器升级1",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注，被用于各种升级变更武器的场合"
+  },
+  "WEAPON_UPGRADED_02": {
+    "IsHiddenByDefault": true,
+    "Condition": "武器升级2",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "WEAPON_UPGRADED_03": {
+    "IsHiddenByDefault": true,
+    "Condition": "武器升级3",
+    "Category": "Misc 其他杂项",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "WONT_RIDE_WITH_YOU": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "REPAIR_ALLIES_WHEN_IDLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "闲置时维修友军",
+    "Category": "Misc 其他杂项",
+    "Description": "可在警戒范围内自动以友军为目标使用可攻击友军的武器攻击血量不满的友军"
+  },
+  "NO_BRIBE": {
+    "IsHiddenByDefault": false,
+    "Condition": "免疫收买",
+    "Category": "Misc 其他杂项",
+    "Description": "被用于过滤间谍可收买单位状态，原版出现于盟军帐篷、铁幕、单位英雄级"
+  },
+  "IMMUNE_TO_BARK": {
+    "IsHiddenByDefault": false,
+    "Condition": "免疫吼叫",
+    "Category": "Misc 其他杂项",
+    "Description": "被用于过滤狗熊可吼叫步兵状态，原版出现于盟军帐篷、单位英雄级、武士拔刀、帽子钻地"
+  },
+  "LANDING_IN_PROGRESS": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在着陆",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "DEATH_1": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型1",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "DEATH_2": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型2",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "DEATH_3": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型3",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "DEATH_4": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型4",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "DEATH_5": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型5",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "MARCH_OF_DEATH": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  },
+  "PORTER_TAGGED": {
+    "IsHiddenByDefault": true,
+    "Condition": "",
+    "Category": "Misc 其他杂项",
+    "Description": ""
+  }
+}

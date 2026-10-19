@@ -1,0 +1,811 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xai="uri:ea.com:eala:asset:instance">
+  <Tags />
+  <Includes>
+    <!-- 鏁版嵁绫诲紩鐢紙鎶ょ敳/FX/Upgrade/闊抽锛夌敱瀹樻柟 static/global/audio 涓夋祦瑙ｆ瀽銆?-->
+    <Include type="reference" source="DATA:static.xml" />
+    <Include type="reference" source="DATA:global.xml" />
+    <Include type="reference" source="DATA:audio.xml" />
+    <!-- 妯″瀷缇庢湳鍙櫥璁板湪瀹樻柟 WorldBuilder 娴侊紱寮曠敤瀹冧箣鍚?BAB 浼氭妸缇庢湳寮曠敤鍐欐垚
+         import銆傛瀯寤鸿剼鏈彁渚涚殑鏄繃婊ゅ悗鐨?art-only manifest锛岄伩鍏嶄笌 static 鎾為敭銆?         瀛﹂櫌/杞﹀簱宸查殣褰㈠寲锛堟棤妯″瀷锛夛紝姝ゅ缇庢湳寮曠敤鐜颁粎渚涙満鐢?Raya_MechaKing 浣跨敤銆?-->
+    <Include type="reference" source="DATA:Worldbuilder.xml" />
+    <!-- 灏嗗啗鍒藉瓙鎵嬶細鎴樺焦鍦板浘 CAMP_J03_Odessa / CAMP_J08_Kremlin 浠?         ThingTemplate="JapanMechaKing" 鏀剧疆鐨勫崟浣嶃€俰nstance 寮曞叆鍚?BAB 閾炬帴鏈熶細
+         鑷姩瑁佸壀锛屽彧淇濈暀鏈虹敳瀹為檯寮曠敤鐨?3 涓鍣ㄤ笌 1 涓睘鎬т慨鏀瑰櫒銆?-->
+    <Include type="instance" source="DATA:Japan/Units_SinglePlayerCampaign/JapanMechaKing.xml" />
+    <!-- Custom arsenal MCV chain and curated skirmish-unavailable content. The official
+         parents are compile-time inheritance inputs only; HashFix must keep their original
+         InstanceIDs out of the final runtime package. -->
+    <Include type="instance" source="DATA:Japan/Units_SinglePlayerCampaign/JapanEmperorMecha.xml" />
+    <Include type="instance" source="DATA:Japan/Units_SinglePlayerCampaign/JapanEmperor.xml" />
+    <Include type="instance" source="DATA:Japan/Units_SinglePlayerCampaign/A04_ExplodingTengu.xml" />
+    <Include type="instance" source="DATA:Allied/Units_Campaign/CAMP_A08_SpecialMirageTank.xml" />
+    <Include type="instance" source="DATA:Allied/Units_Campaign/AlliedLimo1.xml" />
+  </Includes>
+  <!-- 鍏ㄧ帺瀹舵寕杞藉師鍨嬫ā鏉匡細鏃犳晫 + 鏀诲嚮脳1000銆侷NVULNERABLE 涓哄畼鏂瑰睘鎬э紙閾佸箷/瑙勯伩
+       閮藉湪鐢級锛孌AMAGE_MULT=100000% 鍗?脳1000銆傚厛鍙寕杞藉凡瀛樺湪瀵硅薄锛屾柊澧炲崟浣嶈瀵?       鍚庣画鍐嶅仛銆?-->
+  <AttributeModifier id="Raya_Invulnerable" Category="NONE" ObjectStatusToSet="UNDER_IRON_CURTAIN" ModelConditionsSet="IRONCURTAIN">
+    <Modifier Type="INVULNERABLE" Value="100%" />
+  </AttributeModifier>
+  <AttributeModifier id="Raya_DamageMult_100000" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="100000%" />
+  </AttributeModifier>
+  <!-- 閾惧紡婕旂ず绗簩鏉★細鍏ㄧ帺瀹堕€熷害脳2銆?-->
+  <AttributeModifier id="Raya_Speed_200" Category="BUFF">
+    <Modifier Type="SPEED" Value="200%" />
+  </AttributeModifier>
+  <!-- 绮惧叺瀛﹂櫌锛堥殣褰㈡晥鏋滆浇浣擄級锛氫笌 Raya_VisionRevealer 鍚屾鈥斺€旀棤妯″瀷銆佷笉鍙敾鍑汇€佹棤纰版挒銆?       涓嶄笂闆疯揪锛屽湪鐜╁浣撻獙涓婄瓑浠蜂簬涓€涓?鐢熶骇鍗囨槦"姘镐箙 buff銆備笉缁ф壙瀹樻柟 VeterancyTechStructure
+       锛堟憜鑴辨ā鍨?纰版挒/闊虫晥/鏃楀笢/宸ョ▼甯堣繘椹荤瓑鍏ㄩ儴鐖舵ā鏉夸緷璧栵紝Worldbuilder 缇庢湳寮曠敤涔熶笉鍐嶉渶瑕侊級锛?       鑷甫鍘熺増鍚屾 CaptureAndGiveUpgradeBehavior + UpgradeMap锛圤wnershipAmount 1/2/3 =
+       VETERAN/ELITE/HEROIC锛夈€傛満鍒朵笉鍙橈細鐩存帴鐢熸垚涓嶈Е鍙戝璐︼紝DLL"4鐢?閿€"瑙﹀彂棣栨鎺堜簣
+       锛圫afeKillUnit 缁曡繃 UNATTACKABLE锛岃 RunAcademyCaptureProbe锛夈€?-->
+  <GameObject id="Raya_VeterancyAcademy" SelectPortrait="Portrait_NeutralCrate" ButtonImage="Portrait_NeutralCrate" Side="Neutral" EditorSorting="UNIT" TransportSlotCount="1" BuildTime="0" CommandSet="EmptyCommandSet" KindOf="IMMOBILE NOT_AUTOACQUIRABLE UNATTACKABLE NO_COLLIDE NO_SHADOW" RadarPriority="NOT_ON_RADAR" EditorName="Raya_VeterancyAcademy" Description="DESC:ShroudCrateRevealer">
+    <DisplayName>Raya_VeterancyAcademy</DisplayName>
+    <ArmorSet Armor="NoArmor" />
+    <Draws>
+      <ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+        <ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+          <Model Name="" />
+        </ModelConditionState>
+      </ScriptedModelDraw>
+    </Draws>
+    <Behaviors>
+      <CaptureAndGiveUpgradeBehavior id="ModuleTag_CaptureAndGiveUpgrade" UnificationType="ALLIED_PLAYERS">
+        <UpgradeMap OwnershipAmount="1" ProvidedUpgrade="Upgrade_ProductionVeterancy_VETERAN" />
+        <UpgradeMap OwnershipAmount="2" ProvidedUpgrade="Upgrade_ProductionVeterancy_ELITE" />
+        <UpgradeMap OwnershipAmount="3" ProvidedUpgrade="Upgrade_ProductionVeterancy_HEROIC" />
+      </CaptureAndGiveUpgradeBehavior>
+      <DestroyDie id="ModuleTag_DestroyDie">
+        <DieMuxData DeathTypes="ALL" />
+      </DestroyDie>
+    </Behaviors>
+    <Body>
+      <PropBody id="ModuleTag_Body" />
+    </Body>
+    <VisionInfo VisionRange="100" ShroudClearingRange="200" />
+  </GameObject>
+  <!-- 杞﹀簱锛堥殣褰㈡晥鏋滆浇浣擄級锛氫笌瀛﹂櫌鍚屾闅愬舰鐘舵€侊紝鑷甫浜斿悎涓€ PassiveAreaEffectBehavior
+       锛堣溅搴?骞茶埞鍧?鏈哄満+鍖婚櫌+寤虹瓚缁翠慨锛夈€傚厜鐜槸 Update 妯″潡锛屾瘡甯т富鍔ㄦ壂鎻忋€佷笉鐪?owner銆?       涓嶄緷璧栦换浣曚簨浠讹紝褰掑綋鍓嶇帺瀹剁敓鎴愬嵆鐢熸晥锛屾棤闇€ DLL 瑙﹀彂銆?-->
+  <GameObject id="Raya_VehicleGarage" SelectPortrait="Portrait_NeutralCrate" ButtonImage="Portrait_NeutralCrate" Side="Neutral" EditorSorting="UNIT" TransportSlotCount="1" BuildTime="0" CommandSet="EmptyCommandSet" KindOf="IMMOBILE NOT_AUTOACQUIRABLE UNATTACKABLE NO_COLLIDE NO_SHADOW" RadarPriority="NOT_ON_RADAR" EditorName="Raya_VehicleGarage" Description="DESC:ShroudCrateRevealer">
+    <DisplayName>Raya_VehicleGarage</DisplayName>
+    <ArmorSet Armor="NoArmor" />
+    <Draws>
+      <ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+        <ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+          <Model Name="" />
+        </ModelConditionState>
+      </ScriptedModelDraw>
+    </Draws>
+    <Behaviors>
+      <!-- 浜斿悎涓€琚姩娌荤枟锛氳溅搴?鍦伴潰杞藉叿)+骞茶埞鍧?姘撮潰鍗曚綅)+鏈哄満(绌哄啗)+鍖婚櫌(姝ュ叺)
+           +寤虹瓚缁翠慨(STRUCTURE锛屽師鐗堝厜鐜病鏈?銆侫llowFilter 姣忚涓烘ā鍧楀彧鍏佽涓€涓紝
+           鏁呯敤瀹借繃婊よ鐩栧叏閮ㄧ被鍒紱AffectContained/ContainerFilter 澶嶅埢鍖婚櫌锛?           娌荤枟椹昏溅/椹诲缓绛戝唴鐨勫悓鐩熸鍏点€?-->
+      <PassiveAreaEffectBehavior id="ModuleTag_PassiveAreaEffect" EffectRadius="-1" NonStackable="true" AffectUnderAttack="true" AffectContained="true" HealingPercentPerSecond="2%">
+        <AllowFilter Rule="ANY" Include="VEHICLE HUGE_VEHICLE SHIP AIRCRAFT INFANTRY STRUCTURE" Relationship="ALLIES" />
+        <ContainerFilter Rule="ANY" Include="VEHICLE STRUCTURE" Relationship="ALLIES" StatusBitFlags="CONTAINER_OCCUPIED" />
+      </PassiveAreaEffectBehavior>
+      <DestroyDie id="ModuleTag_DestroyDie">
+        <DieMuxData DeathTypes="ALL" />
+      </DestroyDie>
+    </Behaviors>
+    <Body>
+      <PropBody id="ModuleTag_Body" />
+    </Body>
+    <VisionInfo VisionRange="100" ShroudClearingRange="200" />
+  </GameObject>
+  <!-- 闅愬舰鏃犻檺瑙嗛噹鐗╋細鐓ф妱瀹樻柟 ShroudCrateRevealer锛圲NATTACKABLE/绌烘ā鍨?
+       ShroudClearingRange 澶у€硷級锛屽幓鎺?LifetimeUpdate 浣垮叾鎸佺画瀛樺湪鐩村埌琚慨鏀瑰櫒
+       鍛戒护閿€姣併€傜敓鎴愬綊褰撳墠鐜╁锛屽嚭鍞?绉婚櫎鐢辫缁冨懡浠ゅ畬鎴愶紙鏂规浜岋級銆?-->
+  <GameObject id="Raya_VisionRevealer" SelectPortrait="Portrait_NeutralCrate" ButtonImage="Portrait_NeutralCrate" Side="Neutral" EditorSorting="UNIT" TransportSlotCount="1" BuildTime="0" CommandSet="EmptyCommandSet" KindOf="IMMOBILE NOT_AUTOACQUIRABLE UNATTACKABLE NO_COLLIDE NO_SHADOW" RadarPriority="NOT_ON_RADAR" EditorName="Raya_VisionRevealer" Description="DESC:ShroudCrateRevealer">
+    <DisplayName>Raya_VisionRevealer</DisplayName>
+    <ArmorSet Armor="NoArmor" />
+    <Draws>
+      <ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+        <ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+          <Model Name="" />
+        </ModelConditionState>
+      </ScriptedModelDraw>
+    </Draws>
+    <Behaviors>
+      <DestroyDie id="ModuleTag_DestroyDie">
+        <DieMuxData DeathTypes="ALL" />
+      </DestroyDie>
+    </Behaviors>
+    <Body>
+      <PropBody id="ModuleTag_Body" />
+    </Body>
+    <VisionInfo VisionRange="99999" ShroudClearingRange="99999" />
+  </GameObject>
+  <GameObject id="Raya_MechaKing" inheritFrom="JapanMechaKing" EditorName="Raya_MechaKing" BuildTime="60" ProductionQueueType="VEHICLE">
+    <DisplayName xai:joinAction="Replace">NAME:JapanMechaKing</DisplayName>
+    <ObjectResourceInfo xai:joinAction="Replace">
+      <BuildCost Account="=$ACCOUNT_ORE" Amount="10000" />
+    </ObjectResourceInfo>
+  </GameObject>
+  <!-- Manual-only arsenal base chain. The MCV reuses the Allied deploy button and animation,
+       but both replace-self modules point at Raya templates so pack/unpack never falls back to
+       the stock Allied command set. -->
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalWarFactory">
+    <Object>Raya_ArsenalWarFactory</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalVeterancyCenter">
+    <Object>Raya_ArsenalVeterancyCenter</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalObservationPost">
+    <Object>Raya_ArsenalObservationPost</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalHospital">
+    <Object>Raya_ArsenalHospital</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalGarage">
+    <Object>Raya_ArsenalGarage</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalDefensiveStructure">
+    <Object>Raya_ArsenalDefensiveStructure</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalAirport">
+    <Object>Raya_ArsenalAirport</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalOilDerrick">
+    <Object>Raya_ArsenalOilDerrick</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalEuropeCoastalGun">
+    <Object>Raya_ArsenalEuropeCoastalGun</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalArtilleryDome">
+    <Object>Raya_ArsenalArtilleryDome</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalJapanTriCannon">
+    <Object>Raya_ArsenalJapanTriCannon</Object>
+  </LogicCommand>
+  <LogicCommand Type="CONSTRUCTION_YARD_CONSTRUCT" id="Command_RayaConstructArsenalCapeCodHouse">
+    <Object>Raya_ArsenalCapeCodHouse</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildMechaKing">
+    <Object>Raya_MechaKing</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildEmperorMecha">
+    <Object>Raya_EmperorMecha</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildEmperor">
+    <Object>Raya_Emperor</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildExplodingTengu">
+    <Object>Raya_ExplodingTengu</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildSpecialMirageTank">
+    <Object>Raya_SpecialMirageTank</Object>
+  </LogicCommand>
+  <LogicCommand Type="UNIT_BUILD" id="Command_RayaBuildPresidentialLimo">
+    <Object>Raya_PresidentialLimo</Object>
+  </LogicCommand>
+
+  <LogicCommandSet id="Raya_ArsenalMCVCommandSet">
+    <Cmd>Command_UnPackAlliedMCV</Cmd>
+    <Cmd>Command_MoveToPositionAndCollect</Cmd>
+  </LogicCommandSet>
+  <LogicCommandSet id="Raya_ArsenalConstructionYardCommandSet">
+    <Cmd>Command_RayaConstructArsenalWarFactory</Cmd>
+    <Cmd>Command_RayaConstructArsenalVeterancyCenter</Cmd>
+    <Cmd>Command_RayaConstructArsenalObservationPost</Cmd>
+    <Cmd>Command_RayaConstructArsenalDefensiveStructure</Cmd>
+    <Cmd>Command_RayaConstructArsenalOilDerrick</Cmd>
+    <Cmd>Command_RayaConstructArsenalEuropeCoastalGun</Cmd>
+    <Cmd>Command_RayaConstructArsenalArtilleryDome</Cmd>
+    <Cmd>Command_RayaConstructArsenalJapanTriCannon</Cmd>
+    <Cmd>Command_RayaConstructArsenalCapeCodHouse</Cmd>
+    <Cmd>Command_PackAlliedMCV</Cmd>
+  </LogicCommandSet>
+  <LogicCommandSet id="Raya_ArsenalWarFactoryCommandSet">
+    <Cmd>Command_RayaBuildMechaKing</Cmd>
+    <Cmd>Command_RayaBuildEmperorMecha</Cmd>
+    <Cmd>Command_RayaBuildEmperor</Cmd>
+    <Cmd>Command_RayaBuildExplodingTengu</Cmd>
+    <Cmd>Command_RayaBuildSpecialMirageTank</Cmd>
+    <Cmd>Command_RayaBuildPresidentialLimo</Cmd>
+  </LogicCommandSet>
+
+  <!-- Curated campaign units for the arsenal factory. Force them onto the vehicle queue and
+       give every template an explicit cost so the menu is entertaining without being free. -->
+  <GameObject id="Raya_EmperorMecha" inheritFrom="JapanEmperorMecha" EditorName="Raya_EmperorMecha" BuildTime="40" ProductionQueueType="VEHICLE">
+    <GameDependency xai:joinAction="Replace" />
+    <ObjectResourceInfo xai:joinAction="Replace"><BuildCost Account="=$ACCOUNT_ORE" Amount="6000" /></ObjectResourceInfo>
+  </GameObject>
+  <GameObject id="Raya_Emperor" inheritFrom="JapanEmperor" EditorName="Raya_Emperor" BuildTime="15" ProductionQueueType="VEHICLE">
+    <GameDependency xai:joinAction="Replace" />
+    <ObjectResourceInfo xai:joinAction="Replace"><BuildCost Account="=$ACCOUNT_ORE" Amount="1000" /></ObjectResourceInfo>
+  </GameObject>
+  <GameObject id="Raya_ExplodingTengu" inheritFrom="A04_ExplodingTengu" EditorName="Raya_ExplodingTengu" BuildTime="15" ProductionQueueType="VEHICLE">
+    <GameDependency xai:joinAction="Replace" />
+    <ObjectResourceInfo xai:joinAction="Replace"><BuildCost Account="=$ACCOUNT_ORE" Amount="1500" /></ObjectResourceInfo>
+  </GameObject>
+  <GameObject id="Raya_SpecialMirageTank" inheritFrom="A08_SpecialMirageTank" EditorName="Raya_SpecialMirageTank" BuildTime="25" ProductionQueueType="VEHICLE">
+    <GameDependency xai:joinAction="Replace" />
+    <ObjectResourceInfo xai:joinAction="Replace"><BuildCost Account="=$ACCOUNT_ORE" Amount="3500" /></ObjectResourceInfo>
+  </GameObject>
+  <GameObject id="Raya_PresidentialLimo" inheritFrom="AlliedLimo1" EditorName="Raya_PresidentialLimo" BuildTime="15" ProductionQueueType="VEHICLE">
+    <GameDependency xai:joinAction="Replace" />
+    <ObjectResourceInfo xai:joinAction="Replace"><BuildCost Account="=$ACCOUNT_ORE" Amount="1200" /></ObjectResourceInfo>
+  </GameObject>
+  <!-- 鐗规柉鎷夋鍣ㄥ悓 ID 瑕嗙洊宸蹭簬 2026-08-10 鎸変富浠撳喅绛?4 鍓旈櫎锛氳鏈哄埗褰卞搷鏁村眬鎵€鏈?       鐗规柉鎷夊崟浣嶏紝涓?绮剧‘銆佸彲鎭㈠"鐨勪骇鍝佸師鍒欏啿绐併€備笁涓?WeaponTemplate
+       (SovietHeavyAntiVehicleInfantryTeslaGun / SovietAntiNavyShipTech1TeslaGun /
+       SovietBaseDefenseAdvancedTeslaGun) 涓嶅啀杩涘叆 v3 鍖呫€俁aya_MechaKing 浠嶄繚鐣欙紝
+       浣嗕笉鍐嶆湁鐗规柉鎷夊噣鍥炶鏁堟灉銆?-->
+  <!-- merged v2 AttributeModifier full set -->
+  <AttributeModifier id="Atlas_RateOfFire_200" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_300" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_500" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_900" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="900%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_10000" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="10000%" />
+  </AttributeModifier>
+  <!-- Bit-weight expansion: additive increments +16/+32/+64 complete the 2-128 integer mask. -->
+  <AttributeModifier id="Atlas_RateOfFire_1700" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="1700%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_3300" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="3300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_6500" Category="WEAPON">
+    <Modifier Type="RATE_OF_FIRE" Value="6500%" />
+  </AttributeModifier>
+  <!-- Phase 1 expansion: independently test attributes with different consumers. -->
+  <AttributeModifier id="Atlas_HealthMult_1000" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="1000%" />
+  </AttributeModifier>
+  <!-- Bit-weight expansion: additive increments completing the 2-128 integer mask (existing +9). -->
+  <AttributeModifier id="Atlas_HealthMult_200" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_300" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_500" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_900" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="900%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_3300" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="3300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_6500" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="6500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_1700" Category="BUFF">
+    <Modifier Type="HEALTH_MULT" Value="1700%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_1000" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="1000%" />
+  </AttributeModifier>
+  <!-- Bit-weight expansion: additive increments completing the 2-128 integer mask (existing +9). -->
+  <AttributeModifier id="Atlas_DamageMult_200" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_300" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_500" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_900" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="900%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_3300" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="3300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_6500" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="6500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_1700" Category="WEAPON">
+    <Modifier Type="DAMAGE_MULT" Value="1700%" />
+  </AttributeModifier>
+  <!-- RANGE exists in the schema and its practical range/targeting behavior is live observed. -->
+  <AttributeModifier id="Atlas_Range_500" Category="WEAPON">
+    <Modifier Type="RANGE" Value="500%" />
+  </AttributeModifier>
+  <!-- Bit-weight expansion: additive increments completing the 2-128 integer mask (existing +4). -->
+  <AttributeModifier id="Atlas_Range_200" Category="WEAPON">
+    <Modifier Type="RANGE" Value="200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Range_300" Category="WEAPON">
+    <Modifier Type="RANGE" Value="300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Range_900" Category="WEAPON">
+    <Modifier Type="RANGE" Value="900%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Range_1700" Category="WEAPON">
+    <Modifier Type="RANGE" Value="1700%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Range_3300" Category="WEAPON">
+    <Modifier Type="RANGE" Value="3300%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Range_6500" Category="WEAPON">
+    <Modifier Type="RANGE" Value="6500%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_200" Category="BUFF">
+    <Modifier Type="SPEED" Value="200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_50" Category="DEBUFF">
+    <Modifier Type="SPEED" Value="50%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_0" Category="DEBUFF">
+    <Modifier Type="SPEED" Value="0%" />
+  </AttributeModifier>
+  <!-- Bit-weight expansion: multiplicative factors completing the 1-128 integer mask (existing 2x). -->
+  <AttributeModifier id="Atlas_Speed_400" Category="BUFF">
+    <Modifier Type="SPEED" Value="400%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_800" Category="BUFF">
+    <Modifier Type="SPEED" Value="800%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_1600" Category="BUFF">
+    <Modifier Type="SPEED" Value="1600%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_3200" Category="BUFF">
+    <Modifier Type="SPEED" Value="3200%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_6400" Category="BUFF">
+    <Modifier Type="SPEED" Value="6400%" />
+  </AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_12800" Category="BUFF">
+    <Modifier Type="SPEED" Value="12800%" />
+  </AttributeModifier>
+  <!-- Ascension bit-weight ladders (bundle ra3-1.12-atlas-v4): per official AttributeType,
+       positive integer weights +1..+64 (value=(1+w)) and negative binary fractions -1/2..-1/128.
+       SPEED negatives are multiplicative factors 1/2..1/128 (positive values, DEBUFF category). -->
+  <AttributeModifier id="Atlas_Armor_200" Category="BUFF"><Modifier Type="ARMOR" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_300" Category="BUFF"><Modifier Type="ARMOR" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_500" Category="BUFF"><Modifier Type="ARMOR" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_900" Category="BUFF"><Modifier Type="ARMOR" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_1700" Category="BUFF"><Modifier Type="ARMOR" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_3300" Category="BUFF"><Modifier Type="ARMOR" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_6500" Category="BUFF"><Modifier Type="ARMOR" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_2" Category="DEBUFF"><Modifier Type="ARMOR" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_4" Category="DEBUFF"><Modifier Type="ARMOR" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_8" Category="DEBUFF"><Modifier Type="ARMOR" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_16" Category="DEBUFF"><Modifier Type="ARMOR" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_32" Category="DEBUFF"><Modifier Type="ARMOR" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_64" Category="DEBUFF"><Modifier Type="ARMOR" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Armor_Neg1_128" Category="DEBUFF"><Modifier Type="ARMOR" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_200" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_300" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_500" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_900" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_1700" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_3300" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_6500" Category="WEAPON"><Modifier Type="DAMAGE_ADD" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_2" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_4" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_8" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_16" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_32" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_64" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageAdd_Neg1_128" Category="DEBUFF"><Modifier Type="DAMAGE_ADD" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_2" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_4" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_8" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_16" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_32" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_64" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageMult_Neg1_128" Category="DEBUFF"><Modifier Type="DAMAGE_MULT" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_200" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_300" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_500" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_900" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_1700" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_3300" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_6500" Category="BUFF"><Modifier Type="RESIST_FEAR" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_2" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_4" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_8" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_16" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_32" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_64" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistFear_Neg1_128" Category="DEBUFF"><Modifier Type="RESIST_FEAR" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_200" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_300" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_500" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_900" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_1700" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_3300" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_6500" Category="BUFF"><Modifier Type="RESIST_TERROR" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_2" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_4" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_8" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_16" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_32" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_64" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistTerror_Neg1_128" Category="DEBUFF"><Modifier Type="RESIST_TERROR" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_200" Category="BUFF"><Modifier Type="EXPERIENCE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_300" Category="BUFF"><Modifier Type="EXPERIENCE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_500" Category="BUFF"><Modifier Type="EXPERIENCE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_900" Category="BUFF"><Modifier Type="EXPERIENCE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_1700" Category="BUFF"><Modifier Type="EXPERIENCE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_3300" Category="BUFF"><Modifier Type="EXPERIENCE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_6500" Category="BUFF"><Modifier Type="EXPERIENCE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_2" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_4" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_8" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_16" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_32" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_64" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Experience_Neg1_128" Category="DEBUFF"><Modifier Type="EXPERIENCE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_2" Category="DEBUFF"><Modifier Type="RANGE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_4" Category="DEBUFF"><Modifier Type="RANGE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_8" Category="DEBUFF"><Modifier Type="RANGE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_16" Category="DEBUFF"><Modifier Type="RANGE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_32" Category="DEBUFF"><Modifier Type="RANGE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_64" Category="DEBUFF"><Modifier Type="RANGE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Range_Neg1_128" Category="DEBUFF"><Modifier Type="RANGE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_2" Category="DEBUFF"><Modifier Type="SPEED" Value="50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_4" Category="DEBUFF"><Modifier Type="SPEED" Value="25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_8" Category="DEBUFF"><Modifier Type="SPEED" Value="12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_16" Category="DEBUFF"><Modifier Type="SPEED" Value="6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_32" Category="DEBUFF"><Modifier Type="SPEED" Value="3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_64" Category="DEBUFF"><Modifier Type="SPEED" Value="1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Speed_Neg1_128" Category="DEBUFF"><Modifier Type="SPEED" Value="0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_200" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_300" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_500" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_900" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_1700" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_3300" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_6500" Category="BUFF"><Modifier Type="CRUSH_DECELERATE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_2" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_4" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_8" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_16" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_32" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_64" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushDecelerate_Neg1_128" Category="DEBUFF"><Modifier Type="CRUSH_DECELERATE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_200" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_300" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_500" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_900" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_1700" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_3300" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_6500" Category="BUFF"><Modifier Type="RESIST_KNOCKBACK" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_2" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_4" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_8" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_16" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_32" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_64" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistKnockback_Neg1_128" Category="DEBUFF"><Modifier Type="RESIST_KNOCKBACK" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_200" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_300" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_500" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_900" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_1700" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_3300" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_6500" Category="WEAPON"><Modifier Type="SPELL_DAMAGE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_2" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_4" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_8" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_16" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_32" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_64" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_SpellDamage_Neg1_128" Category="DEBUFF"><Modifier Type="SPELL_DAMAGE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_200" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_300" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_500" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_900" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_1700" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_3300" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_6500" Category="BUFF"><Modifier Type="RECHARGE_TIME" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_2" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_4" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_8" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_16" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_32" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_64" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RechargeTime_Neg1_128" Category="DEBUFF"><Modifier Type="RECHARGE_TIME" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_200" Category="BUFF"><Modifier Type="PRODUCTION" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_300" Category="BUFF"><Modifier Type="PRODUCTION" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_500" Category="BUFF"><Modifier Type="PRODUCTION" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_900" Category="BUFF"><Modifier Type="PRODUCTION" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_1700" Category="BUFF"><Modifier Type="PRODUCTION" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_3300" Category="BUFF"><Modifier Type="PRODUCTION" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_6500" Category="BUFF"><Modifier Type="PRODUCTION" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_2" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_4" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_8" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_16" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_32" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_64" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Production_Neg1_128" Category="DEBUFF"><Modifier Type="PRODUCTION" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_200" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_300" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_500" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_900" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_1700" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_3300" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_6500" Category="BUFF"><Modifier Type="PRODUCTION_COST" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_2" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_4" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_8" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_16" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_32" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_64" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ProductionCost_Neg1_128" Category="DEBUFF"><Modifier Type="PRODUCTION_COST" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_200" Category="BUFF"><Modifier Type="HEALTH" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_300" Category="BUFF"><Modifier Type="HEALTH" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_500" Category="BUFF"><Modifier Type="HEALTH" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_900" Category="BUFF"><Modifier Type="HEALTH" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_1700" Category="BUFF"><Modifier Type="HEALTH" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_3300" Category="BUFF"><Modifier Type="HEALTH" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_6500" Category="BUFF"><Modifier Type="HEALTH" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_2" Category="DEBUFF"><Modifier Type="HEALTH" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_4" Category="DEBUFF"><Modifier Type="HEALTH" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_8" Category="DEBUFF"><Modifier Type="HEALTH" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_16" Category="DEBUFF"><Modifier Type="HEALTH" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_32" Category="DEBUFF"><Modifier Type="HEALTH" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_64" Category="DEBUFF"><Modifier Type="HEALTH" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Health_Neg1_128" Category="DEBUFF"><Modifier Type="HEALTH" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_2" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_4" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_8" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_16" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_32" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_64" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_HealthMult_Neg1_128" Category="DEBUFF"><Modifier Type="HEALTH_MULT" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_200" Category="BUFF"><Modifier Type="VISION" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_300" Category="BUFF"><Modifier Type="VISION" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_500" Category="BUFF"><Modifier Type="VISION" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_900" Category="BUFF"><Modifier Type="VISION" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_1700" Category="BUFF"><Modifier Type="VISION" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_3300" Category="BUFF"><Modifier Type="VISION" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_6500" Category="BUFF"><Modifier Type="VISION" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_2" Category="DEBUFF"><Modifier Type="VISION" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_4" Category="DEBUFF"><Modifier Type="VISION" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_8" Category="DEBUFF"><Modifier Type="VISION" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_16" Category="DEBUFF"><Modifier Type="VISION" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_32" Category="DEBUFF"><Modifier Type="VISION" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_64" Category="DEBUFF"><Modifier Type="VISION" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Vision_Neg1_128" Category="DEBUFF"><Modifier Type="VISION" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_200" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_300" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_500" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_900" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_1700" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_3300" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_6500" Category="BUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_2" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_4" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_8" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_16" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_32" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_64" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BountyPercentage_Neg1_128" Category="DEBUFF"><Modifier Type="BOUNTY_PERCENTAGE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_200" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_300" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_500" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_900" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_1700" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_3300" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_6500" Category="BUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_2" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_4" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_8" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_16" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_32" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_64" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_MinCrushVelocityPercentage_Neg1_128" Category="DEBUFF"><Modifier Type="MIN_CRUSH_VELOCITY_PERCENTAGE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_200" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_300" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_500" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_900" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_1700" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_3300" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_6500" Category="BUFF"><Modifier Type="AUTO_HEAL" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_2" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_4" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_8" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_16" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_32" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_64" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AutoHeal_Neg1_128" Category="DEBUFF"><Modifier Type="AUTO_HEAL" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_200" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_300" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_500" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_900" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_1700" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_3300" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_6500" Category="BUFF"><Modifier Type="SHROUD_CLEARING" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_2" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_4" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_8" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_16" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_32" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_64" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ShroudClearing_Neg1_128" Category="DEBUFF"><Modifier Type="SHROUD_CLEARING" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_2" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_4" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_8" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_16" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_32" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_64" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_RateOfFire_Neg1_128" Category="DEBUFF"><Modifier Type="RATE_OF_FIRE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_200" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_300" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_500" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_900" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_1700" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_3300" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_6500" Category="WEAPON"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_2" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_4" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_8" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_16" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_32" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_64" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_DamageStructureBountyAdd_Neg1_128" Category="DEBUFF"><Modifier Type="DAMAGE_STRUCTURE_BOUNTY_ADD" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_200" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_300" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_500" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_900" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_1700" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_3300" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_6500" Category="BUFF"><Modifier Type="CRUSHER_LEVEL" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_2" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_4" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_8" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_16" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_32" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_64" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrusherLevel_Neg1_128" Category="DEBUFF"><Modifier Type="CRUSHER_LEVEL" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_200" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_300" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_500" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_900" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_1700" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_3300" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_6500" Category="BUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_2" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_4" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_8" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_16" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_32" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_64" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CommandPointBonus_Neg1_128" Category="DEBUFF"><Modifier Type="COMMAND_POINT_BONUS" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_200" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_300" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_500" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_900" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_1700" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_3300" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_6500" Category="BUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_2" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_4" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_8" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_16" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_32" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_64" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushableLevel_Neg1_128" Category="DEBUFF"><Modifier Type="CRUSHABLE_LEVEL" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_200" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_300" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_500" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_900" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_1700" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_3300" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_6500" Category="BUFF"><Modifier Type="CRUSHED_DECELERATE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_2" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_4" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_8" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_16" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_32" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_64" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CrushedDecelerate_Neg1_128" Category="DEBUFF"><Modifier Type="CRUSHED_DECELERATE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_200" Category="BUFF"><Modifier Type="INVULNERABLE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_300" Category="BUFF"><Modifier Type="INVULNERABLE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_500" Category="BUFF"><Modifier Type="INVULNERABLE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_900" Category="BUFF"><Modifier Type="INVULNERABLE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_1700" Category="BUFF"><Modifier Type="INVULNERABLE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_3300" Category="BUFF"><Modifier Type="INVULNERABLE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_6500" Category="BUFF"><Modifier Type="INVULNERABLE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_2" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_4" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_8" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_16" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_32" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_64" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Invulnerable_Neg1_128" Category="DEBUFF"><Modifier Type="INVULNERABLE" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_200" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_300" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_500" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_900" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_1700" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_3300" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_6500" Category="BUFF"><Modifier Type="SUPPRESSABILITY" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_2" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_4" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_8" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_16" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_32" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_64" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_Suppressability_Neg1_128" Category="DEBUFF"><Modifier Type="SUPPRESSABILITY" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_200" Category="BUFF"><Modifier Type="RESIST_EMP" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_300" Category="BUFF"><Modifier Type="RESIST_EMP" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_500" Category="BUFF"><Modifier Type="RESIST_EMP" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_900" Category="BUFF"><Modifier Type="RESIST_EMP" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_1700" Category="BUFF"><Modifier Type="RESIST_EMP" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_3300" Category="BUFF"><Modifier Type="RESIST_EMP" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_6500" Category="BUFF"><Modifier Type="RESIST_EMP" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_2" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_4" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_8" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_16" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_32" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_64" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_ResistEmp_Neg1_128" Category="DEBUFF"><Modifier Type="RESIST_EMP" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_200" Category="BUFF"><Modifier Type="POWER_BOOST" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_300" Category="BUFF"><Modifier Type="POWER_BOOST" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_500" Category="BUFF"><Modifier Type="POWER_BOOST" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_900" Category="BUFF"><Modifier Type="POWER_BOOST" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_1700" Category="BUFF"><Modifier Type="POWER_BOOST" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_3300" Category="BUFF"><Modifier Type="POWER_BOOST" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_6500" Category="BUFF"><Modifier Type="POWER_BOOST" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_2" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_4" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_8" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_16" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_32" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_64" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_PowerBoost_Neg1_128" Category="DEBUFF"><Modifier Type="POWER_BOOST" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_200" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_300" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_500" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_900" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_1700" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_3300" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_6500" Category="WEAPON"><Modifier Type="AREA_OF_EFFECT" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_2" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_4" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_8" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_16" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_32" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_64" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_AreaOfEffect_Neg1_128" Category="DEBUFF"><Modifier Type="AREA_OF_EFFECT" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_200" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_300" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_500" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_900" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_1700" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_3300" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_6500" Category="BUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_2" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_4" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_8" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_16" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_32" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_64" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_CollisionGeometrySizeMult_Neg1_128" Category="DEBUFF"><Modifier Type="COLLISION_GEOMETRY_SIZE_MULT" Value="-0.78125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_200" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="200%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_300" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_500" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_900" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="900%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_1700" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="1700%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_3300" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="3300%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_6500" Category="BUFF"><Modifier Type="BROADCAST_RANGE" Value="6500%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_2" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-50%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_4" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_8" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-12.5%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_16" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-6.25%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_32" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-3.125%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_64" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-1.5625%" /></AttributeModifier>
+  <AttributeModifier id="Atlas_BroadcastRange_Neg1_128" Category="DEBUFF"><Modifier Type="BROADCAST_RANGE" Value="-0.78125%" /></AttributeModifier>
+  <!-- Test-only stacking gate probe: proves the ascension reapply gate's StackingLimit>1
+       fail-closed branch. Value 1.25 sits outside the UI bit-weight ladders (additive 1+w /
+       negative binary fractions / SPEED powers of two), so no product path can resolve it.
+       Never wire this template into a product. -->
+  <AttributeModifier id="Atlas_StackingGateProbe" Category="WEAPON" StackingLimit="2">
+    <Modifier Type="DAMAGE_MULT" Value="25%" />
+  </AttributeModifier>
+</AssetDeclaration>
