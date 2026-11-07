@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+    <PublicProjection Condition="'$(SolutionFileName)' == 'RayaTrainer.Public.sln'">true</PublicProjection>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Iced" Condition="'$(PublicProjection)' != 'true'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublicProjection)' == 'true'">
+    <Compile Remove="Private\**\*.cs" />
+    <!-- Leak guard: keep Private/ (private Agent protocol surface, catalogs) out of the public
+         projection. The RuntimeAssets bundle moved out of Private/ in 2026-08 and is public
+         (text truth in git; streams are locally generated build products). -->
+    <EmbeddedResource Remove="Private\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\code.txt" />
+    <EmbeddedResource Include="Assets\secret-protocols.txt" LogicalName="RayaTrainer.Core.Assets.secret-protocols.txt" />
+    <None Include="Assets\Catalogs\Corona\pack.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\pack.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\Corona\secret-protocols.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\secret-protocols.txt</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\Corona\reinforcements.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\Corona\reinforcements.txt</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\pack.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\pack.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\model-state-notes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\model-state-notes.json</TargetPath>
+    </None>
+    <None Include="Assets\Catalogs\ReferenceNotes\object-status-notes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\Catalogs\ReferenceNotes\object-status-notes.json</TargetPath>
+    </None>
+    <EmbeddedResource Include="Assets\trainer_report.json" LogicalName="RayaTrainer.Core.Assets.trainer_report.json" />
+    <EmbeddedResource Include="Assets\UpgradeNames.json" LogicalName="RayaTrainer.Core.Assets.UpgradeNames.json" />
+    <None Include="Assets\script_operations.json" Condition="Exists('Assets\script_operations.json')" />
+    <None Include="Assets\script_operations.schema.json" Condition="Exists('Assets\script_operations.schema.json')" />
+  </ItemGroup>
+
+  <!-- Versioned AttributeModifier runtime asset bundle. The eight binary streams are local build
+       products of scripts/build-runtime-assets.ps1 (gitignored); the Exists conditions keep the
+       project compilable on machines (and CI) that have not generated them. Git carries the text
+       truth: Mod.xml.source, asset-manifest.json + schema. Streams are embedded with stable
+       LogicalNames so RuntimeAssetPathProvider can release and locate them at a deterministic
+       absolute path for the game-thread loader. -->
+  <ItemGroup>
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\mod.manifest" Condition="Exists('RuntimeAssets\AttributeModifiers\mod.manifest')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.manifest" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\mod.bin" Condition="Exists('RuntimeAssets\AttributeModifiers\mod.bin')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.bin" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\mod.relo" Condition="Exists('RuntimeAssets\AttributeModifiers\mod.relo')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.relo" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\mod.imp" Condition="Exists('RuntimeAssets\AttributeModifiers\mod.imp')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.imp" />
+    <!-- Game 7 (Uprising) variant: same AttributeModifier data body under Uprising v7 stream
+         headers. Produced by the Game 6 pipeline plus RA3-Uprising-Converter (v7 manifest
+         convert + bin/imp/relo header patch); see scripts/build-runtime-assets.ps1. -->
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\uprising\mod.manifest" Condition="Exists('RuntimeAssets\AttributeModifiers\uprising\mod.manifest')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.uprising.manifest" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\uprising\mod.bin" Condition="Exists('RuntimeAssets\AttributeModifiers\uprising\mod.bin')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.uprising.bin" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\uprising\mod.relo" Condition="Exists('RuntimeAssets\AttributeModifiers\uprising\mod.relo')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.uprising.relo" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\uprising\mod.imp" Condition="Exists('RuntimeAssets\AttributeModifiers\uprising\mod.imp')" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.mod.uprising.imp" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\Mod.xml.source" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.Mod.xml.source" />
+    <EmbeddedResource Include="RuntimeAssets\AttributeModifiers\asset-manifest.json" LogicalName="RayaTrainer.Core.RuntimeAssets.AttributeModifiers.asset-manifest.json" />
+  </ItemGroup>
+</Project>
