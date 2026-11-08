@@ -1,0 +1,1262 @@
+{
+  "INVALID": {
+    "IsHiddenByDefault": false,
+    "Condition": "无",
+    "Category": "Basic States",
+    "Description": "用于代码中不想填写任何模型条件却又不得不填的情况，如某容器限定需要某模型条件才能进入时"
+  },
+  "TOPPLED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被压倒",
+    "Category": "Basic States",
+    "Description": "拥有ToppledUpdate模块时被压倒，同样出现在某单位前往某地点使用技能时"
+  },
+  "DAMAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "黄血",
+    "Category": "Basic States",
+    "Description": "基于ActiveBody定义当前生命值百分比处于MaxHealthDamagedPercentage和MaxHealthReallyDamagedPercentage之间"
+  },
+  "REALLYDAMAGED": {
+    "IsHiddenByDefault": false,
+    "Condition": "红血",
+    "Category": "Basic States",
+    "Description": "基于ActiveBody定义当前生命值百分比处于MaxHealthReallyDamagedPercentage之下"
+  },
+  "RUBBLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "废墟",
+    "Category": "Basic States",
+    "Description": "此物体血量小于0正在SlowDeath"
+  },
+  "COLLAPSING": {
+    "IsHiddenByDefault": false,
+    "Condition": "倒塌",
+    "Category": "Basic States",
+    "Description": "KindOf拥有DEBRIS"
+  },
+  "SOLD": {
+    "IsHiddenByDefault": false,
+    "Condition": "被出售中",
+    "Category": "Basic States",
+    "Description": "由StructureSellUpdate里的ActiveModelCondition定义，SellTime用于定义时长"
+  },
+  "STRUCTURE_UNPACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "建筑展开中",
+    "Category": "Basic States",
+    "Description": "与该建筑的StructureUnpackUpdate中的UnpackTime关联"
+  },
+  "LAUNCHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被发射",
+    "Category": "Airborne / Parachute",
+    "Description": "特指被牛蛙喷射弹出的单位"
+  },
+  "GARRISONED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被进驻",
+    "Category": "Garrison",
+    "Description": "当前物体的GarrisonContain内有成员"
+  },
+  "INSIDE_GARRISON": {
+    "IsHiddenByDefault": false,
+    "Condition": "内部驻军",
+    "Category": "Garrison",
+    "Description": "USER_8"
+  },
+  "WEAPONSTATE_ONE": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器状态1",
+    "Category": "Weapon State",
+    "Description": "原版出现于驱逐舰、帝国矿车、V4、铁锤、磁暴坦克、天启、磁暴兵、苏联矿车使用切换技能后"
+  },
+  "WEAPONSTATE_TWO": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器状态2",
+    "Category": "Weapon State",
+    "Description": "原版出现于水翼船使用切换技能后"
+  },
+  "WEAPONSTATE_THREE": {
+    "IsHiddenByDefault": true,
+    "Condition": "武器状态3",
+    "Category": "Weapon State",
+    "Description": "原版未使用"
+  },
+  "WEAPONSTATE_CLOSE_RANGE": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器状态近距离",
+    "Category": "Weapon State",
+    "Description": "与DualWeaponBehavior模块相配合，当目标距离小于SwitchWeaponOnCloseRangeDistance时，ra3已无此模块"
+  },
+  "WEAPONSLOTID_01": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽1",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"1\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_02": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽2",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"2\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_03": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽3",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"3\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_04": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽4",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"4\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_05": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽5",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"5\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_06": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽6",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"6\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_07": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽7",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"7\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_08": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽8",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"8\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_09": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽9",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"9\"内的武器被使用中"
+  },
+  "WEAPONSLOTID_10": {
+    "IsHiddenByDefault": false,
+    "Condition": "武器槽10",
+    "Category": "Weapon Slot",
+    "Description": "WeaponSlot里ID=\"10\"内的武器被使用中"
+  },
+  "SPECIAL_WEAPON_ONE": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器1",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"1\""
+  },
+  "SPECIAL_WEAPON_TWO": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器2",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"2\""
+  },
+  "SPECIAL_WEAPON_THREE": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器3",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"3\""
+  },
+  "SPECIAL_WEAPON_FOUR": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器4",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"4\""
+  },
+  "SPECIAL_WEAPON_FIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器5",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"5\""
+  },
+  "SPECIAL_WEAPON_SIX": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用特殊武器6",
+    "Category": "Special Weapon",
+    "Description": "当WeaponFireSpecialAbilityUpdate技能被使用时，且此技能的WhichSpecialWeapon=\"6\""
+  },
+  "PREATTACK_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用PRIMARY_WEAPON瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay时间匹配"
+  },
+  "PREATTACK_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用SECONDARY_WEAPON瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay时间匹配"
+  },
+  "PREATTACK_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用TERTIARY_WEAPON瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay时间匹配"
+  },
+  "PREATTACK_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUATERNARY_WEAPON瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay时间匹配"
+  },
+  "PREATTACK_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUINARY_WEAPON瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay时间匹配"
+  },
+  "FIRING_OR_PREATTACK_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "PRIMARY_WEAPON正在使用或瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay+FiringDuration时间匹配"
+  },
+  "FIRING_OR_PREATTACK_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "SECONDARY_WEAPON正在使用或瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay+FiringDuration时间匹配"
+  },
+  "FIRING_OR_PREATTACK_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "TERTIARY_WEAPON正在使用或瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay+FiringDuration时间匹配"
+  },
+  "FIRING_OR_PREATTACK_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUATERNARY_WEAPON正在使用或瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay+FiringDuration时间匹配"
+  },
+  "FIRING_OR_PREATTACK_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUINARY_WEAPON正在使用或瞄准中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的PreAttackDelay+FiringDuration时间匹配"
+  },
+  "FIRING_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用PRIMARY_WEAPON中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration时间匹配"
+  },
+  "FIRING_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用SECONDARY_WEAPON中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration时间匹配"
+  },
+  "FIRING_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用TERTIARY_WEAPON中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration时间匹配"
+  },
+  "FIRING_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUATERNARY_WEAPON中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration时间匹配"
+  },
+  "FIRING_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUINARY_WEAPON中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration时间匹配"
+  },
+  "FIRING_OR_RELOADING_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "PRIMARY_WEAPON正在使用或装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration+ClipReloadTime时间匹配"
+  },
+  "FIRING_OR_RELOADING_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "SECONDARY_WEAPON正在使用或装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration+ClipReloadTime时间匹配"
+  },
+  "FIRING_OR_RELOADING_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "TERTIARY_WEAPON正在使用或装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration+ClipReloadTime时间匹配"
+  },
+  "FIRING_OR_RELOADING_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUATERNARY_WEAPON正在使用或装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration+ClipReloadTime时间匹配"
+  },
+  "FIRING_OR_RELOADING_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUINARY_WEAPON正在使用或装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的FiringDuration+ClipReloadTime时间匹配"
+  },
+  "RELOADING_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用PRIMARY_WEAPON装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的ClipReloadTime时间匹配"
+  },
+  "RELOADING_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用SECONDARY_WEAPON装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的ClipReloadTime时间匹配"
+  },
+  "RELOADING_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用TERTIARY_WEAPON装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的ClipReloadTime时间匹配"
+  },
+  "RELOADING_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUATERNARY_WEAPON装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的ClipReloadTime时间匹配"
+  },
+  "RELOADING_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在使用QUINARY_WEAPON装填中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的ClipReloadTime时间匹配"
+  },
+  "BETWEEN_FIRING_SHOTS_A": {
+    "IsHiddenByDefault": false,
+    "Condition": "PRIMARY_WEAPON武器处于开火间隔中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的CoolDownDelayBetweenShots时间匹配"
+  },
+  "BETWEEN_FIRING_SHOTS_B": {
+    "IsHiddenByDefault": false,
+    "Condition": "SECONDARY_WEAPON武器处于开火间隔中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的CoolDownDelayBetweenShots时间匹配"
+  },
+  "BETWEEN_FIRING_SHOTS_C": {
+    "IsHiddenByDefault": false,
+    "Condition": "TERTIARY_WEAPON武器处于开火间隔中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的CoolDownDelayBetweenShots时间匹配"
+  },
+  "BETWEEN_FIRING_SHOTS_D": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUATERNARY_WEAPON武器处于开火间隔中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的CoolDownDelayBetweenShots时间匹配"
+  },
+  "BETWEEN_FIRING_SHOTS_E": {
+    "IsHiddenByDefault": false,
+    "Condition": "QUINARY_WEAPON武器处于开火间隔中",
+    "Category": "Attack / Firing",
+    "Description": "与该武器的CoolDownDelayBetweenShots时间匹配"
+  },
+  "DOOR_1_CLOSING": {
+    "IsHiddenByDefault": false,
+    "Condition": "生产建筑的1号门正在关闭中",
+    "Category": "Production Doors",
+    "Description": "持续时长为ProductionUpdate中的DoorCloseTime"
+  },
+  "DOOR_1_OPENING": {
+    "IsHiddenByDefault": false,
+    "Condition": "生产建筑的1号门正在打开中",
+    "Category": "Production Doors",
+    "Description": "持续时长为ProductionUpdate中的DoorOpeningTime"
+  },
+  "DOOR_1_WAITING_OPEN": {
+    "IsHiddenByDefault": false,
+    "Condition": "生产建筑的1号门打开",
+    "Category": "Production Doors",
+    "Description": "持续时长为ProductionUpdate中的DoorWaitOpenTime"
+  },
+  "PARKINGPLACE_1_DOOR_OPENING": {
+    "IsHiddenByDefault": false,
+    "Condition": "1号战机机棚打开中",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "持续时长为ParkingPlaceBehavior中的DoorOpenTime"
+  },
+  "PARKINGPLACE_1_DOOR_OPEN": {
+    "IsHiddenByDefault": false,
+    "Condition": "1号战机机棚开启",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "当前机位有战机停靠或要停靠"
+  },
+  "PARKINGPLACE_1_DOOR_CLOSING": {
+    "IsHiddenByDefault": false,
+    "Condition": "1号战机机棚关闭中",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "持续时长为ParkingPlaceBehavior中的DoorCloseTime"
+  },
+  "PARKINGPLACE_1_DOOR_CLOSED": {
+    "IsHiddenByDefault": false,
+    "Condition": "1号战机机棚闭合",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "当前机位无战机停靠或正离去"
+  },
+  "PARKINGPLACE_2_DOOR_OPENING": {
+    "IsHiddenByDefault": false,
+    "Condition": "2号战机机棚打开中",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "(同上结构)"
+  },
+  "PARKINGPLACE_HELIPAD_DOOR_CLOSED": {
+    "IsHiddenByDefault": false,
+    "Condition": "直升机停机坪闭合",
+    "Category": "Parking Place (Airfield Hangars)",
+    "Description": "当前物体有ParkingPlaceBehavior且建筑展开完毕就持续存在"
+  },
+  "MOVING": {
+    "IsHiddenByDefault": false,
+    "Condition": "移动中",
+    "Category": "Movement",
+    "Description": "飞行器在原地默认盘旋时不属于正在移动"
+  },
+  "DYING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在死亡中",
+    "Category": "Movement",
+    "Description": "单位血量小于等于0且正在SlowDeath中"
+  },
+  "MOVING_OUT_OF_THE_WAY": {
+    "IsHiddenByDefault": false,
+    "Condition": "为友军让路而移动中",
+    "Category": "Movement",
+    "Description": "因友军寻路判断而自动让开，建筑展开所引起的移动不算"
+  },
+  "RUNNING_OFF_MAP": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在离开地图",
+    "Category": "Movement",
+    "Description": "召唤物在完成任务后飞离地图"
+  },
+  "COMING_OUT_OF_FACTORY": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在出厂中",
+    "Category": "Movement",
+    "Description": "新出场单位从UnitCreatePoint到NaturalRallyPoint期间"
+  },
+  "BACKING_UP": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在倒车中",
+    "Category": "Movement",
+    "Description": "单位在倒车过程中获得，正在倒车的单位在寻路过程中无视碰撞"
+  },
+  "CLIMBING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在爬升过程中",
+    "Category": "Movement",
+    "Description": "飞行器的高度逐渐变高时获得"
+  },
+  "SCALING_WALL": {
+    "IsHiddenByDefault": false,
+    "Condition": "攀爬可被攀爬的围墙中",
+    "Category": "Movement",
+    "Description": "涉及KindOf中的SCALEABLE_WALL，在ra3疑似无用"
+  },
+  "SCALING_WALL_HORDE": {
+    "IsHiddenByDefault": false,
+    "Condition": "小队攀爬可被攀爬的围墙中",
+    "Category": "Movement",
+    "Description": "涉及KindOf中的SCALEABLE_WALL，在ra3疑似无用"
+  },
+  "FLYING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在飞行中",
+    "Category": "Flight",
+    "Description": "如果强行给停靠在停机坪上的飞行器添加此条件，会导致该飞机使用TAXIING运动器进行运动"
+  },
+  "TAKING_OFF": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在起飞中，正在上浮中",
+    "Category": "Flight",
+    "Description": "飞机正在从机场起飞的阶段或者潜艇正在浮出水面的阶段获得"
+  },
+  "LANDING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在降落中，正在潜水中",
+    "Category": "Flight",
+    "Description": "飞机正在降落机场的阶段或者潜艇正在潜水的阶段获得"
+  },
+  "ACTIVELY_CONSTRUCTING": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在建造、训练、生产、研究中",
+    "Category": "Construction",
+    "Description": "配合行为段ProductionUpdate模块使用，该物体因生产而走进度条时会出现"
+  },
+  "PANICKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "恐慌中",
+    "Category": "Panic / Fire",
+    "Description": "当拥有AnimalUpdate的单位恐惧范围内有其他可攻击单位时获得，原版中只有天皇拥有AnimalUpdate"
+  },
+  "AFLAME": {
+    "IsHiddenByDefault": false,
+    "Condition": "被点燃",
+    "Category": "Panic / Fire",
+    "Description": "配合行为段FlammableUpdate模块使用，ra3中已无此模块"
+  },
+  "DOCKING_ACTIVE": {
+    "IsHiddenByDefault": false,
+    "Condition": "停靠激活中",
+    "Category": "Docking / Harvest",
+    "Description": "矿车在矿场倒矿时，矿脉、矿场在矿车停靠于其之上给矿、收矿时"
+  },
+  "DOCKING_RETURN": {
+    "IsHiddenByDefault": false,
+    "Condition": "矿脉铲斗返回采矿区",
+    "Category": "Docking / Harvest",
+    "Description": "时长MoveToExtractTime"
+  },
+  "DOCKING_MOVEBACK": {
+    "IsHiddenByDefault": false,
+    "Condition": "矿脉铲斗回到倒矿区",
+    "Category": "Docking / Harvest",
+    "Description": "时长MoveToDeliverTime"
+  },
+  "DOCKING_EXTRACT": {
+    "IsHiddenByDefault": false,
+    "Condition": "矿脉铲斗采矿中",
+    "Category": "Docking / Harvest",
+    "Description": "时长ExtractTime"
+  },
+  "HARVEST_ACTION": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在进行采矿动作",
+    "Category": "Docking / Harvest",
+    "Description": "散矿采集相关"
+  },
+  "HARVEST_PREPARATION": {
+    "IsHiddenByDefault": false,
+    "Condition": "正准备采矿",
+    "Category": "Docking / Harvest",
+    "Description": "散矿采集相关"
+  },
+  "CARRYING": {
+    "IsHiddenByDefault": false,
+    "Condition": "携带矿物",
+    "Category": "Docking / Harvest",
+    "Description": "矿车或矿脉内有矿时"
+  },
+  "PASSENGER": {
+    "IsHiddenByDefault": false,
+    "Condition": "乘员在运输载具中",
+    "Category": "Transport / Container",
+    "Description": "当单位进入TransportContain且ObjectStatusOfContained无CAN_ATTACK时获得"
+  },
+  "TRANSPORT_MOVING": {
+    "IsHiddenByDefault": false,
+    "Condition": "运输载具移动中",
+    "Category": "Transport / Container",
+    "Description": "当单位进入TransportContain且容器在移动时获得"
+  },
+  "TRANSPORT_STOPPED": {
+    "IsHiddenByDefault": false,
+    "Condition": "运输载具停止了",
+    "Category": "Transport / Container",
+    "Description": "当单位进入TransportContain且ObjectStatusOfContained有CAN_ATTACK时获得"
+  },
+  "SIEGE_CONTAIN": {
+    "IsHiddenByDefault": true,
+    "Condition": "进入攻城单位容器后",
+    "Category": "Transport / Container",
+    "Description": "与SiegeEngineContain有关，与ra3无关"
+  },
+  "JETEXHAUST": {
+    "IsHiddenByDefault": false,
+    "Condition": "喷射排气",
+    "Category": "Jet",
+    "Description": "JetAIUpdate的单位在空中移动或静止时获得"
+  },
+  "PACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "技能后摇中",
+    "Category": "Ability Cast",
+    "Description": "与当前技能的PackTime后摇时长关联"
+  },
+  "PREPARING": {
+    "IsHiddenByDefault": false,
+    "Condition": "技能准备中",
+    "Category": "Ability Cast",
+    "Description": "与当前技能的PreparationTime关联"
+  },
+  "UNPACKING": {
+    "IsHiddenByDefault": false,
+    "Condition": "技能前摇中",
+    "Category": "Ability Cast",
+    "Description": "与当前技能的UnpackTime前摇时长关联"
+  },
+  "PACKING_TYPE_1": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型1",
+    "Category": "Ability Cast",
+    "Description": "与当前技能的上三条时长关联，且UnpackingVariation=\"1\""
+  },
+  "PACKING_TYPE_2": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型2",
+    "Category": "Ability Cast",
+    "Description": "UnpackingVariation=\"2\""
+  },
+  "PACKING_TYPE_3": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型3",
+    "Category": "Ability Cast",
+    "Description": "UnpackingVariation=\"3\""
+  },
+  "PACKING_TYPE_4": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型4",
+    "Category": "Ability Cast",
+    "Description": "UnpackingVariation=\"4\""
+  },
+  "PACKING_TYPE_5": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型5",
+    "Category": "Ability Cast",
+    "Description": "UnpackingVariation=\"5\""
+  },
+  "PACKING_TYPE_6": {
+    "IsHiddenByDefault": false,
+    "Condition": "后摇类型6",
+    "Category": "Ability Cast",
+    "Description": "UnpackingVariation=\"6\""
+  },
+  "OVER_WATER": {
+    "IsHiddenByDefault": false,
+    "Condition": "在水上",
+    "Category": "Surface",
+    "Description": "在水区域上方即可获得，单位需要AI段和运动器，建筑需要有StructureUnpackUpdate"
+  },
+  "FORMATION_PREVIEW": {
+    "IsHiddenByDefault": false,
+    "Condition": "队列模式预览模型",
+    "Category": "Placement / Editor",
+    "Description": "使用鼠标左右键拉阵型时的绿色阴影就是预览模型"
+  },
+  "BUILD_PLACEMENT_CURSOR": {
+    "IsHiddenByDefault": false,
+    "Condition": "建筑放置时的预览模型",
+    "Category": "Placement / Editor",
+    "Description": "鼠标会变为该建筑在该状态时的半透明模型"
+  },
+  "WORLD_BUILDER": {
+    "IsHiddenByDefault": false,
+    "Condition": "在地编中",
+    "Category": "Placement / Editor",
+    "Description": "特效粒子、小队成员等无法显示在地编中"
+  },
+  "CONTINUOUS_FIRE_SLOW": {
+    "IsHiddenByDefault": true,
+    "Condition": "连续开火低速",
+    "Category": "Continuous Fire",
+    "Description": "ra3疑似失效"
+  },
+  "CONTINUOUS_FIRE_MEAN": {
+    "IsHiddenByDefault": false,
+    "Condition": "连续开火中速",
+    "Category": "Continuous Fire",
+    "Description": "当前物体某武器在停火时间不超过ContinuousFireCoastSeconds时，开火次数大于ContinuousFireOne获得"
+  },
+  "CONTINUOUS_FIRE_FAST": {
+    "IsHiddenByDefault": true,
+    "Condition": "连续开火高速",
+    "Category": "Continuous Fire",
+    "Description": "ra3疑似失效"
+  },
+  "SPECIAL_CHEERING": {
+    "IsHiddenByDefault": true,
+    "Condition": "特殊欢呼",
+    "Category": "Misc States",
+    "Description": "单位拥有等级时获得，仅作为标注，无实际作用"
+  },
+  "IMPENDING_DOOM": {
+    "IsHiddenByDefault": false,
+    "Condition": "厄运来临",
+    "Category": "Misc States",
+    "Description": "被百合子抬起后再落下摔死"
+  },
+  "EATING": {
+    "IsHiddenByDefault": false,
+    "Condition": "进食",
+    "Category": "Misc States",
+    "Description": "单位通过GrabPassengerSpecialPower吞食自身容器内乘员(ra3无此技能)"
+  },
+  "STUNNED_FLAILING": {
+    "IsHiddenByDefault": false,
+    "Condition": "被百合子抬起后或被击飞过程中",
+    "Category": "Yuriko / Stun",
+    "Description": "物体在拥有此模型条件时将无法进行攻击等行为"
+  },
+  "ABOUT_TO_HIT": {
+    "IsHiddenByDefault": false,
+    "Condition": "即将撞击",
+    "Category": "Yuriko / Stun",
+    "Description": "自身在抛射体时会有这个状态"
+  },
+  "EXPLODED_FLAILING": {
+    "IsHiddenByDefault": false,
+    "Condition": "因炸死而被击飞",
+    "Category": "Explosion / Death Fling",
+    "Description": "SlowDeath中设定FlingForce相关值导致单位死后被弹飞"
+  },
+  "EXPLODED_BOUNCING": {
+    "IsHiddenByDefault": false,
+    "Condition": "因炸死而弹跳",
+    "Category": "Explosion / Death Fling",
+    "Description": "SlowDeath中设定FlingForce相关值导致单位死后弹飞落地后的后续弹跳"
+  },
+  "ACCELERATE": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在加速中",
+    "Category": "Vehicle Motion",
+    "Description": "与单位的LocomotorTemplate的加速所需时间关联"
+  },
+  "DECELERATE": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在减速中",
+    "Category": "Vehicle Motion",
+    "Description": "与单位的LocomotorTemplate的减速所需时间关联"
+  },
+  "TURN_LEFT": {
+    "IsHiddenByDefault": false,
+    "Condition": "左转中",
+    "Category": "Vehicle Motion",
+    "Description": "与单位的LocomotorTemplate的左转所需时间关联，飞行器盘旋不算"
+  },
+  "TURN_RIGHT": {
+    "IsHiddenByDefault": false,
+    "Condition": "右转中",
+    "Category": "Vehicle Motion",
+    "Description": "与单位的LocomotorTemplate的右转所需时间关联，飞行器盘旋不算"
+  },
+  "TURN_LEFT_HIGH_SPEED": {
+    "IsHiddenByDefault": false,
+    "Condition": "左转达到最大速度中",
+    "Category": "Vehicle Motion",
+    "Description": "单位在向左转弯或者转向过程中达到了最大速度时获得"
+  },
+  "TURN_RIGHT_HIGH_SPEED": {
+    "IsHiddenByDefault": false,
+    "Condition": "右转达到最大速度中",
+    "Category": "Vehicle Motion",
+    "Description": "单位在向右转弯或者转向过程中达到了最大速度时获得"
+  },
+  "DEATH_1": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型1",
+    "Category": "Death Type",
+    "Description": "ra3被用于ELECTROCUTED死法"
+  },
+  "DEATH_2": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型2",
+    "Category": "Death Type",
+    "Description": "ra3被用于LASERED死法"
+  },
+  "DEATH_3": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型3",
+    "Category": "Death Type",
+    "Description": "ra3被用于BURNED死法"
+  },
+  "DEATH_4": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型4",
+    "Category": "Death Type",
+    "Description": "ra3被用于STABBED死法"
+  },
+  "DEATH_5": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型5",
+    "Category": "Death Type",
+    "Description": "ra3被用于IRRADIATED死法"
+  },
+  "DEATH_9": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型9",
+    "Category": "Death Type",
+    "Description": "ra3被动员兵用于BITTEN死法"
+  },
+  "DEATH_10": {
+    "IsHiddenByDefault": false,
+    "Condition": "死亡类型10",
+    "Category": "Death Type",
+    "Description": "ra3被帝国武士用于举刀时的一般死法"
+  },
+  "SELECTED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被选中",
+    "Category": "Selection / Deploy",
+    "Description": "物体被属于它的玩家选择时获得"
+  },
+  "ATTACHED": {
+    "IsHiddenByDefault": false,
+    "Condition": "附着中",
+    "Category": "Selection / Deploy",
+    "Description": "单位使用AttachUpdate模块时获得"
+  },
+  "LOADED": {
+    "IsHiddenByDefault": false,
+    "Condition": "已装载",
+    "Category": "Selection / Deploy",
+    "Description": "当前物体的TransportContain内有成员"
+  },
+  "DEPLOYED": {
+    "IsHiddenByDefault": false,
+    "Condition": "已部署",
+    "Category": "Selection / Deploy",
+    "Description": "若是由DeployStyleAIUpdate部署则强制获得"
+  },
+  "JUST_BUILT": {
+    "IsHiddenByDefault": false,
+    "Condition": "刚刚建成",
+    "Category": "Selection / Deploy",
+    "Description": "从该物体因建造、制造出现时就开始计时，持续JustBuiltTime或JustBuiltFrames时长"
+  },
+  "REACT_3": {
+    "IsHiddenByDefault": true,
+    "Condition": "百合子开火后出现于自身",
+    "Category": "React",
+    "Description": "作用不明"
+  },
+  "HIT_REACTION": {
+    "IsHiddenByDefault": false,
+    "Condition": "被攻击反应",
+    "Category": "Hit Reaction",
+    "Description": "启用HitReactionBehavior时被击中"
+  },
+  "HIT_LEVEL_1": {
+    "IsHiddenByDefault": false,
+    "Condition": "被攻击程度1",
+    "Category": "Hit Reaction",
+    "Description": "单次所受伤害>=LightDamageHitReactionThreshold"
+  },
+  "HIT_LEVEL_2": {
+    "IsHiddenByDefault": false,
+    "Condition": "被攻击程度2",
+    "Category": "Hit Reaction",
+    "Description": "单次所受伤害>=MediumDamageHitReactionThreshold"
+  },
+  "HIT_LEVEL_3": {
+    "IsHiddenByDefault": false,
+    "Condition": "被攻击程度3",
+    "Category": "Hit Reaction",
+    "Description": "单次所受伤害>=HeavyDamageHitReactionThreshold"
+  },
+  "AIM_HIGH": {
+    "IsHiddenByDefault": false,
+    "Condition": "瞄准高处",
+    "Category": "Aim Direction",
+    "Description": "配合AimWeapon模块，目标相对高度>AimHighThreshold"
+  },
+  "AIM_STRAIGHT": {
+    "IsHiddenByDefault": false,
+    "Condition": "瞄准正前方",
+    "Category": "Aim Direction",
+    "Description": "不符合AIM_HIGH与AIM_LOW时"
+  },
+  "AIM_LOW": {
+    "IsHiddenByDefault": false,
+    "Condition": "瞄准低处",
+    "Category": "Aim Direction",
+    "Description": "配合AimWeapon模块，目标相对高度<AimLowThreshold"
+  },
+  "AIM_NEAR": {
+    "IsHiddenByDefault": false,
+    "Condition": "瞄准近处",
+    "Category": "Aim Direction",
+    "Description": "配合AimWeapon模块，目标距离<AimNearDistance"
+  },
+  "AIM_FAR": {
+    "IsHiddenByDefault": false,
+    "Condition": "瞄准远处",
+    "Category": "Aim Direction",
+    "Description": "配合AimWeapon模块，目标距离>AimFarDistance"
+  },
+  "USER_1": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者1",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_2": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者2",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_3": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者3",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_4": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者4",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_5": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者5",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_6": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者6",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_7": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者7",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_8": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者8",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_9": {
+    "IsHiddenByDefault": true,
+    "Condition": "使用者9",
+    "Category": "User",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "USER_10": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用者10",
+    "Category": "User",
+    "Description": "原版被用于二、三级天皇之怒以调整波能高射速时的开火动画播放速度"
+  },
+  "PASSENGER_VARIATION_1": {
+    "IsHiddenByDefault": true,
+    "Condition": "乘员差异1",
+    "Category": "Passenger Variation",
+    "Description": "无实际作用"
+  },
+  "PASSENGER_VARIATION_2": {
+    "IsHiddenByDefault": true,
+    "Condition": "乘员差异2",
+    "Category": "Passenger Variation",
+    "Description": "无实际作用"
+  },
+  "PASSENGER_VARIATION_3": {
+    "IsHiddenByDefault": true,
+    "Condition": "乘员差异3",
+    "Category": "Passenger Variation",
+    "Description": "无实际作用"
+  },
+  "PASSENGER_VARIATION_4": {
+    "IsHiddenByDefault": true,
+    "Condition": "乘员差异4",
+    "Category": "Passenger Variation",
+    "Description": "无实际作用"
+  },
+  "PASSENGER_VARIATION_5": {
+    "IsHiddenByDefault": true,
+    "Condition": "乘员差异5",
+    "Category": "Passenger Variation",
+    "Description": "无实际作用"
+  },
+  "SPECIALPOWER1_READY": {
+    "IsHiddenByDefault": true,
+    "Condition": "特殊能力1准备就绪",
+    "Category": "Special Power",
+    "Description": "无实际作用，原版在超时空等六大超武中与MonitorSpecialPowerTimerUpdate关联检测CD"
+  },
+  "USING_SPECIAL_ABILITY": {
+    "IsHiddenByDefault": false,
+    "Condition": "使用技能中",
+    "Category": "Special Power",
+    "Description": "单位正在释放或者开始释放技能时获得"
+  },
+  "RIDER1": {
+    "IsHiddenByDefault": true,
+    "Condition": "骑手1",
+    "Category": "Rider",
+    "Description": "无实际作用，被用于GLA战斗摩托RiderChangeContain"
+  },
+  "RIDER8": {
+    "IsHiddenByDefault": true,
+    "Condition": "骑手8",
+    "Category": "Rider",
+    "Description": "无实际作用"
+  },
+  "RIDERLESS": {
+    "IsHiddenByDefault": true,
+    "Condition": "无骑手",
+    "Category": "Rider",
+    "Description": "无实际作用"
+  },
+  "DISGUISED": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在模仿中",
+    "Category": "Stealth / Disguise",
+    "Description": "当单位正在使用模仿技能时获得，原版出现于间谍、幻影、迅雷"
+  },
+  "HIDDEN": {
+    "IsHiddenByDefault": false,
+    "Condition": "隐藏",
+    "Category": "Stealth / Disguise",
+    "Description": "可隐藏该单位的HUI，被用于谭雅、蜘蛛吸附目标"
+  },
+  "INVISIBLE_STEALTH": {
+    "IsHiddenByDefault": false,
+    "Condition": "处于隐形中",
+    "Category": "Stealth / Disguise",
+    "Description": "单位正在隐形时获得"
+  },
+  "INVISIBLE_CAMOUFLAGE": {
+    "IsHiddenByDefault": false,
+    "Condition": "处于迷彩伪装中",
+    "Category": "Stealth / Disguise",
+    "Description": "幻影因DisguiseWhenIdleAIStateMachine处于伪装时"
+  },
+  "PRONE": {
+    "IsHiddenByDefault": true,
+    "Condition": "匍匐",
+    "Category": "Stealth / Disguise",
+    "Description": "原版并未使用，原版小兵因炮火而趴下是SUPPRESSED被压制"
+  },
+  "COVER": {
+    "IsHiddenByDefault": false,
+    "Condition": "掩护",
+    "Category": "Stealth / Disguise",
+    "Description": "配合FindCoverBehavior模块，此模块在ra3有问题"
+  },
+  "SUPPRESSED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被压制中",
+    "Category": "Stealth / Disguise",
+    "Description": "当单位的SuppressionUpdate积累到上限时获得，仅作为标注"
+  },
+  "TURRET_ANGLE_0": {
+    "IsHiddenByDefault": false,
+    "Condition": "炮塔角度0",
+    "Category": "Turret Angle",
+    "Description": "物体炮塔当前角度在物体前方时获得，需炮塔段SetAngleModelStates=\"true\""
+  },
+  "TURRET_ANGLE_90": {
+    "IsHiddenByDefault": false,
+    "Condition": "炮塔角度90",
+    "Category": "Turret Angle",
+    "Description": "物体炮塔当前角度在物体左侧时获得"
+  },
+  "TURRET_ANGLE_180": {
+    "IsHiddenByDefault": false,
+    "Condition": "炮塔角度180",
+    "Category": "Turret Angle",
+    "Description": "物体炮塔当前角度在物体后方时获得"
+  },
+  "TURRET_ANGLE_270": {
+    "IsHiddenByDefault": false,
+    "Condition": "炮塔角度270",
+    "Category": "Turret Angle",
+    "Description": "物体炮塔当前角度在物体右侧时获得"
+  },
+  "TURRET_ROTATE": {
+    "IsHiddenByDefault": false,
+    "Condition": "炮塔旋转中",
+    "Category": "Turret Angle",
+    "Description": "物体正在旋转自身拥有的炮塔或者炮塔闲置扫描时获得"
+  },
+  "EMOTION_CELEBRATING": {
+    "IsHiddenByDefault": false,
+    "Condition": "情绪庆祝",
+    "Category": "Emotion",
+    "Description": "原版大部分步兵都拥有庆祝动画但没有获得该条件途径"
+  },
+  "EMOTION_DISSIDENT": {
+    "IsHiddenByDefault": false,
+    "Condition": "情绪异议",
+    "Category": "Emotion",
+    "Description": "拥有这个状态的单位会不分敌我地攻击他人，并且不分敌我地被人攻击"
+  },
+  "INVULNERABLE": {
+    "IsHiddenByDefault": true,
+    "Condition": "无懈可击的",
+    "Category": "Special / Misc",
+    "Description": "作用不明"
+  },
+  "BUILD_VARIATION_ONE": {
+    "IsHiddenByDefault": false,
+    "Condition": "建造差异1",
+    "Category": "Build Variation",
+    "Description": "原版被用于苏联工兵建造碉堡过程"
+  },
+  "PARALYZED": {
+    "IsHiddenByDefault": false,
+    "Condition": "被定住或被冷冻",
+    "Category": "Disable Types",
+    "Description": "该物体有USER_PARALYZED类DisabledType时"
+  },
+  "AFFECTED_BY_EMP": {
+    "IsHiddenByDefault": false,
+    "Condition": "被EMP瘫痪中",
+    "Category": "Disable Types",
+    "Description": "该物体有EMP类DisabledType时"
+  },
+  "UNDERPOWERED": {
+    "IsHiddenByDefault": false,
+    "Condition": "电力不足断电中",
+    "Category": "Disable Types",
+    "Description": "该物体有UNDERPOWERED类DisabledType时"
+  },
+  "TIBERIUM_CRYSTAL_TYPE1": {
+    "IsHiddenByDefault": true,
+    "Condition": "泰矿水晶类型1",
+    "Category": "Tiberium (CC3 legacy)",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "TIBERIUM_GROWING": {
+    "IsHiddenByDefault": false,
+    "Condition": "泰伯利亚生长中",
+    "Category": "Tiberium (CC3 legacy)",
+    "Description": "根据其TiberiumCrystal模块Growth相关条目增加泰矿价值时出现"
+  },
+  "LOCOMOTOR_NORMAL_UPGRADED": {
+    "IsHiddenByDefault": false,
+    "Condition": "标准升级运动器",
+    "Category": "Locomotor States",
+    "Description": "原版被用于雅典娜、基洛夫使用技能后，并无特殊效果"
+  },
+  "MONEY_STORED_AMOUNT_1": {
+    "IsHiddenByDefault": false,
+    "Condition": "资金储量>0",
+    "Category": "Money Stored",
+    "Description": "用在矿车，矿脉等可以储存矿石的建筑单位上"
+  },
+  "VEHICLE_CRUSH_CENTER": {
+    "IsHiddenByDefault": false,
+    "Condition": "载具碾压中间",
+    "Category": "Vehicle Crush",
+    "Description": "被碾压物体需要是VEHICLE或SIMPLE_OBJECT_PROP"
+  },
+  "HEALTH_PERCENT_0": {
+    "IsHiddenByDefault": true,
+    "Condition": "血量百分比(0%)",
+    "Category": "Health Percent",
+    "Description": "无实际作用，仅作为标注"
+  },
+  "COMBINED_PARENT": {
+    "IsHiddenByDefault": false,
+    "Condition": "被结合的母体",
+    "Category": "Combine",
+    "Description": "因CombineSpecialPower或SpawnBehavior中CombineOnCreate而结合"
+  },
+  "WALL_SEGMENT": {
+    "IsHiddenByDefault": false,
+    "Condition": "围墙片段",
+    "Category": "Misc Unique",
+    "Description": "由WallBuilderBehavior所建立的中间片段会获得此条件"
+  },
+  "SHRINK_EFFECT": {
+    "IsHiddenByDefault": false,
+    "Condition": "被缩小效果",
+    "Category": "Misc Unique",
+    "Description": "声音使用ShrunkenPitchModifier和ShrunkenVolumeModifier设定而变调"
+  },
+  "HIGH_TECH_EFFECT": {
+    "IsHiddenByDefault": true,
+    "Condition": "高科技升级",
+    "Category": "Misc Unique",
+    "Description": "无实际作用"
+  },
+  "AIR_POWER_EFFECT": {
+    "IsHiddenByDefault": true,
+    "Condition": "空军升级",
+    "Category": "Misc Unique",
+    "Description": "无实际作用"
+  },
+  "PLAYER_POWER_1": {
+    "IsHiddenByDefault": true,
+    "Condition": "苏联载具获得碾压升级",
+    "Category": "Misc Unique",
+    "Description": "无实际作用"
+  },
+  "BEING_MAULED": {
+    "IsHiddenByDefault": false,
+    "Condition": "正在被咬",
+    "Category": "Misc Unique",
+    "Description": "被用于被狗和蜘蛛所攻击的步兵"
+  },
+  "FROZEN": {
+    "IsHiddenByDefault": true,
+    "Condition": "被冰冻",
+    "Category": "Misc Unique",
+    "Description": "无实际作用"
+  },
+  "IRONCURTAIN": {
+    "IsHiddenByDefault": true,
+    "Condition": "铁幕",
+    "Category": "Misc Unique",
+    "Description": "无实际作用"
+  },
+  "CHRONORIFT": {
+    "IsHiddenByDefault": false,
+    "Condition": "被裂缝",
+    "Category": "Misc Unique",
+    "Description": "实际被裂缝物体并无此项"
+  },
+  "INFILTRATED_DISABLE": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透瘫痪",
+    "Category": "Infiltration",
+    "Description": "因被渗透而瘫痪的物体上出现Duration时长"
+  },
+  "INFILTRATED_STEAL_MONEY": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透偷钱",
+    "Category": "Infiltration",
+    "Description": "STEAL_MONEY类InfiltratorContain物体遭到渗透而出现1秒"
+  },
+  "INFILTRATED_RADAR_FREEZE": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透关闭雷达",
+    "Category": "Infiltration",
+    "Description": "RADAR_FREEZE类InfiltratorContain物体遭到渗透而出现Duration时长"
+  },
+  "INFILTRATED_VISION": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透窃取视野",
+    "Category": "Infiltration",
+    "Description": "VISION类InfiltratorContain物体遭到渗透，负数时长代表永久"
+  },
+  "INFILTRATED_ENERGY": {
+    "IsHiddenByDefault": false,
+    "Condition": "被窃取电量",
+    "Category": "Infiltration",
+    "Description": "ENERGY类InfiltratorContain物体遭到渗透，在所有同类型物体出现"
+  },
+  "INFILTRATED_RESET": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透重置技能时间",
+    "Category": "Infiltration",
+    "Description": "RESET类InfiltratorContain物体遭到渗透而出现1秒"
+  },
+  "INFILTRATED_VISION_UNITS": {
+    "IsHiddenByDefault": false,
+    "Condition": "被渗透窃取视野的单位",
+    "Category": "Infiltration",
+    "Description": "VISION_UNITS类，只在被渗透物体出现"
+  }
+}

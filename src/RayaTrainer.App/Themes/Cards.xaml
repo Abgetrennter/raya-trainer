@@ -1,0 +1,12 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- ActionCard: collapsible card with header -->
+  <Style x:Key="ActionCardBorder" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource BrushCardBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="Margin" Value="0,0,0,16" />
+  </Style>
+</ResourceDictionary>
