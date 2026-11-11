@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "corona",
+  "provider": "Corona Mod Team",
+  "version": "1.0.0",
+  "attribution": "© Corona Mod Team. Redistribution licensed for RayaTrainer public source and binary releases.",
+  "assets": [
+    { "kind": "SecretProtocols", "path": "secret-protocols.txt", "sha256": "2ea96617d43c60e951a1db061faab30bcbac00514beaa5ebbb870f6e70816a1e" },
+    { "kind": "Reinforcements",  "path": "reinforcements.txt",   "sha256": "f093bd2dedaf15f6e2ee45ca26f9643a5035623f7b994393cd37c24a8b1766bd" }
+  ]
+}

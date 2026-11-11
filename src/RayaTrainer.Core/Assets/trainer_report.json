@@ -1,0 +1,286 @@
+{
+  "trainer_metadata": {
+    "target_process": "ra3_1.12.game"
+  },
+  "features": [
+    {
+      "name": "Money",
+      "hotkey": "Ctrl+F1",
+      "enable_flags": [
+        "Money"
+      ],
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Power",
+      "hotkey": "Ctrl+F2",
+      "enable_flags": [
+        "Power"
+      ],
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "HAVE ALL SC",
+      "hotkey": "Ctrl+F4",
+      "enable_flags": [
+        "HAVE ALL SC"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "FAST BUILD",
+      "hotkey": "Ctrl+F5",
+      "enable_flags": [
+        "FAST BUILD"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "SUPER POWER",
+      "hotkey": "Ctrl+F6",
+      "enable_flags": [
+        "SUPER POWER"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "Disable ALL SP",
+      "hotkey": "Ctrl+F7",
+      "enable_flags": [
+        "Disable ALL SP"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "Zoom",
+      "hotkey": "Ctrl+F8",
+      "enable_flags": [
+        "Zoom"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "Player God Mode",
+      "hotkey": "Ctrl+F11",
+      "enable_flags": [
+        "Player God Mode"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "Player One Kill Mode",
+      "hotkey": "Ctrl+F12",
+      "enable_flags": [
+        "Player One Kill Mode"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": null
+    },
+    {
+      "name": "Challenge Money",
+      "hotkey": "Insert",
+      "enable_flags": [
+        "Challenge Money"
+      ],
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": [
+        "ra3_uprising_1.0",
+        "ra3_uprising_1.1"
+      ]
+    },
+    {
+      "name": "Challenge Time",
+      "hotkey": "Home",
+      "enable_flags": [
+        "Challenge Time"
+      ],
+      "dispatch_target": null,
+      "value_hint": null,
+      "supported_profiles": [
+        "ra3_uprising_1.0",
+        "ra3_uprising_1.1"
+      ]
+    },
+    {
+      "name": "Select Unit Level UP",
+      "hotkey": "PP",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x08",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Super Speed",
+      "hotkey": "#189",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Slow Speed",
+      "hotkey": "#187",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x02",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Freeze",
+      "hotkey": "Page Up",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x03",
+      "supported_profiles": null
+    },
+    {
+      "name": "Restore Select Unit Speed",
+      "hotkey": "Page Down",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x04",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit HP MAX",
+      "hotkey": "#219",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x05",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit HP MIN",
+      "hotkey": "#221",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x06",
+      "supported_profiles": null
+    },
+    {
+      "name": "Restore Select Unit Normal HP",
+      "hotkey": "#220",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x07",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Ammo MAX",
+      "hotkey": "#186",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Ammo MAX 2",
+      "hotkey": "#186",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x00",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Change ID",
+      "hotkey": "Delete",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x09",
+      "supported_profiles": null
+    },
+    {
+      "name": "Destory Select Unit",
+      "hotkey": "Delete",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x0A",
+      "supported_profiles": null
+    },
+    {
+      "name": "Danger Level MAX",
+      "hotkey": "#188",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Danger Level MIN",
+      "hotkey": "#190",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x02",
+      "supported_profiles": null
+    },
+    {
+      "name": "Restore Danger Level Normal",
+      "hotkey": "#191",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x00",
+      "supported_profiles": null
+    },
+    {
+      "name": "Restore Select Ore Mine",
+      "hotkey": "#222",
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Free Build",
+      "hotkey": null,
+      "enable_flags": [
+        "Free Build"
+      ],
+      "dispatch_target": null,
+      "value_hint": "0x01",
+      "supported_profiles": null
+    },
+    {
+      "name": "Get Me Base",
+      "hotkey": null,
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x0B",
+      "supported_profiles": null
+    },
+    {
+      "name": "Select Unit Copy For Me",
+      "hotkey": null,
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x0D",
+      "supported_profiles": null
+    },
+    {
+      "name": "We Need Back",
+      "hotkey": null,
+      "enable_flags": null,
+      "dispatch_target": null,
+      "value_hint": "0x0C",
+      "supported_profiles": null
+    }
+  ],
+  "action_dispatch": []
+}

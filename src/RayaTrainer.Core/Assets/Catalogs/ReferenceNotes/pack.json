@@ -1,0 +1,19 @@
+{
+  "provider": "RayaTrainer Authors (from EA RA3 Engine Reference)",
+  "assets": [
+    {
+      "sha256": "25d7e6b6a9f044724e6c0870127289642b1268a0323090b49a64334ae95a983a",
+      "path": "model-state-notes.json",
+      "kind": "ModelStateNotes"
+    },
+    {
+      "sha256": "4e6a28686f6a78004afb6bb1e98aba2c048d252afbaa9fc5b5cfda9504f8dd9a",
+      "path": "object-status-notes.json",
+      "kind": "ObjectStatusNotes"
+    }
+  ],
+  "schemaVersion": 1,
+  "attribution": "Pre-parsed reference notes for ObjectStatus and ModelState bit descriptions.",
+  "id": "reference-notes",
+  "version": "1.0.0"
+}

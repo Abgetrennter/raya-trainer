@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- 可选的独立 Web 遥控组件：原生 WinForms 单窗口（无 WPF、无控制台、无托盘）。
+         与主程序同一 Release 作为可选附件发布。
+         ASP.NET Core 框架引用显式声明在此（不依赖 Host 传递），保证主程序 runtimeconfig
+         不因引用 Host 而带入 Microsoft.AspNetCore.App。 -->
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>..\..\RA3_modifier_icon.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <!-- framework-dependent 版允许用户机器上任意 x86 .NET 8.x 运行库（不会绑死到构建次版本号）。
+         注意：32 位 apphost 不会 roll-forward 到 x64 运行库，架构必须严格匹配，见 README "运行库安装"。 -->
+    <RollForward>LatestMinor</RollForward>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+    <PublicProjection Condition="'$(SolutionFileName)' == 'RayaTrainer.Public.sln'">true</PublicProjection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RayaTrainer.Host\RayaTrainer.Host.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 配对二维码渲染（Bitmap 渲染器直接进 PictureBox；版本由 Directory.Packages.props 集中管理）。 -->
+    <PackageReference Include="QRCoder" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Web 前端资产源头在 Host/Web/wwwroot（与 Web 宿主代码同库）；只有 WebMini
+         需要把它们复制到输出目录（TrainerWebHost 经 AppContext.BaseDirectory/Web/wwwroot 定位）。 -->
+    <Content Include="..\RayaTrainer.Host\Web\wwwroot\**\*" Link="Web\wwwroot\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <NativeAgentArtifact>$(MSBuildProjectDirectory)\..\..\artifacts\native\$(Configuration)\Win32\RayaTrainer.Agent.dll</NativeAgentArtifact>
+  </PropertyGroup>
+
+  <Target Name="SynchronizeNativeAgent" AfterTargets="Build">
+    <Delete Files="$(TargetDir)RayaTrainer.Agent.dll" Condition="!Exists('$(NativeAgentArtifact)')" />
+    <Copy
+      SourceFiles="$(NativeAgentArtifact)"
+      DestinationFiles="$(TargetDir)RayaTrainer.Agent.dll"
+      SkipUnchangedFiles="false"
+      Condition="Exists('$(NativeAgentArtifact)')" />
+  </Target>
+</Project>
